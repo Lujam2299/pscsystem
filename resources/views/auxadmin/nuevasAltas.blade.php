@@ -203,200 +203,228 @@
 <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     function abrirModalCarga(solicitudId) {
-        Swal.fire({
-            title: 'Subir Documentos',
-            html: `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-                    <div id="drop-imss" class="border-2 border-dashed border-blue-400 dark:border-blue-600 rounded-lg p-6 bg-blue-50 dark:bg-blue-900/20 transition-colors duration-200">
-                        <div class="text-center">
-                            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </div>
-                            <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Acuse IMSS</h3>
-                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Arrastre o seleccione el archivo</p>
-                            <input type="file" id="file-imss" class="hidden" accept=".pdf,.jpg,.jpeg,.png">
-                            <button type="button"
-                                    onclick="document.getElementById('file-imss').click()"
-                                    class="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                </svg>
-                                Seleccionar archivo
-                            </button>
-                            <p id="file-name-imss" class="mt-3 text-sm text-green-600 dark:text-green-400"></p>
+    Swal.fire({
+        title: 'Subir Documentos',
+        html: `
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                <div id="drop-imss" class="border-2 border-dashed border-blue-400 dark:border-blue-600 rounded-lg p-6 bg-blue-50 dark:bg-blue-900/20 transition-colors duration-200">
+                    <div class="text-center">
+                        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
                         </div>
-                    </div>
-
-                    <div id="drop-infonavit" class="border-2 border-dashed border-green-400 dark:border-green-600 rounded-lg p-6 bg-green-50 dark:bg-green-900/20 transition-colors duration-200">
-                        <div class="text-center">
-                            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                </svg>
-                            </div>
-                            <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Retención INFONAVIT</h3>
-                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Arrastre o seleccione el archivo (opcional)</p>
-                            <input type="file" id="file-infonavit" class="hidden" accept=".pdf,.jpg,.jpeg,.png">
-                            <button type="button"
-                                    onclick="document.getElementById('file-infonavit').click()"
-                                    class="mt-4 inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                </svg>
-                                Seleccionar archivo
-                            </button>
-                            <p id="file-name-infonavit" class="mt-3 text-sm text-green-600 dark:text-green-400"></p>
-                        </div>
+                        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Acuse IMSS</h3>
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Arrastre o seleccione el archivo</p>
+                        <input type="file" id="file-imss" class="hidden" accept=".pdf,.jpg,.jpeg,.png">
+                        <button type="button"
+                                onclick="document.getElementById('file-imss').click()"
+                                class="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Seleccionar archivo
+                        </button>
+                        <p id="file-name-imss" class="mt-3 text-sm text-green-600 dark:text-green-400"></p>
                     </div>
                 </div>
 
-                <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            <div class="flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                SD (Salario Diario)
-                            </div>
-                        </label>
-                        <input type="number"
-                               id="input-sd"
-                               step="0.01"
-                               min="0"
-                               class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white"
-                               placeholder="0.00">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            <div class="flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                SDI (Salario Diario Integrado)
-                            </div>
-                        </label>
-                        <input type="number"
-                               id="input-sdi"
-                               step="0.01"
-                               min="0"
-                               class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white"
-                               placeholder="0.00">
+                <div id="drop-infonavit" class="border-2 border-dashed border-green-400 dark:border-green-600 rounded-lg p-6 bg-green-50 dark:bg-green-900/20 transition-colors duration-200">
+                    <div class="text-center">
+                        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </div>
+                        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Retención INFONAVIT</h3>
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Arrastre o seleccione el archivo (opcional)</p>
+                        <input type="file" id="file-infonavit" class="hidden" accept=".pdf,.jpg,.jpeg,.png">
+                        <button type="button"
+                                onclick="document.getElementById('file-infonavit').click()"
+                                class="mt-4 inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Seleccionar archivo
+                        </button>
+                        <p id="file-name-infonavit" class="mt-3 text-sm text-green-600 dark:text-green-400"></p>
                     </div>
                 </div>
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Subir Documentos',
-            cancelButtonText: 'Cancelar',
-            width: '60rem',
-            didOpen: () => {
-                const zonas = [
-                    { zona: 'drop-imss', input: 'file-imss', label: 'file-name-imss' },
-                    { zona: 'drop-infonavit', input: 'file-infonavit', label: 'file-name-infonavit' }
-                ];
 
-                zonas.forEach(({ zona, input, label }) => {
-                    const dropZone = document.getElementById(zona);
-                    const fileInput = document.getElementById(input);
-                    const fileLabel = document.getElementById(label);
+                <!-- Nuevo Dropzone -->
+                <div id="drop-alta" class="border-2 border-dashed border-purple-400 dark:border-purple-600 rounded-lg p-6 bg-purple-50 dark:bg-purple-900/20 transition-colors duration-200">
+                    <div class="text-center">
+                        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/30">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </div>
+                        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Acuse de Alta</h3>
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Arrastre o seleccione el archivo (opcional)</p>
+                        <input type="file" id="file-alta" class="hidden" accept=".pdf,.jpg,.jpeg,.png">
+                        <button type="button"
+                                onclick="document.getElementById('file-alta').click()"
+                                class="mt-4 inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Seleccionar archivo
+                        </button>
+                        <p id="file-name-alta" class="mt-3 text-sm text-green-600 dark:text-green-400"></p>
+                    </div>
+                </div>
+            </div>
 
-                    dropZone.addEventListener('dragover', e => {
-                        e.preventDefault();
-                        dropZone.classList.add('border-blue-500', 'dark:border-blue-400', 'bg-blue-100', 'dark:bg-blue-900/30');
-                    });
+            <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <div class="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            SD (Salario Diario)
+                        </div>
+                    </label>
+                    <input type="number"
+                           id="input-sd"
+                           step="0.01"
+                           min="0"
+                           class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white"
+                           placeholder="0.00">
+                </div>
 
-                    dropZone.addEventListener('dragleave', e => {
-                        e.preventDefault();
-                        dropZone.classList.remove('border-blue-500', 'dark:border-blue-400', 'bg-blue-100', 'dark:bg-blue-900/30');
-                    });
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <div class="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            SDI (Salario Diario Integrado)
+                        </div>
+                    </label>
+                    <input type="number"
+                           id="input-sdi"
+                           step="0.01"
+                           min="0"
+                           class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white"
+                           placeholder="0.00">
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Subir Documentos',
+        cancelButtonText: 'Cancelar',
+        width: '70rem',
+        didOpen: () => {
+            const zonas = [
+                { zona: 'drop-imss', input: 'file-imss', label: 'file-name-imss' },
+                { zona: 'drop-infonavit', input: 'file-infonavit', label: 'file-name-infonavit' },
+                { zona: 'drop-alta', input: 'file-alta', label: 'file-name-alta' }
+            ];
 
-                    dropZone.addEventListener('drop', e => {
-                        e.preventDefault();
-                        dropZone.classList.remove('border-blue-500', 'dark:border-blue-400', 'bg-blue-100', 'dark:bg-blue-900/30');
-                        const file = e.dataTransfer.files[0];
-                        if (!file) return;
+            zonas.forEach(({ zona, input, label }) => {
+                const dropZone = document.getElementById(zona);
+                const fileInput = document.getElementById(input);
+                const fileLabel = document.getElementById(label);
 
-                        const dataTransfer = new DataTransfer();
-                        dataTransfer.items.add(file);
-                        fileInput.files = dataTransfer.files;
+                dropZone.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    dropZone.classList.add('border-blue-500', 'dark:border-blue-400', 'bg-blue-100', 'dark:bg-blue-900/30');
+                });
 
-                        fileLabel.textContent = 'Archivo: ' + file.name;
+                dropZone.addEventListener('dragleave', e => {
+                    e.preventDefault();
+                    dropZone.classList.remove('border-blue-500', 'dark:border-blue-400', 'bg-blue-100', 'dark:bg-blue-900/30');
+                });
+
+                dropZone.addEventListener('drop', e => {
+                    e.preventDefault();
+                    dropZone.classList.remove('border-blue-500', 'dark:border-blue-400', 'bg-blue-100', 'dark:bg-blue-900/30');
+                    const file = e.dataTransfer.files[0];
+                    if (!file) return;
+
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    fileInput.files = dataTransfer.files;
+
+                    fileLabel.textContent = 'Archivo: ' + file.name;
+                    fileLabel.classList.remove('hidden');
+                });
+
+                fileInput.addEventListener('change', () => {
+                    if (fileInput.files[0]) {
+                        fileLabel.textContent = 'Archivo: ' + fileInput.files[0].name;
                         fileLabel.classList.remove('hidden');
-                    });
-
-                    fileInput.addEventListener('change', () => {
-                        if (fileInput.files[0]) {
-                            fileLabel.textContent = 'Archivo: ' + fileInput.files[0].name;
-                            fileLabel.classList.remove('hidden');
-                        }
-                    });
-                });
-            },
-            preConfirm: () => {
-                const fileImss = document.getElementById('file-imss').files[0];
-                const fileInfonavit = document.getElementById('file-infonavit').files[0];
-                const sd = document.getElementById('input-sd').value;
-                const sdi = document.getElementById('input-sdi').value;
-
-                if (!fileImss) {
-                    Swal.showValidationMessage('Debes seleccionar el archivo de Acuse IMSS');
-                    return false;
-                }
-
-                if (!sd || sd <= 0) {
-                    Swal.showValidationMessage('Debes ingresar un valor válido para SD');
-                    return false;
-                }
-
-                if (!sdi || sdi <= 0) {
-                    Swal.showValidationMessage('Debes ingresar un valor válido para SDI');
-                    return false;
-                }
-
-                const formData = new FormData();
-                formData.append('solicitud_id', solicitudId);
-                formData.append('arch_acuse_imss', fileImss);
-                if (fileInfonavit) {
-                    formData.append('arch_retencion_infonavit', fileInfonavit);
-                }
-                formData.append('sd', sd);
-                formData.append('sdi', sdi);
-                formData.append('_token', '{{ csrf_token() }}');
-
-                return fetch(`/subida_documentacion/${solicitudId}`, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => { throw new Error(err.message || 'Error al subir archivos') });
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.message);
-                    }
-                    return data;
-                })
-                .catch(error => {
-                    Swal.showValidationMessage(`Error: ${error.message}`);
-                    return false;
                 });
+            });
+        },
+        preConfirm: () => {
+            const fileImss = document.getElementById('file-imss').files[0];
+            const fileInfonavit = document.getElementById('file-infonavit').files[0];
+            const fileAlta = document.getElementById('file-alta').files[0];
+            const sd = document.getElementById('input-sd').value;
+            const sdi = document.getElementById('input-sdi').value;
+
+            if (!fileImss) {
+                Swal.showValidationMessage('Debes seleccionar el archivo de Acuse IMSS');
+                return false;
             }
-        }).then(result => {
-            if (result.isConfirmed) {
-                Swal.fire({
-                    title: '¡Éxito!',
-                    text: result.value.message,
-                    icon: 'success'
-                }).then(() => {
-                    window.location.reload();
-                });
+
+            if (!sd || sd <= 0) {
+                Swal.showValidationMessage('Debes ingresar un valor válido para SD');
+                return false;
             }
-        });
-    }
+
+            if (!sdi || sdi <= 0) {
+                Swal.showValidationMessage('Debes ingresar un valor válido para SDI');
+                return false;
+            }
+
+            const formData = new FormData();
+            formData.append('solicitud_id', solicitudId);
+            formData.append('arch_acuse_imss', fileImss);
+            if (fileInfonavit) {
+                formData.append('arch_retencion_infonavit', fileInfonavit);
+            }
+            if (fileAlta) {
+                formData.append('arch_acuse_alta', fileAlta);
+            }
+            formData.append('sd', sd);
+            formData.append('sdi', sdi);
+            formData.append('_token', '{{ csrf_token() }}');
+
+            return fetch(`/subida_documentacion/${solicitudId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.message || 'Error al subir archivos') });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.message);
+                }
+                return data;
+            })
+            .catch(error => {
+                Swal.showValidationMessage(`Error: ${error.message}`);
+                return false;
+            });
+        }
+    }).then(result => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: '¡Éxito!',
+                text: result.value.message,
+                icon: 'success'
+            }).then(() => {
+                window.location.reload();
+            });
+        }
+    });
+}
 </script>
