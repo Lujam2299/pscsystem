@@ -1239,7 +1239,7 @@ public function importarPersonalActivo(Request $request)
 
                 // Crear en users
                 $user = User::create([
-                    'name' => $nombreNormalizado,
+                    'name' => $this->crearNombreCompletoParaUsers($nombreCompletoExcel),
                     'password' => bcrypt($nss),
                     'email' => $this->generarEmailTemporal($nombreNormalizado, $nss),
                     'estatus' => 'Activo',
@@ -1450,4 +1450,73 @@ private function generarEmailTemporal($nombre, $nss)
     $base = Str::slug($nombre, '.') . '.' . Str::slug($nss);
     return substr($base, 0, 100) . '@temporal.com';
 }
+private function crearNombreCompletoParaUsers($nombreExcel)
+{
+    if (!is_string($nombreExcel)) {
+        return null;
+    }
+
+    // Normalizar espacios
+    $nombreExcel = preg_replace('/\s+/', ' ', trim($nombreExcel));
+
+    $palabras = array_filter(explode(' ', $nombreExcel), function($palabra) {
+        return !empty($palabra);
+    });
+
+    if (count($palabras) < 2) {
+        return $nombreExcel;
+    }
+
+    // Estrategia: detectar apellidos compuestos
+    $apellidos = [];
+    $i = 0;
+    $total = count($palabras);
+
+    // Tomar al menos 1 palabra como apellido
+    $apellidos[] = $palabras[$i++];
+
+    // Si hay más palabras, ver si la siguiente forma parte de un apellido compuesto
+    if ($i < $total) {
+        $primera = strtoupper($palabras[0]);
+        $segunda = strtoupper($palabras[1]);
+
+        // Caso: "DE LA VEGA" → tomar 3 palabras
+        if ($primera === 'DE' && $segunda === 'LA' && $i + 1 < $total) {
+            $apellidos[] = $palabras[$i++];
+            $apellidos[] = $palabras[$i++];
+        }
+        // Caso: "DE LOS SANTOS" → tomar 3 palabras
+        elseif ($primera === 'DE' && $segunda === 'LOS' && $i + 1 < $total) {
+            $apellidos[] = $palabras[$i++];
+            $apellidos[] = $palabras[$i++];
+        }
+        // Caso: "VON BRAUN" → tomar 2 palabras
+        elseif (in_array($primera, ['VON', 'VAN', 'MC', 'MAC', 'O']) && $i < $total) {
+            $apellidos[] = $palabras[$i++];
+        }
+        // Caso: "DEL CASTILLO" → tomar 2 palabras
+        elseif ($primera === 'DEL' && $i < $total) {
+            $apellidos[] = $palabras[$i++];
+        }
+        // Caso normal: tomar 2 palabras como apellidos (si hay al menos 3 palabras en total)
+        elseif ($total >= 3) {
+            $apellidos[] = $palabras[$i++];
+        }
+        // Si solo hay 2 palabras, asumir que la primera es apellido, la segunda es nombre
+        else {
+            // Ya tomamos la primera palabra como apellido, no tomamos más
+        }
+    }
+
+    // El resto son nombres
+    $nombres = array_slice($palabras, count($apellidos));
+
+    $apellidosStr = implode(' ', $apellidos);
+    $nombresStr = implode(' ', $nombres);
+
+    $resultado = trim("{$nombresStr} {$apellidosStr}");
+
+    return $resultado;
+}
+
 }
