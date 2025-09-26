@@ -767,7 +767,12 @@ private function extraerValorNumerico($valor)
                 }
 
                 $nombreCompleto = trim($nombreCompleto);
-                \Log::info("👤 Buscando usuario por nombre Excel: '{$nombreCompleto}'");
+
+                // ✅ AJUSTE: Convertir "Apellidos Nombres" a "Nombres Apellidos"
+                $nombreCompleto = $this->convertirApellidoNombreANombreApellido($nombreCompleto);
+                \Log::info("👤 Nombre convertido: '{$nombreCompleto}'");
+
+                \Log::info("👤 Buscando usuario por nombre: '{$nombreCompleto}'");
 
                 // 🔍 BUSCAR USUARIO INTELIGENTEMENTE
                 $user = $this->buscarUsuarioPorNombreExcel($nombreCompleto);
@@ -811,6 +816,18 @@ private function extraerValorNumerico($valor)
 
                 $fechaInicioRaw = $rowData[$delIndex] ?? null;
                 $fechaFinRaw = $rowData[$alIndex] ?? null;
+
+                // ✅ AJUSTE: Ignorar celdas que contengan solo '-'
+                if (trim($fechaInicioRaw) === '-') {
+                    \Log::info("⏭️ Celda 'Del' contiene solo '-', omitiendo fila #{$row}.");
+                    $totalIgnorados++;
+                    continue;
+                }
+                if (trim($fechaFinRaw) === '-') {
+                    \Log::info("⏭️ Celda 'Al' contiene solo '-', omitiendo fila #{$row}.");
+                    $totalIgnorados++;
+                    continue;
+                }
 
                 if (!$fechaInicioRaw || !$fechaFinRaw) {
                     \Log::warning("❌ Fechas 'Del' o 'Al' vacías para: {$nombreCompleto}");
@@ -918,6 +935,38 @@ private function extraerValorNumerico($valor)
         \Log::error('Trace: ' . $e->getTraceAsString());
         return back()->with('error', '❌ Error crítico: ' . $e->getMessage());
     }
+}
+
+private function convertirApellidoNombreANombreApellido($nombreExcel)
+{
+    if (!is_string($nombreExcel)) {
+        return $nombreExcel;
+    }
+
+    $nombreExcel = trim($nombreExcel);
+    $palabras = array_filter(explode(' ', $nombreExcel), function($palabra) {
+        return !empty($palabra);
+    });
+
+    if (count($palabras) < 2) {
+        return $nombreExcel;
+    }
+
+    // Asumir que las primeras 2 palabras son apellidos (puede ajustarse si hay apellidos compuestos)
+    $numApellidos = 2;
+    $total = count($palabras);
+
+    if ($total <= $numApellidos) {
+        // Si hay menos palabras que apellidos, usar tal cual
+        return $nombreExcel;
+    }
+
+    $apellidos = implode(' ', array_slice($palabras, 0, $numApellidos));
+    $nombres = implode(' ', array_slice($palabras, $numApellidos));
+
+    $resultado = trim("{$nombres} {$apellidos}");
+
+    return $resultado;
 }
     /**
      * Busca un usuario en la BD intentando normalizar nombres en formato "Apellido, Nombre"
