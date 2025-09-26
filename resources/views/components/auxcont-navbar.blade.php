@@ -10,6 +10,12 @@
                     'color' => 'bg-red-100 dark:bg-red-700',
                 ],
                 [
+                    'titulo' => 'Historial de Registros de Cheques',
+                    'ruta' => route('auxcont.finiquitos.historial'),
+                    'icono' => 'clipboard-list',
+                    'color' => 'bg-yellow-100 dark:bg-yellow-700',
+                ],
+                [
                     'titulo' => 'Solicitar Vacaciones',
                     'ruta' => route('user.solicitarVacacionesForm'),
                     'icono' => 'confetti',

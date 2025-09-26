@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Models\SolicitudBajas;
 
 class AuxcontController extends Controller
@@ -44,6 +45,7 @@ class AuxcontController extends Controller
                 // Actualizar registro en la base de datos
                 $solicitud->update([
                     'arch_cheque' => $rutaArchivo,
+                    'observaciones' => 'Cheque subido correctamente.',
                 ]);
 
                 return response()->json([
@@ -64,5 +66,40 @@ class AuxcontController extends Controller
                 'message' => 'Error al guardar el cheque: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+public function actualizarCheque(Request $request, $id)
+{
+    $request->validate([
+        'archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB
+    ]);
+
+    $solicitud = SolicitudBajas::findOrFail($id);
+
+    // Eliminar archivo anterior si existe
+    if ($solicitud->arch_cheque) {
+        Storage::delete($solicitud->arch_cheque);
+    }
+
+    // Obtener la extensión del archivo subido
+    $extension = $request->file('archivo')->getClientOriginalExtension();
+
+    // Generar el nombre del archivo: {id->name}_fechaDeHoy.extension
+    $nombreArchivo = Str::slug($solicitud->user->name ?? 'usuario') . '_' . now()->format('Ymd_His') . '.' . $extension;
+
+    // Guardar en la carpeta solicitada: solicitudesBajas/{id}/
+    $ruta = $request->file('archivo')->storeAs("solicitudesBajas/{$id}", $nombreArchivo, 'public');
+
+    // Actualizar la base de datos
+    $solicitud->update([
+        'arch_cheque' => $ruta,
+        'observaciones' => 'Cheque cancelado.',
+    ]);
+
+    return response()->json(['success' => true, 'message' => 'Cheque actualizado correctamente.']);
+}
+
+    public function historialCheques(){
+        return view ('auxcont.historialCheques');
     }
 }

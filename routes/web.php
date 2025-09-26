@@ -285,6 +285,8 @@ Route::middleware('auth')->group(function () {
     //Usuario Auxiliar Contabilidad
     Route::get('/Lista_finiquitos', [AuxContController::class, 'listaFiniquitos'])->name('auxcont.finiquitos');
     Route::post('/subir-cheque/{id}', [AuxcontController::class, 'subirCheque'])->name('subir.cheque');
+    Route::put('/solicitud_bajas/{id}/actualizar_cheque', [AuxcontController::class, 'actualizarCheque']);
+    Route::get('historial_cheques', [AuxcontController::class, 'historialCheques'])->name('auxcont.finiquitos.historial');
 
     //Usuario Juridico
     Route::get('lista_nuevasBajas', [JuridicoController::class, 'listaNuevasBajas'])->name('juridico.nuevasBajas');

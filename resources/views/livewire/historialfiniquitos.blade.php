@@ -1,7 +1,4 @@
-<x-app-layout>
-    <x-navbar />
-
-    <div class="py-4 px-2 sm:py-6 sm:px-4">
+<div class="py-4 px-2 sm:py-6 sm:px-4">
         <div class="container mx-auto max-w-7xl">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
                 <div class="border-b border-gray-200 dark:border-gray-700 pb-6 mb-6">
@@ -11,17 +8,24 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 mr-3 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
-                                Lista de Finiquitos
+                                Historial de Cheques
                             </h1>
                             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                                Últimos 10 días de finiquitos registrados
+                                Filtrar y ver historial de cheques subidos y cancelados
                             </p>
                         </div>
 
-                        <div class="flex items-center space-x-2">
-                            <div class="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 px-3 py-1 rounded-full">
-                                <span class="text-sm font-medium">{{ $renuncias->total() }}</span>
-                                <span class="text-xs">finiquitos</span>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <div class="flex-1">
+                                <input type="text"
+                                       wire:model.live="search"
+                                       placeholder="Buscar por nombre..."
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            </div>
+                            <div class="flex-1">
+                                <input type="date"
+                                       wire:model.live="fecha_baja"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                             </div>
                         </div>
                     </div>
@@ -32,8 +36,8 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-gray-400 dark:text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay finiquitos</h3>
-                        <p class="text-gray-500 dark:text-gray-400 mb-6">No se encontraron finiquitos en los últimos 10 días.</p>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay registros</h3>
+                        <p class="text-gray-500 dark:text-gray-400 mb-6">No se encontraron cheques con los filtros aplicados.</p>
                     </div>
                 @else
                     <div class="overflow-hidden rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
@@ -211,7 +215,7 @@
                                 <span class="font-medium">{{ $renuncias->lastItem() }}</span>
                                 de
                                 <span class="font-medium">{{ $renuncias->total() }}</span>
-                                finiquitos
+                                cheques
                             </div>
 
                             <div class="flex items-center space-x-1">
@@ -235,7 +239,7 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
