@@ -464,6 +464,7 @@ public function guardarArchivosAlta(Request $request, $id)
     $solicitud = new SolicitudBajas();
     $solicitud->user_id = $user->id;
     $solicitud->fecha_solicitud = $request->fecha_baja;
+    $solicitud->fecha_baja = $request->fecha_baja;
     $solicitud->motivo = $request->motivo;
     $solicitud->adelanto_nomina = $request->adelanto_nomina;
     $solicitud->descuento = $request->descuento;
