@@ -28,6 +28,7 @@ class NominasController extends Controller
     public function verBajas(){
         $bajas = SolicitudBajas::where('estatus', 'Aceptada')
             ->where('por', 'Renuncia')
+            ->where('calculo_finiquito', null)
             ->whereDate('fecha_baja', '>=', Carbon::today('America/Mexico_City')->subDays(10))
             ->paginate(10);
         return view('nominas.verBajas', compact('bajas'));
