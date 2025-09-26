@@ -19,7 +19,7 @@
                     </div>
                 @endif
 
-                @if(Auth::user()->rol == 'Supervisor')
+                @if(Auth::user()->rol == 'Supervisor' || Auth::user()->rol == 'SUPERVISOR OPERATIVO')
                     @if(!$asistencia_hoy->isEmpty())
                         <div class="text-center py-12">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-gray-400 dark:text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
