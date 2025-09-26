@@ -215,13 +215,30 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                     <a href="{{ route('rh.detalleSolicitudBaja', $solicitud->id) }}"
-                                       class="inline-flex items-center justify-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-200 shadow-sm text-xs">
+                                    class="inline-flex items-center justify-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-200 shadow-sm text-xs mr-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
                                         Ver
                                     </a>
+
+                                    @if(is_null($solicitud->arch_renuncia))
+                                        <button wire:click="abrirModalSubirRenuncia({{ $solicitud->id }})"
+                                                class="inline-flex items-center justify-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 shadow-sm text-xs">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                            </svg>
+                                            Subir Renuncia
+                                        </button>
+                                    @else
+                                        <span class="inline-flex items-center justify-center px-3 py-1.5 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200 font-medium rounded-lg text-xs">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Renuncia Subida
+                                        </span>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -292,4 +309,67 @@
             </a>
         </div>
     </div>
+<!-- Modal para subir archivo -->
+@if($solicitudId)
+<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" style="display: block;">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    Subir Archivo de Renuncia
+                </h3>
+                <button wire:click="$set('solicitudId', null)" class="text-gray-400 hover:text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <form>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Selecciona un archivo (PDF, JPG, PNG)
+                    </label>
+                    <input type="file"
+                           wire:model="archivoRenuncia"
+                           wire:loading.attr="disabled"
+                           class="block w-full text-sm text-gray-500
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-lg file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-blue-50 file:text-blue-700
+                            hover:file:bg-blue-100"
+                           accept=".pdf,.jpg,.jpeg,.png">
+
+                    @error('archivoRenuncia')
+                        <span class="text-red-500 text-xs">{{ $message }}</span>
+                    @enderror
+
+                    @if($archivoRenuncia)
+                        <div class="mt-2 p-2 bg-green-100 text-green-800 rounded text-sm">
+                            Archivo seleccionado: {{ $archivoRenuncia->getClientOriginalName() }}
+                        </div>
+                    @endif
+                </div>
+
+                <div class="flex justify-end space-x-2">
+                    <button type="button" wire:click="$set('solicitudId', null)"
+                            class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                        Cancelar
+                    </button>
+                    <button type="button"
+                            wire:click="subirRenuncia"
+                            wire:loading.attr="disabled"
+                            @if(!$archivoRenuncia) disabled @endif
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700
+                                   @if(!$archivoRenuncia) opacity-50 cursor-not-allowed @endif">
+                        <span wire:loading.remove wire:target="subirRenuncia">Subir Archivo</span>
+                        <span wire:loading wire:target="subirRenuncia">Subiendo...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 </div>
