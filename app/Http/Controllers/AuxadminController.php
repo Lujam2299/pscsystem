@@ -27,52 +27,54 @@ class AuxadminController extends Controller
     }
 
     public function guardarAcuses(Request $request, $id)
-    {
-        try {
-            $request->validate([
-                'arch_acuse_imss' => 'nullable|file',
-                'arch_retencion_infonavit' => 'nullable|file',
-                'sd' => 'nullable|numeric',
-                'sdi' => 'nullable|numeric',
-            ]);
+{
+    try {
+        $request->validate([
+            'arch_acuse_imss' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'arch_retencion_infonavit' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'arch_acuse_alta' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'sd' => 'nullable|numeric',
+            'sdi' => 'nullable|numeric',
+        ]);
 
-            $solicitud = SolicitudAlta::findOrFail($id);
-            $solicitudId = $id;
-            $documentacion = DocumentacionAltas::firstOrNew(['solicitud_id' => $solicitudId]);
-            $carpeta = 'solicitudesAltas/' . $solicitudId;
+        $solicitud = SolicitudAlta::findOrFail($id);
+        $solicitudId = $id;
+        $documentacion = DocumentacionAltas::firstOrNew(['solicitud_id' => $solicitudId]);
+        $carpeta = 'solicitudesAltas/' . $solicitudId;
 
-            $archivos = [
-                'arch_acuse_imss',
-                'arch_retencion_infonavit',
-            ];
+        $archivos = [
+            'arch_acuse_imss',
+            'arch_retencion_infonavit',
+            'arch_acuse_alta',
+        ];
 
-            foreach ($archivos as $campo) {
-                if ($request->hasFile($campo)) {
-                    try {
-                        $archivo = $request->file($campo);
-                        $nombreArchivo = $campo . '.' . $archivo->getClientOriginalExtension();
-                        $ruta = $archivo->storeAs($carpeta, $nombreArchivo, 'public');
-                        $documentacion->$campo = 'storage/' . $ruta;
-                    } catch (\Exception $e) {
-                        Log::error("Error al guardar el archivo {$campo}: " . $e->getMessage());
-                    }
+        foreach ($archivos as $campo) {
+            if ($request->hasFile($campo)) {
+                try {
+                    $archivo = $request->file($campo);
+                    $nombreArchivo = $campo . '.' . $archivo->getClientOriginalExtension();
+                    $ruta = $archivo->storeAs($carpeta, $nombreArchivo, 'public');
+                    $documentacion->$campo = 'storage/' . $ruta;
+                } catch (\Exception $e) {
+                    Log::error("Error al guardar el archivo {$campo}: " . $e->getMessage());
                 }
             }
-
-            $documentacion->solicitud_id = $solicitudId;
-            $documentacion->save();
-
-            $solicitud->sd = $request->sd;
-            $solicitud->sdi = $request->sdi;
-            $solicitud->save();
-
-            return response()->json(['success' => true]);
-
-        } catch (\Throwable $e) {
-            Log::error("Error general en guardarArchivosAlta: " . $e->getMessage());
-            return response()->json(['error' => 'Ocurrió un error al guardar los archivos.'], 500);
         }
+
+        $documentacion->solicitud_id = $solicitudId;
+        $documentacion->save();
+
+        $solicitud->sd = $request->sd;
+        $solicitud->sdi = $request->sdi;
+        $solicitud->save();
+
+        return response()->json(['success' => true, 'message' => 'Documentos guardados correctamente.']);
+
+    } catch (\Throwable $e) {
+        Log::error("Error general en guardarArchivosAlta: " . $e->getMessage());
+        return response()->json(['error' => 'Ocurrió un error al guardar los archivos.'], 500);
     }
+}
 
     public function listadoUsuarios(){
         $users = User::where('estatus', 'Activo')
