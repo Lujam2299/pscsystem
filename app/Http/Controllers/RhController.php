@@ -92,7 +92,7 @@ class RhController extends Controller
             ->where(function ($query) {
                 $query->where(function ($q) {
                     $q->where('estatus', 'En Proceso')
-                    ->where('por', 'Renuncia');
+                    /*->where('por', 'Renuncia')*/;
                 })->orWhere(function ($q) {
                     $q->where('estatus', 'Aceptada')
                     ->where('observaciones', 'Finiquito enviado a RH.');
