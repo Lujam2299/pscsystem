@@ -14,16 +14,23 @@ class Admigestionusuarios extends Component
     use WithPagination;
 
     public $search = '';
+    public $tipo_pago = 'todos'; // Nuevo filtro
     public $sortField = 'name';
     public $sortDirection = 'asc';
 
     protected $queryString = [
         'search' => ['except' => ''],
+        'tipo_pago' => ['except' => 'todos'], // Aseguramos que se mantenga en la URL
         'sortField' => ['except' => 'name'],
         'sortDirection' => ['except' => 'asc'],
     ];
 
     public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingTipoPago()
     {
         $this->resetPage();
     }
@@ -42,9 +49,14 @@ class Admigestionusuarios extends Component
 
     public function render()
     {
-        $baseQuery = User::query()
+        $baseQuery = User::with('solicitudAlta') // Aseguramos la carga de la relación
             ->when($this->search, function ($query) {
                 $query->where('name', 'like', '%'.$this->search.'%');
+            })
+            ->when($this->tipo_pago !== 'todos', function ($query) {
+                $query->whereHas('solicitudAlta', function ($subQuery) {
+                    $subQuery->where('tipo_periodo', $this->tipo_pago);
+                });
             });
 
         if (!(Auth::user()->rol == 'admin' ||
@@ -55,34 +67,33 @@ class Admigestionusuarios extends Component
             ]) ||
             Auth::user()->solicitudAlta->departamento == 'Recursos Humanos')) {
             $user = Auth::user();
-$puntoUsuarioRaw = $user->punto;
-$subpuntosZona = collect();
+            $puntoUsuarioRaw = $user->punto;
+            $subpuntosZona = collect();
 
-// Intentar obtener el punto o subpunto
-$punto = \App\Models\Punto::where('nombre', $puntoUsuarioRaw)->first();
+            $punto = \App\Models\Punto::where('nombre', $puntoUsuarioRaw)->first();
 
-if (!$punto) {
-    $subpunto = \App\Models\Subpunto::where('nombre', $puntoUsuarioRaw)->first()
-        ?? \App\Models\Subpunto::where('codigo', $puntoUsuarioRaw)->first();
+            if (!$punto) {
+                $subpunto = \App\Models\Subpunto::where('nombre', $puntoUsuarioRaw)->first()
+                    ?? \App\Models\Subpunto::where('codigo', $puntoUsuarioRaw)->first();
 
-    if ($subpunto && $subpunto->zona) {
-        $subpuntosZona = \App\Models\Subpunto::where('zona', $subpunto->zona)
-            ->pluck('nombre')
-            ->merge(
-                \App\Models\Subpunto::where('zona', $subpunto->zona)->pluck('codigo')
-            );
-    }
-}
+                if ($subpunto && $subpunto->zona) {
+                    $subpuntosZona = \App\Models\Subpunto::where('zona', $subpunto->zona)
+                        ->pluck('nombre')
+                        ->merge(
+                            \App\Models\Subpunto::where('zona', $subpunto->zona)->pluck('codigo')
+                        );
+                }
+            }
 
-$baseQuery->where('empresa', $user->empresa)
-    ->where('rol', '!=', 'Supervisor')
-    ->where(function ($query) use ($user, $subpuntosZona) {
-        $query->where('punto', $user->punto);
+            $baseQuery->where('empresa', $user->empresa)
+                ->where('rol', '!=', 'Supervisor')
+                ->where(function ($query) use ($user, $subpuntosZona) {
+                    $query->where('punto', $user->punto);
 
-        if ($subpuntosZona->isNotEmpty()) {
-            $query->orWhereIn('punto', $subpuntosZona);
-        }
-    });
+                    if ($subpuntosZona->isNotEmpty()) {
+                        $query->orWhereIn('punto', $subpuntosZona);
+                    }
+                });
         }
 
         $users = $baseQuery->get();
@@ -141,5 +152,4 @@ $baseQuery->where('empresa', $user->empresa)
             'users' => $paginatedUsers,
         ]);
     }
-
 }

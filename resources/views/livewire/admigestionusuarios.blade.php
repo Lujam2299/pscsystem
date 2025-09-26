@@ -43,15 +43,29 @@
 
 
 <div>
-    <div class="mb-6">
-        <input
-            type="text"
-            wire:model.live.debounce.300ms="search"
-            placeholder="Buscar por nombre..."
-            class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-        >
-        <div wire:loading class="text-sm text-gray-500 mt-1">
-            Buscando...
+    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+        <!-- Filtro de búsqueda -->
+        <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre</label>
+            <input
+                type="text"
+                wire:model.live.debounce.300ms="search"
+                placeholder="Buscar por nombre..."
+                class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+            <div wire:loading class="text-sm text-gray-500 mt-1">
+                Buscando...
+            </div>
+        </div>
+
+        <!-- Filtro de tipo de pago -->
+        <div class="w-full sm:w-48">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Pago</label>
+            <select wire:model.live="tipo_pago" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="todos">Todos</option>
+                <option value="semanal">Semanal</option>
+                <option value="quincenal">Quincenal</option>
+            </select>
         </div>
     </div>
 
@@ -83,6 +97,13 @@
                         wire:click="sortBy('rol')">
                         Rol
                         @if ($sortField === 'rol')
+                            @if ($sortDirection === 'asc') ▲ @else ▼ @endif
+                        @endif
+                    </th>
+                    <th scope="col" class="cursor-pointer px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        wire:click="sortBy('tipo_periodo')">
+                        Tipo de Periodo
+                        @if ($sortField === 'tipo_periodo')
                             @if ($sortDirection === 'asc') ▲ @else ▼ @endif
                         @endif
                     </th>
@@ -132,6 +153,9 @@
                         @else
                             {{ $user->rol }}
                         @endif
+                        </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                            {{ $user->solicitudAlta->tipo_periodo ?? 'No Disponible' }}
                         </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         @php
