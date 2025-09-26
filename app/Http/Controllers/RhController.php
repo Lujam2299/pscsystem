@@ -471,7 +471,7 @@ public function guardarArchivosAlta(Request $request, $id)
     $solicitud->incapacidad = $request->incapacidad;
     $solicitud->por = $request->por;
     $solicitud->ultima_asistencia = $request->ultima_asistencia;
-    if((Auth::user()->rol=='admin' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS') && $solicitud->por == 'Renuncia'){
+    if((Auth::user()->rol=='admin' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS')){
         $solicitud->estatus = 'Aceptada';
         $solicitud->observaciones = 'Baja de elemento Aprobada.';
         $solicitud->fecha_baja = $request->fecha_baja;
