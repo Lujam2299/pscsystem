@@ -164,7 +164,7 @@ class UserController extends Controller
         $solicitud->supervisores_ids = json_encode($supervisores);
         $solicitud->fecha_fin = $request->fecha_fin;
         $solicitud->dias_solicitados = $request->dias_solicitados;
-        $solicitud->dias_ya_utlizados = $request->dias_utilizados;
+        $solicitud->dias_ya_utilizados = $request->dias_utilizados;
         $solicitud->dias_disponibles = $request->dias_disponibles;
         $solicitud->dias_por_derecho = $request->dias_por_derecho;
         $solicitud->monto = 0.0;

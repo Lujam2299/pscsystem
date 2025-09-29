@@ -135,6 +135,7 @@ Route::middleware('auth')->group(function () {
     Route::post('almacenar_baja/{id}', [RhController::class, 'almacenarBaja'])->name('rh.almacenarBajaNueva');
     Route::get('/archivos', [RhController::class, 'verArchivos'])->name('rh.archivos');
     Route::get('/vista_vacaciones', [RhController::class, 'vistaVacaciones'])->name('rh.vistaVacaciones');
+    Route::post('/solicitud-vacaciones/{id}/cancelar', [RhController::class, 'cancelarSolicitud'])->name('rh.cancelarSolicitud');
     Route::get('/historial_vacaciones', [RhController::class, 'historialVacaciones'])->name('rh.historialVacaciones');
     Route::get('/alta-usuario', [RhController::class, 'formAlta'])->name('rh.formAlta');
     Route::get('/descargar_ficha/{id}', [RhController::class, 'exportFichaTecnica'])->name('rh.descargarFicha');

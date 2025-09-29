@@ -16,6 +16,7 @@ use App\Models\SolicitudBajas;
 use App\Models\User;
 use App\Models\Punto;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Hash;
 
 class RhController extends Controller
@@ -316,6 +317,23 @@ class RhController extends Controller
             return redirect()->back()->with('error', 'Error al guardar la solicitud, intente nuevamente.'. $e->getMessage());
         }
     }
+
+    public function cancelarSolicitud($id): RedirectResponse
+    {
+        $solicitud = SolicitudVacaciones::findOrFail($id);
+
+        // Opcional: solo permitir cancelar si está en "En Proceso"
+        if ($solicitud->estatus !== 'En Proceso') {
+            return back()->with('error', 'Solo se pueden cancelar solicitudes en estado "En Proceso".');
+        }
+
+        $solicitud->estatus = 'Cancelada';
+        $solicitud->observaciones = 'Solicitud de vacaciones Cancelada';
+        $solicitud->save();
+
+        return back()->with('success', 'La solicitud ha sido cancelada correctamente.');
+    }
+
     public function subirArchivosAltaForm($id){
         $tipo = request('tipo');
         $solicitud = SolicitudAlta::find($id);

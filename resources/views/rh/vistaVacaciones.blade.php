@@ -178,6 +178,14 @@
                                                             </svg>
                                                             Descargar
                                                         </a>
+                                                    <button type="button"
+                                                            onclick="confirmarCancelacion({{ $solicitud->id }})"
+                                                            class="inline-flex items-center px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition duration-200 shadow-sm">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                        Cancelar
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -294,6 +302,36 @@
                 }).then(() => {
                     window.location.reload();
                 });
+            }
+        });
+    }
+    function confirmarCancelacion(solicitudId) {
+        Swal.fire({
+            title: '¿Cancelar solicitud?',
+            text: "Esta acción no se puede deshacer.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, cancelar',
+            cancelButtonText: 'No, mantener',
+            reverseButtons: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6b7280'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Enviar formulario oculto o usar fetch
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/solicitud-vacaciones/${solicitudId}/cancelar`;
+                form.style.display = 'none';
+
+                const token = document.createElement('input');
+                token.type = 'hidden';
+                token.name = '_token';
+                token.value = '{{ csrf_token() }}';
+                form.appendChild(token);
+
+                document.body.appendChild(form);
+                form.submit();
             }
         });
     }
