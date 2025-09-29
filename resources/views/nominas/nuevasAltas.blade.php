@@ -171,17 +171,25 @@
                     </div>
                 @endif
 
-                <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                    <div class="flex justify-center">
-                        <a href="{{ route('dashboard') }}"
-                           class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Regresar
-                        </a>
-                    </div>
-                </div>
+                <div class="flex justify-center space-x-3">
+    <button
+        onclick="abrirModalCorte()"
+        class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-200 shadow-sm"
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Generar Excel por Corte
+    </button>
+
+    <a href="{{ route('dashboard') }}"
+       class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Regresar
+    </a>
+</div>
             </div>
         </div>
     </div>
@@ -189,6 +197,70 @@
     @push('scripts')
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script>
+
+            function abrirModalCorte() {
+    const cortes = [];
+    const hoy = new Date();
+    const anio = hoy.getFullYear();
+    const mes = hoy.getMonth(); // 0 = enero
+
+    // Generamos los cortes del año actual
+    for (let i = 0; i < 12; i++) {
+        const mesActual = new Date(anio, i, 1);
+
+        // Corte 1: 26 del mes anterior al 10 del mes actual
+        const inicioCorte1 = new Date(anio, i - 1, 26); // Mes anterior
+        const finCorte1 = new Date(anio, i, 10);
+
+        // Corte 2: 11 al 25 del mes actual
+        const inicioCorte2 = new Date(anio, i, 11);
+        const finCorte2 = new Date(anio, i, 25);
+
+        cortes.push({
+            id: `corte1-${i + 1}`,
+            label: `1° Corte ${mesActual.toLocaleString('es-ES', { month: 'long' }).toUpperCase()} ${anio}`,
+            inicio: inicioCorte1,
+            fin: finCorte1
+        });
+
+        cortes.push({
+            id: `corte2-${i + 1}`,
+            label: `2° Corte ${mesActual.toLocaleString('es-ES', { month: 'long' }).toUpperCase()} ${anio}`,
+            inicio: inicioCorte2,
+            fin: finCorte2
+        });
+    }
+
+    const options = cortes.map(corte => `<option value="${corte.id}">${corte.label}</option>`).join('');
+
+    Swal.fire({
+        title: 'Seleccionar Corte para Excel',
+        html: `
+            <select id="select-corte" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600">
+                <option value="">Seleccione un corte</option>
+                ${options}
+            </select>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Generar Excel',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            const corteId = document.getElementById('select-corte').value;
+            if (!corteId) {
+                Swal.showValidationMessage('Por favor, seleccione un corte');
+                return false;
+            }
+            return corteId;
+        }
+    }).then(result => {
+        if (result.isConfirmed) {
+            const corte = cortes.find(c => c.id === result.value);
+            if (corte) {
+                window.location.href = `{{ route('exportar.altas.corte') }}?inicio=${corte.inicio.toISOString().split('T')[0]}&fin=${corte.fin.toISOString().split('T')[0]}`;
+            }
+        }
+    });
+}
             function asignarNumeroEmpleado(userId, nombreCompleto) {
                 Swal.fire({
                     title: 'Asignar Número de Empleado',

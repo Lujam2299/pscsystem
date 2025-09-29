@@ -1,6 +1,7 @@
 <?php
 
 use App\Exports\AltasSpreadsheetExport;
+use App\Exports\AltasPorCorteExport;
 use App\Exports\BajasSpreadsheetExport;
 use App\Exports\VacacionesSpreadsheetExport;
 use App\Exports\VacacionesCortesExport;
@@ -28,6 +29,7 @@ use App\Http\Controllers\GraficosController;
 use App\Http\Controllers\BajaAcuseController;
 use App\Http\Controllers\AuxcontController;
 use App\Http\Controllers\JuridicoController;
+use Illuminate\Http\Request;
 
 
 Route::get('/', function () {
@@ -264,6 +266,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/nominas_subir_archivos', [NominasController::class, 'subirArchivosNominas'])->name('nominas.guardarArchivos');
     Route::get('/registros_nominas', [NominasController::class, 'registros'])->name('nominas.registros');
     Route::get('/calculo_destajos', [NominasController::class, 'calculoDestajos'])->name('nominas.calculoDestajos');
+
+    Route::get('/exportar-altas-por-corte', function (Request $request) {
+        $request->validate([
+            'inicio' => 'required|date',
+            'fin' => 'required|date|after_or_equal:inicio',
+        ]);
+
+        return (new AltasPorCorteExport($request->inicio, $request->fin))->generateFile();
+    })->name('exportar.altas.corte');
+
     Route::post('/notificaciones/leidas', function () {
         \App\Models\Alerta::where('user_id', Auth::id())
             ->where('leida', false)
