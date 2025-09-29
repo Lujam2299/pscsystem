@@ -5,50 +5,59 @@
                 [
                     'titulo' => 'Listas de Asistencia',
                     'ruta' => route('sup.listaAsistencia'),
-                    'icono' => '👥',
+                    'icono' => 'users',
                     'color' => 'bg-red-100 dark:bg-red-700'
                 ],
                 [
                     'titulo' => 'Solicitar Vacaciones',
                     'ruta' => route('user.solicitarVacacionesForm'),
-                    'icono' => '🎉',
+                    'icono' => 'confetti',
                     'color' => 'bg-blue-100 dark:bg-blue-700'
                 ],
                 [
                     'titulo' => 'Mi Historial de Vacaciones',
                     'ruta' => route('user.historialVacaciones'),
-                    'icono' => '📅',
+                    'icono' => 'calendar',
                     'color' => 'bg-green-100 dark:bg-green-700'
                 ],
                 [
                     'titulo' => 'Ficha Técnica',
                     'ruta' => route('user.verFicha', auth()->user()->id),
-                    'icono' => '📝',
+                    'icono' => 'file-description',
                     'color' => 'bg-yellow-100 dark:bg-yellow-700'
                 ],
                 [
                     'titulo' => 'Buzón de Quejas y Sugerencias',
                     'ruta' => route('user.buzon'),
-                    'icono' => '💬',
+                    'icono' => 'message',
                     'color' => 'bg-purple-100 dark:bg-purple-700'
                 ],
             ];
         @endphp
 
         @foreach($cards as $card)
-            <a href="{{ $card['ruta'] }}" class="transition-transform transform hover:scale-105">
-                <div class="p-4 rounded-xl shadow-md {{ $card['color'] }} hover:shadow-lg h-full flex flex-col justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div class="text-3xl">
-                            {{ $card['icono'] }}
+            <div class="transition-transform duration-200 hover:scale-105">
+                <a href="{{ $card['ruta'] }}" class="block h-full">
+                    <div class="p-5 rounded-xl shadow-md {{ $card['color'] }} hover:shadow-lg h-full flex flex-col justify-between transition-all duration-200 transform hover:-translate-y-1">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center justify-center mb-1 rounded-full shadow w-14 h-14 bg-white/80">
+                                <i class="ti ti-{{ $card['icono'] }} text-3xl {{
+                                    Str::contains($card['color'], 'blue') ? 'text-blue-700' :
+                                    (Str::contains($card['color'], 'yellow') ? 'text-yellow-700' :
+                                    (Str::contains($card['color'], 'red') ? 'text-red-700' :
+                                    (Str::contains($card['color'], 'green') ? 'text-green-700' :
+                                    (Str::contains($card['color'], 'purple') ? 'text-purple-700' :
+                                    (Str::contains($card['color'], 'gray') ? 'text-gray-700' : 'text-gray-800')))))
+                                }}"></i>
+                            </div>
+                            <h3 class="text-base font-semibold text-gray-800 dark:text-white leading-tight">
+                                {{ $card['titulo'] }}
+                            </h3>
                         </div>
-                        <h3 class="text-base font-semibold text-gray-800 dark:text-white">
-                            {{ $card['titulo'] }}
-                        </h3>
+                        <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">Haz clic para ver más detalles</p>
                     </div>
-                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Haz clic para ver más detalles</p>
-                </div>
-            </a>
+                </a>
+            </div>
         @endforeach
     </div>
 </div>
