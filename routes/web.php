@@ -224,6 +224,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/acuses-bajas', [BajaAcuseController::class, 'index'])->name('aux.acusesbajas');
     Route::post('/acuses-bajas/{solicitudBaja}', [BajaAcuseController::class, 'upload'])->name('aux.acusesbajasupload');
+    Route::get('/acuses-bajas-historial', [BajaAcuseController::class, 'historialAcusesBajas'])->name('aux.historialAcuseBajas');
 
     Route::get('/historial_cedulas', [AuxadminController::class, 'historialCedulas'])->name('aux.historialCedulas');
     Route::get('/historial_sipare', [AuxadminController::class, 'historialSipare'])->name('aux.historialSipare');

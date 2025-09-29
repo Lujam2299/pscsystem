@@ -206,7 +206,7 @@
     Swal.fire({
         title: 'Subir Documentos',
         html: `
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                 <div id="drop-imss" class="border-2 border-dashed border-blue-400 dark:border-blue-600 rounded-lg p-6 bg-blue-50 dark:bg-blue-900/20 transition-colors duration-200">
                     <div class="text-center">
                         <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30">

@@ -1,4 +1,3 @@
-{{-- resources/views/livewire/auxadmin-riesgos-trabajo.blade.php --}}
 @php
     $currentPage = $users->currentPage();
     $lastPage = $users->lastPage();

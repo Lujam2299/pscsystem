@@ -40,4 +40,8 @@ class BajaAcuseController extends Controller
 
         return back()->with('success', 'Acuse subido correctamente.');
     }
+
+    public function historialAcusesBajas(){
+        return view('auxadmin.historialAcusesBajas');
+    }
 }

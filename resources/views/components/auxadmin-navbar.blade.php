@@ -100,7 +100,7 @@
             'color' => 'bg-yellow-100 dark:bg-yellow-700',
             'disabled' => true,
         ],
-         [
+        [
             'titulo' => 'Historial de Riesgos de Trabajo',
             'ruta' => route('aux.historialRiesgosTrabajo'),
             'icono' => 'calendar',
@@ -112,11 +112,17 @@
             'icono' => 'calendar',
             'color' => 'bg-green-100 dark:bg-green-700',
         ],
-                [
+        [
             'titulo' => 'Buzón de Quejas y Sugerencias',
             'ruta' => route('user.buzon'),
             'icono' => 'message',
             'color' => 'bg-purple-100 dark:bg-purple-700',
+        ],
+        [
+            'titulo' => 'Historial de Acuses de Bajas',
+            'ruta' => route('aux.historialAcuseBajas'),
+            'icono' => 'calendar',
+            'color' => 'bg-red-100 dark:bg-red-700',
         ],
 
 
