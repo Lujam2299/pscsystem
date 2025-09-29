@@ -539,7 +539,9 @@ class SupervisorController extends Controller
         $user = Auth::user();
 
         $asistenciasHoy = 0;
-        $supervisores = User::where('rol', 'Supervisor')->get();
+        $supervisores = User::where('estatus', 'Activo')
+            ->whereRaw("LOWER(rol) LIKE ?", ['%supervisor%'])
+            ->get();
 
         $supervisores->map(function ($supervisor) {
             $supervisor->envio_asistencia = Asistencia::where('user_id', $supervisor->id)

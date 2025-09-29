@@ -207,7 +207,7 @@
                             <div class="flex items-center space-x-2">
                                 <div class="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-200 px-3 py-1 rounded-full">
                                     <span class="text-sm font-medium">{{ $supervisores->count() }}</span>
-                                    <span class="text-xs">supervisores</span>
+                                    <span class="text-xs">supervisores activos</span>
                                 </div>
                             </div>
                         </div>
