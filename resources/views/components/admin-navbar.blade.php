@@ -19,10 +19,7 @@
         ->where('fecha_baja', '>=', Carbon::now()->subDays(7))
         ->count();
 
-    $activos = User::where('estatus', 'Activo')
-    ->selectRaw('COUNT(DISTINCT UPPER(name)) as total')
-    ->first()
-    ->total;
+    $activos = User::where('estatus', 'Activo')->selectRaw('COUNT(DISTINCT UPPER(name)) as total')->first()->total;
     $activosMesActual = User::where('estatus', 'Activo')
         ->whereDate('created_at', '>=', Carbon::now()->startOfMonth())
         ->count();
@@ -141,11 +138,10 @@
             'ruta' => route('admin.operacionesDashboard'),
             'icono' => 'activity',
             'color' => 'bg-red-300 dark:bg-red-700',
-
         ],
         [
             'titulo' => 'Contabilidad',
-            'ruta'=> route('admin.contDashboard'),
+            'ruta' => route('admin.contDashboard'),
             'icono' => 'credit-card',
             'color' => 'bg-indigo-300 dark:bg-indigo-700',
         ],
@@ -313,23 +309,25 @@
                         </button>
                     </form>
                 @elseif($card['titulo'] === 'Importar Personal Activo')
-    <form action="{{ route('importar.personal.activo') }}" method="POST" enctype="multipart/form-data"
-        class="p-3 rounded-lg {{ $card['color'] }}">
-        @csrf
-        <div class="flex items-center space-x-3">
-            <div class="flex items-center justify-center mb-1 rounded-full shadow w-14 h-14 bg-white/80">
-                <i class="ti ti-user-plus text-3xl {{ Str::contains($card['color'], 'blue') ? 'text-blue-700' : 'text-gray-700' }}"></i>
-            </div>
-            <span class="font-medium">{{ $card['titulo'] }}</span>
-        </div>
-        <input type="file" name="excel" accept=".xlsx,.xls"
-            class="mt-2 w-full text-sm text-gray-500 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            required>
-        <button type="submit"
-            class="mt-2 w-full bg-blue-600 text-white py-1 px-2 rounded hover:bg-blue-700 transition text-sm">
-            Importar
-        </button>
-    </form>
+                    <form action="{{ route('importar.personal.activo') }}" method="POST" enctype="multipart/form-data"
+                        class="p-3 rounded-lg {{ $card['color'] }}">
+                        @csrf
+                        <div class="flex items-center space-x-3">
+                            <div
+                                class="flex items-center justify-center mb-1 rounded-full shadow w-14 h-14 bg-white/80">
+                                <i
+                                    class="ti ti-user-plus text-3xl {{ Str::contains($card['color'], 'blue') ? 'text-blue-700' : 'text-gray-700' }}"></i>
+                            </div>
+                            <span class="font-medium">{{ $card['titulo'] }}</span>
+                        </div>
+                        <input type="file" name="excel" accept=".xlsx,.xls"
+                            class="mt-2 w-full text-sm text-gray-500 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            required>
+                        <button type="submit"
+                            class="mt-2 w-full bg-blue-600 text-white py-1 px-2 rounded hover:bg-blue-700 transition text-sm">
+                            Importar
+                        </button>
+                    </form>
                 @elseif (isset($card['form']) && $card['form'])
                     <form action="{{ $card['action'] }}" method="POST"
                         class="p-3 rounded-lg {{ $card['color'] }} hover:bg-opacity-70 transition relative block"
@@ -358,12 +356,8 @@
                     </form>
                 @else
                     <a href="{{ $card['ruta'] ?? '#' }}"
-                        @if (isset($card['onclick']))
-                            onclick="{{ $card['onclick'] }}; return false;"
-                        @endif
-                        @if (in_array($card['titulo'], ['RRHH', 'Nóminas', 'IMSS']))
-                            @click.prevent="$dispatch('cambiar-menu', { menu: '{{ strtolower(str_replace(' ', '_', $card['titulo'])) }}' })"
-                        @endif
+                        @if (isset($card['onclick'])) onclick="{{ $card['onclick'] }}; return false;" @endif
+                        @if (in_array($card['titulo'], ['RRHH', 'Nóminas', 'IMSS'])) @click.prevent="$dispatch('cambiar-menu', { menu: '{{ strtolower(str_replace(' ', '_', $card['titulo'])) }}' })" @endif
                         id="{{ Str::slug($card['titulo']) }}"
                         class="block p-3 rounded-lg {{ $card['color'] }} {{ $isActive ? 'ring-2 ring-blue-500' : '' }} hover:bg-opacity-70 transition relative cursor-pointer">
                         <div class="flex items-center space-x-3">
@@ -536,40 +530,50 @@
                     </div>
                 </div>
             </div>
-            @if(session('usuarios_no_en_excel'))
-    <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <h3 class="font-semibold text-yellow-800 mb-2">⚠️ Usuarios activos (no Montana) en sistema que NO están en el Excel:</h3>
-        <ul class="list-disc list-inside text-sm text-yellow-700 space-y-1">
-            @foreach(session('usuarios_no_en_excel') as $usuario)
-                <li>{{ $usuario->name }} (ID: {{ $usuario->id }}, Empleado: {{ $usuario->num_empleado }}, Empresa: {{ $usuario->empresa }})</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
-@if(session('resumen'))
-    <div class="mt-6">
-        <h3 class="font-semibold text-blue-800">📊 Usuarios en Excel Y en BD (activos) <span class="text-sm text-blue-600">({{ session('resumen.en_excel_y_bd')->count() }})</span></h3>
-        <ul class="list-disc list-inside text-sm text-blue-700">
-            @foreach(session('resumen.en_excel_y_bd') as $item)
-                <li>{{ $item['nombre'] }} (ID: {{ $item['id_bd'] }}, Estatus: {{ $item['estatus'] }})</li>
-            @endforeach
-        </ul>
+            @if (session('usuarios_no_en_excel'))
+                <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <h3 class="font-semibold text-yellow-800 mb-2">⚠️ Usuarios activos (no Montana) en sistema que NO
+                        están en el Excel:</h3>
+                    <ul class="list-disc list-inside text-sm text-yellow-700 space-y-1">
+                        @foreach (session('usuarios_no_en_excel') as $usuario)
+                            <li>{{ $usuario->name }} (ID: {{ $usuario->id }}, Empleado:
+                                {{ $usuario->num_empleado }}, Empresa: {{ $usuario->empresa }})</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+            @if (session('resumen'))
+                <div class="mt-6">
+                    <h3 class="font-semibold text-blue-800">📊 Usuarios en Excel Y en BD (activos) <span
+                            class="text-sm text-blue-600">({{ session('resumen.en_excel_y_bd')->count() }})</span>
+                    </h3>
+                    <ul class="list-disc list-inside text-sm text-blue-700">
+                        @foreach (session('resumen.en_excel_y_bd') as $item)
+                            <li>{{ $item['nombre'] }} (ID: {{ $item['id_bd'] }}, Estatus: {{ $item['estatus'] }})
+                            </li>
+                        @endforeach
+                    </ul>
 
-        <h3 class="font-semibold text-green-800 mt-4">➕ Usuarios en Excel pero NO en BD <span class="text-sm text-green-600">({{ session('resumen.en_excel_no_bd')->count() }})</span></h3>
-        <ul class="list-disc list-inside text-sm text-green-700">
-            @foreach(session('resumen.en_excel_no_bd') as $item)
-                <li>{{ $item['nombre'] }} (Empleado: {{ $item['num_empleado'] ?? 'N/A' }})</li>
-            @endforeach
-        </ul>
+                    <h3 class="font-semibold text-green-800 mt-4">➕ Usuarios en Excel pero NO en BD <span
+                            class="text-sm text-green-600">({{ session('resumen.en_excel_no_bd')->count() }})</span>
+                    </h3>
+                    <ul class="list-disc list-inside text-sm text-green-700">
+                        @foreach (session('resumen.en_excel_no_bd') as $item)
+                            <li>{{ $item['nombre'] }} (Empleado: {{ $item['num_empleado'] ?? 'N/A' }})</li>
+                        @endforeach
+                    </ul>
 
-        <h3 class="font-semibold text-red-800 mt-4">❌ Usuarios en BD pero NO en Excel <span class="text-sm text-red-600">({{ session('resumen.en_bd_no_excel')->count() }})</span></h3>
-        <ul class="list-disc list-inside text-sm text-red-700">
-            @foreach(session('resumen.en_bd_no_excel') as $item)
-                <li>{{ $item['name'] }} (ID: {{ $item['id'] }}, Empleado: {{ $item['num_empleado'] ?? 'N/A' }})</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
+                    <h3 class="font-semibold text-red-800 mt-4">❌ Usuarios en BD pero NO en Excel <span
+                            class="text-sm text-red-600">({{ session('resumen.en_bd_no_excel')->count() }})</span>
+                    </h3>
+                    <ul class="list-disc list-inside text-sm text-red-700">
+                        @foreach (session('resumen.en_bd_no_excel') as $item)
+                            <li>{{ $item['name'] }} (ID: {{ $item['id'] }}, Empleado:
+                                {{ $item['num_empleado'] ?? 'N/A' }})</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
             <!--
             <div class="flex justify-center space-x-2 mt-4">
@@ -659,77 +663,77 @@
     </div>
 </div>
 @push('scripts')
-<script>
-function actualizarDestajos() {
-    if (confirm('¿Estás seguro de actualizar todos los destajos? Este proceso puede tardar varios minutos.')) {
-        const boton = document.getElementById('registrar-datos');
-        if (boton) {
-            // Cambiar el texto del botón
-            const span = boton.querySelector('span.font-medium');
-            if (span) {
-                span.textContent = 'Procesando...';
-            }
-            boton.classList.add('opacity-75');
-            boton.onclick = null; // Deshabilitar clics adicionales
-        }
-
-        procesarLotes(0);
-    }
-}
-
-function procesarLotes(offset) {
-    fetch('{{ route("updateDestajos") }}?offset=' + offset, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log(data.message);
-
-        if (data.continuar) {
-            // Continuar con el siguiente lote
-            setTimeout(() => procesarLotes(data.siguiente_offset), 1000);
-        } else {
-            // Proceso completado
-            alert(`Proceso completado. ${data.actualizados} registros actualizados.`);
-
-            // Refrescar la tabla si es necesario
-            if (typeof Livewire !== 'undefined') {
-                Livewire.dispatch('refreshTable');
-            }
-
-            // Restaurar botón
-            const boton = document.getElementById('registrar-datos');
-            if (boton) {
-                const span = boton.querySelector('span.font-medium');
-                if (span) {
-                    span.textContent = 'Registrar Datos';
+    <script>
+        function actualizarDestajos() {
+            if (confirm('¿Estás seguro de actualizar todos los destajos? Este proceso puede tardar varios minutos.')) {
+                const boton = document.getElementById('registrar-datos');
+                if (boton) {
+                    // Cambiar el texto del botón
+                    const span = boton.querySelector('span.font-medium');
+                    if (span) {
+                        span.textContent = 'Procesando...';
+                    }
+                    boton.classList.add('opacity-75');
+                    boton.onclick = null; // Deshabilitar clics adicionales
                 }
-                boton.classList.remove('opacity-75');
-                boton.onclick = actualizarDestajos;
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Ocurrió un error durante el proceso.');
 
-        // Restaurar botón en caso de error
-        const boton = document.getElementById('registrar-datos');
-        if (boton) {
-            const span = boton.querySelector('span.font-medium');
-            if (span) {
-                span.textContent = 'Registrar Datos';
+                procesarLotes(0);
             }
-            boton.classList.remove('opacity-75');
-            boton.onclick = actualizarDestajos;
         }
-    });
-}
-</script>
+
+        function procesarLotes(offset) {
+            fetch('{{ route('updateDestajos') }}?offset=' + offset, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.message);
+
+                    if (data.continuar) {
+                        // Continuar con el siguiente lote
+                        setTimeout(() => procesarLotes(data.siguiente_offset), 1000);
+                    } else {
+                        // Proceso completado
+                        alert(`Proceso completado. ${data.actualizados} registros actualizados.`);
+
+                        // Refrescar la tabla si es necesario
+                        if (typeof Livewire !== 'undefined') {
+                            Livewire.dispatch('refreshTable');
+                        }
+
+                        // Restaurar botón
+                        const boton = document.getElementById('registrar-datos');
+                        if (boton) {
+                            const span = boton.querySelector('span.font-medium');
+                            if (span) {
+                                span.textContent = 'Registrar Datos';
+                            }
+                            boton.classList.remove('opacity-75');
+                            boton.onclick = actualizarDestajos;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Ocurrió un error durante el proceso.');
+
+                    // Restaurar botón en caso de error
+                    const boton = document.getElementById('registrar-datos');
+                    if (boton) {
+                        const span = boton.querySelector('span.font-medium');
+                        if (span) {
+                            span.textContent = 'Registrar Datos';
+                        }
+                        boton.classList.remove('opacity-75');
+                        boton.onclick = actualizarDestajos;
+                    }
+                });
+        }
+    </script>
     <script>
         let currentSlide = 0;
         const totalSlides = 4;
@@ -771,5 +775,4 @@ function procesarLotes(offset) {
             //setInterval(nextSlide, 10000);
         });
     </script>
-
 @endpush
