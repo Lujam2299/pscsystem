@@ -467,7 +467,7 @@ public function guardarArchivosAlta(Request $request, $id)
     $request->validate([
         'fecha_baja' => 'required|date',
         'incapacidad' => 'nullable|string|max:255',
-        'por' => 'required|in:Ausentismo,Separación Voluntaria,Renuncia',
+        'por' => 'required|in:Ausentismo,Separación Voluntaria,Renuncia, Otro',
         'ultima_asistencia' => 'nullable|date',
         'motivo' => 'nullable|string',
         'adelanto_nomina' => 'nullable|string',

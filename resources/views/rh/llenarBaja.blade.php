@@ -90,6 +90,7 @@
                                             <option value="">Seleccione</option>
                                             <option value="Ausentismo">Ausentismo</option>
                                             <option value="Separación Voluntaria">Separación Voluntaria</option>
+                                            <option value="Otro">Otro</option>
                                             <option value="Renuncia">Renuncia</option>
                                         </select>
                                     </div>
