@@ -158,6 +158,38 @@ class UserController extends Controller
         $supervisor = User::where('rol', 'admin')->get();
     }
 
+    $periodo = $request->periodo;
+    if ($periodo < 2) {
+                $diasPorDerecho = 12;
+            } else if ($periodo == 2) {
+                $diasPorDerecho = 14;
+            } else if ($periodo == 3) {
+                $diasPorDerecho = 16;
+            } else if ($periodo == 4) {
+                $diasPorDerecho = 18;
+            } else if ($periodo == 5) {
+                $diasPorDerecho = 20;
+            } else if ($periodo > 5 && $periodo <= 10) {
+                $diasPorDerecho = 22;
+            } else if ($periodo > 10 && $periodo <= 15) {
+                $diasPorDerecho = 24;
+            } else if ($periodo > 15 && $periodo <= 20) {
+                $diasPorDerecho = 26;
+            } else if ($periodo > 20 && $periodo <= 25) {
+                $diasPorDerecho = 28;
+            } else if ($periodo > 25 && $periodo <= 30) {
+                $diasPorDerecho = 30;
+            } else {
+                $diasPorDerecho = 32;
+            }
+
+    $diasUtilizados = SolicitudVacaciones::where('user_id', $user->id)
+        ->where('periodo', $request->periodo)
+        ->whereIn('estatus', ['Aceptada', 'En Proceso'])
+        ->sum('dias_solicitados');
+
+    $diasDisponibles = $diasPorDerecho - $diasUtilizados;
+
     $supervisores = User::where('rol', 'admin')->pluck('id')->toArray();
     $solicitud = new SolicitudVacaciones();
     $solicitud->user_id = $user->id;
@@ -167,9 +199,9 @@ class UserController extends Controller
     $solicitud->supervisores_ids = json_encode($supervisores);
     $solicitud->fecha_fin = $request->fecha_fin;
     $solicitud->dias_solicitados = $request->dias_solicitados;
-    $solicitud->dias_ya_utilizados = $request->dias_utilizados;
-    $solicitud->dias_disponibles = $request->dias_disponibles;
-    $solicitud->dias_por_derecho = $request->dias_por_derecho;
+    $solicitud->dias_ya_utilizados = $diasUtilizados;
+    $solicitud->dias_disponibles = $diasDisponibles;
+    $solicitud->dias_por_derecho = $diasPorDerecho;
     $solicitud->monto = 0.0;
 
     if(Auth::user()->rol == 'Supervisor' || Auth::user()->rol == 'admin' || Auth::user()->rol == 'SUPERVISOR' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->rol == 'Auxiliar recursos humanos')
@@ -177,8 +209,14 @@ class UserController extends Controller
     else
         $solicitud->observaciones = 'Solicitud de vacaciones en proceso';
 
-    $solicitud->estatus = 'En Proceso';
-    $solicitud->save();
+    $rol = strtolower(Auth()->user()->rol);
+    if ($rol == 'admin' || $rol == 'administrador' || $rol == 'auxiliar recursos humanos'){
+        $solicitud->estatus = 'Aceptada';
+        $solicitud->observaciones = 'Solicitud de vacaciones aceptada.';
+    }else{
+        $solicitud->estatus = 'En Proceso';
+    }
+        $solicitud->save();
 
     if(Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->rol == 'Auxiliar recursos humanos')
         return redirect()->route('dashboard')->with('success', 'Solicitud de vacaciones enviada correctamente');

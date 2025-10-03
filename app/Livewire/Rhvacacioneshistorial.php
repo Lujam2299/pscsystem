@@ -31,7 +31,7 @@ class Rhvacacioneshistorial extends Component
 {
     $userId = Auth::user()->id;
 
-    if (Auth::user()->rol == 'admin') {
+    if (Auth::user()->rol == 'admin' || strtolower(Auth()->user()->rol) == 'auxiliar recursos humanos') {
         $solicitudes = SolicitudVacaciones::with('user')
             ->when($this->search, function ($query) {
                 $query->whereHas('user', function ($q) {
