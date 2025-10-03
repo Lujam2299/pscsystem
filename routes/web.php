@@ -176,6 +176,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/buzon', [UserController::class, 'buzon'])->name('user.buzon');
     Route::post('/enviar_sugerencia/{id}', [UserController::class, 'enviarSugerencia'])->name('user.enviarSugerencia');
 
+    Route::get('/api/dias-utilizados/{userId}/{periodo}', function ($userId, $periodo) {
+    $diasUtilizados = \App\Models\SolicitudVacaciones::where('user_id', $userId)
+        ->where('periodo', $periodo)
+        ->sum('dias_solicitados');
+
+    return response()->json(['dias_utilizados' => $diasUtilizados]);
+})->name('api.dias.utilizados');
+
     /*
      * MONITORISTA
      */

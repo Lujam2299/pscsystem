@@ -197,7 +197,7 @@
             'icono' => 'message',
             'color' => 'bg-purple-300 dark:bg-purple-700',
         ],
-        [
+        /*[
             'titulo' => 'Importar Datos',
             'ruta' => route('importar.excel'),
             'icono' => 'folder-open',
@@ -209,7 +209,7 @@
             'icono' => 'folder-open',
             'color' => 'bg-blue-300 dark:bg-gray-700',
         ],
-        /*[
+        [
             'titulo' => 'Depurar datos',
             'form' => true, // Marcador para saber que es un formulario
             'action' => route('admin.import.unify-duplicates'),

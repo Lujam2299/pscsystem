@@ -1237,6 +1237,7 @@ public function gestionUsuarios()
         }
         $vacacionesTomadas = SolicitudVacaciones::where('user_id', $user->id)
             ->whereIn('estatus', ['Aceptada', 'En Proceso'])
+            ->where('periodo', '>=', $antiguedad)
             ->where('created_at', '>=', $aniversario)
             ->get();
 

@@ -1,3 +1,6 @@
+@php
+    $rol = strtolower(Auth()->user()->rol);
+@endphp
 <x-app-layout>
     <x-navbar></x-navbar>
     <div class="py-4 px-2 sm:py-6 sm:px-4">
@@ -103,49 +106,54 @@
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <!-- Resumen de Vacaciones -->
-                    <div class="lg:col-span-1">
-                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-800 p-6 rounded-lg shadow">
-                            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                </svg>
-                                Resumen de Vacaciones
-                            </h3>
+<div class="lg:col-span-1">
+    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-800 p-6 rounded-lg shadow">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Resumen de Vacaciones
+        </h3>
 
-                            <div class="space-y-4">
-                                <div class="flex justify-between items-center p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
-                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Antigüedad</span>
-                                    <span class="text-lg font-bold text-blue-600">{{ $antiguedad }} años</span>
-                                </div>
+        <div class="space-y-4">
+            <div class="flex justify-between items-center p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Antigüedad</span>
+                <span class="text-lg font-bold text-blue-600">{{ $antiguedad }} años</span>
+            </div>
 
-                                <div class="flex justify-between items-center p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
-                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Días por Ley</span>
-                                    <span class="text-lg font-bold text-green-600">{{ $dias }} días</span>
-                                </div>
+            <div class="flex justify-between items-center p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Periodo</span>
+                <span id="periodoDisplay" class="text-lg font-bold text-purple-600">{{ $antiguedad }}</span>
+            </div>
 
-                                <div class="flex justify-between items-center p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
-                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Ya Utilizados</span>
-                                    <span class="text-lg font-bold text-yellow-600">{{ $diasUtilizados }} días</span>
-                                </div>
+            <div class="flex justify-between items-center p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Días por Ley</span>
+                <span id="diasPorDerechoDisplay" class="text-lg font-bold text-green-600">{{ $dias }} días</span>
+            </div>
 
-                                <div class="flex justify-between items-center p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm border-2 border-blue-200 dark:border-blue-800">
-                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Disponibles</span>
-                                    <span class="text-xl font-bold text-blue-600">{{ $diasDisponibles }} días</span>
-                                </div>
-                            </div>
+            <div class="flex justify-between items-center p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Ya Utilizados</span>
+                <span id="diasUtilizadosDisplay" class="text-lg font-bold text-yellow-600">{{ $diasUtilizados }} días</span>
+            </div>
 
-                            @if($diasDisponibles <= 0)
-                                <div class="mt-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
-                                    <p class="text-sm text-red-700 dark:text-red-300">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
-                                        No hay días disponibles para solicitar vacaciones.
-                                    </p>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
+            <div class="flex justify-between items-center p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm border-2 border-blue-200 dark:border-blue-800">
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Disponibles</span>
+                <span id="diasDisponiblesDisplay" class="text-xl font-bold text-blue-600">{{ $diasDisponibles }} días</span>
+            </div>
+        </div>
+
+        @if($diasDisponibles <= 0)
+            <div class="mt-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+                <p class="text-sm text-red-700 dark:text-red-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    No hay días disponibles para solicitar vacaciones.
+                </p>
+            </div>
+        @endif
+    </div>
+</div>
 
                     <!-- Formulario de Solicitud -->
                     <div class="lg:col-span-2">
@@ -170,11 +178,13 @@
                                                 <option value="Pagadas">Pagadas</option>
                                             </select>
                                         </div>
-
-                                        <div>
-                                            <label for="dias_solicitados" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Días Solicitados</label>
-                                            <input type="number" name="dias_solicitados" id="dias_solicitados" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 cursor-not-allowed" readonly>
-                                        </div>
+                                        @if ($rol == 'admin' || $rol == 'administrador' || $rol == 'auxiliar recursos humanos')
+                                            <div>
+                                                <label for="periodo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Periodo (opcional)</label>
+                                                <input type="number" name="periodo" id="periodo" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                                                    min="0" placeholder="Ej: 3">
+                                            </div>
+                                        @endif
 
                                         <div>
                                             <label for="fecha_inicio" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha de Inicio</label>
@@ -184,6 +194,11 @@
                                         <div>
                                             <label for="fecha_fin" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha de Fin</label>
                                             <input type="date" name="fecha_fin" id="fecha_fin" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white" required>
+                                        </div>
+
+                                        <div>
+                                            <label for="dias_solicitados" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Días Solicitados</label>
+                                            <input type="number" name="dias_solicitados" id="dias_solicitados" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 cursor-not-allowed" readonly>
                                         </div>
                                     </div>
 
@@ -238,31 +253,34 @@
         const fin = document.getElementById('fecha_fin');
         const diasInput = document.getElementById('dias_solicitados');
         const btnSubmit = document.getElementById('btn_solicitar');
+        const periodoInput = document.getElementById('periodo');
 
-        const diasDisponibles = {{ $diasDisponibles }};
+        // Elementos del resumen
+        const periodoDisplay = document.getElementById('periodoDisplay');
+        const diasPorDerechoDisplay = document.getElementById('diasPorDerechoDisplay');
+        const diasUtilizadosDisplay = document.getElementById('diasUtilizadosDisplay');
+        const diasDisponiblesDisplay = document.getElementById('diasDisponiblesDisplay');
+
+        // Valores iniciales
+        const antiguedadInicial = {{ $antiguedad }};
+        const diasPorDerechoInicial = {{ $dias }};
+        const diasUtilizadosInicial = {{ $diasUtilizados }};
+        const diasDisponiblesInicial = {{ $diasDisponibles }};
+        const userId = {{ $user->id }};
+
+        let diasDisponiblesActuales = diasDisponiblesInicial;
 
         function calcularDias() {
             if (inicio.value && fin.value) {
                 const fechaInicio = new Date(inicio.value);
                 const fechaFin = new Date(fin.value);
-                const hoy = new Date();
-
-                hoy.setHours(0, 0, 0, 0);
-
-                //if (fechaInicio < hoy) {
-                //    diasInput.value = '';
-                //    btnSubmit.disabled = true;
-                //    btnSubmit.classList.add('bg-red-400', 'cursor-not-allowed');
-                //    btnSubmit.classList.remove('hover:bg-blue-700', 'bg-blue-600');
-                //    return;
-                //}
 
                 if (fechaFin >= fechaInicio) {
                     const diffTime = fechaFin.getTime() - fechaInicio.getTime();
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
                     diasInput.value = diffDays;
 
-                    if (diffDays > diasDisponibles) {
+                    if (diffDays > diasDisponiblesActuales) {
                         btnSubmit.disabled = true;
                         btnSubmit.classList.add('bg-red-400', 'cursor-not-allowed');
                         btnSubmit.classList.remove('hover:bg-blue-700', 'bg-blue-600');
@@ -277,6 +295,79 @@
                 }
             }
         }
+
+        function calcularDiasYaUtilizados(periodo) {
+            return fetch(`/api/dias-utilizados/${userId}/${periodo}`)
+                .then(response => response.json())
+                .then(data => data.dias_utilizados || 0)
+                .catch(error => {
+                    console.error('Error obteniendo días utilizados:', error);
+                    return 0;
+                });
+        }
+
+        function actualizarValores(periodo) {
+            if (!periodo) {
+                // Si no hay periodo, usar valores iniciales
+                periodoDisplay.textContent = `${antiguedadInicial}`;
+                diasPorDerechoDisplay.textContent = `${diasPorDerechoInicial} días`;
+                diasUtilizadosDisplay.textContent = `${diasUtilizadosInicial} días`;
+                diasDisponiblesDisplay.textContent = `${diasDisponiblesInicial} días`;
+                diasDisponiblesActuales = diasDisponiblesInicial;
+                return;
+            }
+
+            // Actualizar periodo en el display
+            periodoDisplay.textContent = `${periodo}`;
+
+            // Calcular días por derecho según el periodo
+            let diasPorDerecho;
+            if (periodo < 2) {
+                diasPorDerecho = 12;
+            } else if (periodo == 2) {
+                diasPorDerecho = 14;
+            } else if (periodo == 3) {
+                diasPorDerecho = 16;
+            } else if (periodo == 4) {
+                diasPorDerecho = 18;
+            } else if (periodo == 5) {
+                diasPorDerecho = 20;
+            } else if (periodo > 5 && periodo <= 10) {
+                diasPorDerecho = 22;
+            } else if (periodo > 10 && periodo <= 15) {
+                diasPorDerecho = 24;
+            } else if (periodo > 15 && periodo <= 20) {
+                diasPorDerecho = 26;
+            } else if (periodo > 20 && periodo <= 25) {
+                diasPorDerecho = 28;
+            } else if (periodo > 25 && periodo <= 30) {
+                diasPorDerecho = 30;
+            } else {
+                diasPorDerecho = 32;
+            }
+
+            // Calcular días ya utilizados
+            calcularDiasYaUtilizados(periodo).then(diasUtilizados => {
+                const diasDisponibles = Math.max(0, diasPorDerecho - diasUtilizados);
+
+                // Actualizar displays
+                diasPorDerechoDisplay.textContent = `${diasPorDerecho} días`;
+                diasUtilizadosDisplay.textContent = `${diasUtilizados} días`;
+                diasDisponiblesDisplay.textContent = `${diasDisponibles} días`;
+
+                // Actualizar valor actual para validación
+                diasDisponiblesActuales = diasDisponibles;
+            });
+        }
+
+        periodoInput.addEventListener('input', (e) => {
+            const periodo = parseInt(e.target.value);
+            if (periodo && periodo >= 0) {
+                actualizarValores(periodo);
+            } else {
+                actualizarValores(null);
+            }
+        });
 
         inicio.addEventListener('change', calcularDias);
         fin.addEventListener('change', calcularDias);

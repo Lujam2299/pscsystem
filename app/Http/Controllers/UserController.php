@@ -141,46 +141,50 @@ class UserController extends Controller
     }
 
     public function solicitarVacaciones(Request $request, $id){
-        $request->validate([
-            'tipo' => 'required|string',
-            'fecha_inicio' => 'required|date',
-            'fecha_fin' => 'required|date',
-            'dias_solicitados' => 'required|integer|min:1|max:30',
-            'dias_utilizados' => 'required|integer|min:0|max:36',
-            'dias_disponibles' => 'required|integer|min:0|max:36',
-            'dias_por_derecho' => 'required|integer|min:0|max:36',
-        ]);
+    $request->validate([
+        'tipo' => 'required|string',
+        'periodo' => 'nullable|integer|min:0|max:9999', // Validación para periodo
+        'fecha_inicio' => 'required|date',
+        'fecha_fin' => 'required|date',
+        'dias_solicitados' => 'required|integer|min:1|max:30',
+        'dias_utilizados' => 'required|integer|min:0|max:36',
+        'dias_disponibles' => 'required|integer|min:0|max:36',
+        'dias_por_derecho' => 'required|integer|min:0|max:36',
+    ]);
 
-        $user = User::findorFail($id);
-        if(Auth::user()->rol == 'Supervisor' || Auth::user()->rol == 'SUPERVISOR'){
-            $supervisor = User::where('rol', 'admin')->get();
-        }
-        $supervisores = User::where('rol', 'admin')->pluck('id')->toArray();
-        $solicitud = new SolicitudVacaciones();
-        $solicitud->user_id = $user->id;
-        $solicitud->tipo = $request->tipo;
-        $solicitud->fecha_inicio = $request->fecha_inicio;
-            //$solicitud->supervisor_id = $supervisor->id;
-        $solicitud->supervisores_ids = json_encode($supervisores);
-        $solicitud->fecha_fin = $request->fecha_fin;
-        $solicitud->dias_solicitados = $request->dias_solicitados;
-        $solicitud->dias_ya_utilizados = $request->dias_utilizados;
-        $solicitud->dias_disponibles = $request->dias_disponibles;
-        $solicitud->dias_por_derecho = $request->dias_por_derecho;
-        $solicitud->monto = 0.0;
+    $user = User::findOrFail($id);
 
-        if(Auth::user()->rol == 'Supervisor' || Auth::user()->rol == 'admin' || Auth::user()->rol == 'SUPERVISOR' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->rol == 'Auxiliar recursos humanos')
-            $solicitud->observaciones = 'Solicitud aceptada, falta subir archivo de solicitud.';
-        else
-            $solicitud->observaciones = 'Solicitud de vacaciones en proceso';
-        $solicitud->estatus = 'En Proceso';
-
-        $solicitud->save();
-        if(Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->rol == 'Auxiliar recursos humanos')
-            return redirect()->route('dashboard')->with('success', 'Solicitud de vacaciones enviada correctamente');
-        else
-            return redirect()->route('dashboard')->with('success', 'Solicitud de vacaciones enviada correctamente');
+    if(Auth::user()->rol == 'Supervisor' || Auth::user()->rol == 'SUPERVISOR'){
+        $supervisor = User::where('rol', 'admin')->get();
     }
+
+    $supervisores = User::where('rol', 'admin')->pluck('id')->toArray();
+    $solicitud = new SolicitudVacaciones();
+    $solicitud->user_id = $user->id;
+    $solicitud->tipo = $request->tipo;
+    $solicitud->periodo = $request->periodo; // Nuevo campo
+    $solicitud->fecha_inicio = $request->fecha_inicio;
+    $solicitud->supervisores_ids = json_encode($supervisores);
+    $solicitud->fecha_fin = $request->fecha_fin;
+    $solicitud->dias_solicitados = $request->dias_solicitados;
+    $solicitud->dias_ya_utilizados = $request->dias_utilizados;
+    $solicitud->dias_disponibles = $request->dias_disponibles;
+    $solicitud->dias_por_derecho = $request->dias_por_derecho;
+    $solicitud->monto = 0.0;
+
+    if(Auth::user()->rol == 'Supervisor' || Auth::user()->rol == 'admin' || Auth::user()->rol == 'SUPERVISOR' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->rol == 'Auxiliar recursos humanos')
+        $solicitud->observaciones = 'Solicitud aceptada, falta subir archivo de solicitud.';
+    else
+        $solicitud->observaciones = 'Solicitud de vacaciones en proceso';
+
+    $solicitud->estatus = 'En Proceso';
+    $solicitud->save();
+
+    if(Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->rol == 'Auxiliar recursos humanos')
+        return redirect()->route('dashboard')->with('success', 'Solicitud de vacaciones enviada correctamente');
+    else
+        return redirect()->route('dashboard')->with('success', 'Solicitud de vacaciones enviada correctamente');
+}
 
     public function historialVacaciones(){
         $user = User::find(Auth::user()->id);

@@ -10,6 +10,7 @@ class SolicitudVacaciones extends Model
     use HasFactory;
     protected $fillable = [
         'user_id',
+        'periodo',
         'dias_por_derecho',
         'fecha_inicio',
         'fecha_fin',
