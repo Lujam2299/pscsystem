@@ -29,6 +29,7 @@ use App\Http\Controllers\GraficosController;
 use App\Http\Controllers\BajaAcuseController;
 use App\Http\Controllers\AuxcontController;
 use App\Http\Controllers\JuridicoController;
+use App\Http\Controllers\OperacionesController;
 use Illuminate\Http\Request;
 
 
@@ -309,10 +310,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/subir-cheque/{id}', [AuxcontController::class, 'subirCheque'])->name('subir.cheque');
     Route::put('/solicitud_bajas/{id}/actualizar_cheque', [AuxcontController::class, 'actualizarCheque']);
     Route::get('historial_cheques', [AuxcontController::class, 'historialCheques'])->name('auxcont.finiquitos.historial');
+    Route::get('/eventuales',[AuxcontController::class, 'eventualesList'])->name('auxcont.eventuales');
 
     //Usuario Juridico
     Route::get('lista_nuevasBajas', [JuridicoController::class, 'listaNuevasBajas'])->name('juridico.nuevasBajas');
     Route::post('/actualizar-motivo-baja', [JuridicoController::class, 'actualizarMotivoBaja'])->name('actualizar.motivo.baja');
+
+    //Usuario Operaciones
+    Route::get('/eventuales_list', [OperacionesController::class, 'eventualesList'])->name('operaciones.eventuales');
 
     //Mensajería
     Route::get('/mensajes/nuevo', [ChatWebController::class, 'crear'])->name('mensajes.crearChat');

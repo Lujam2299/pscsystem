@@ -68,38 +68,42 @@ class AuxcontController extends Controller
         }
     }
 
-public function actualizarCheque(Request $request, $id)
-{
-    $request->validate([
-        'archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB
-    ]);
+    public function actualizarCheque(Request $request, $id)
+    {
+        $request->validate([
+            'archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB
+        ]);
 
-    $solicitud = SolicitudBajas::findOrFail($id);
+        $solicitud = SolicitudBajas::findOrFail($id);
 
-    // Eliminar archivo anterior si existe
-    if ($solicitud->arch_cheque) {
-        Storage::delete($solicitud->arch_cheque);
+        // Eliminar archivo anterior si existe
+        if ($solicitud->arch_cheque) {
+            Storage::delete($solicitud->arch_cheque);
+        }
+
+        // Obtener la extensión del archivo subido
+        $extension = $request->file('archivo')->getClientOriginalExtension();
+
+        // Generar el nombre del archivo: {id->name}_fechaDeHoy.extension
+        $nombreArchivo = Str::slug($solicitud->user->name ?? 'usuario') . '_' . now()->format('Ymd_His') . '.' . $extension;
+
+        // Guardar en la carpeta solicitada: solicitudesBajas/{id}/
+        $ruta = $request->file('archivo')->storeAs("solicitudesBajas/{$id}", $nombreArchivo, 'public');
+
+        // Actualizar la base de datos
+        $solicitud->update([
+            'arch_cheque' => $ruta,
+            'observaciones' => 'Cheque cancelado.',
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Cheque actualizado correctamente.']);
     }
-
-    // Obtener la extensión del archivo subido
-    $extension = $request->file('archivo')->getClientOriginalExtension();
-
-    // Generar el nombre del archivo: {id->name}_fechaDeHoy.extension
-    $nombreArchivo = Str::slug($solicitud->user->name ?? 'usuario') . '_' . now()->format('Ymd_His') . '.' . $extension;
-
-    // Guardar en la carpeta solicitada: solicitudesBajas/{id}/
-    $ruta = $request->file('archivo')->storeAs("solicitudesBajas/{$id}", $nombreArchivo, 'public');
-
-    // Actualizar la base de datos
-    $solicitud->update([
-        'arch_cheque' => $ruta,
-        'observaciones' => 'Cheque cancelado.',
-    ]);
-
-    return response()->json(['success' => true, 'message' => 'Cheque actualizado correctamente.']);
-}
 
     public function historialCheques(){
         return view ('auxcont.historialCheques');
+    }
+
+    public function eventualesList(){
+        return view ('auxcont.eventualesList');
     }
 }

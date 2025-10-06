@@ -1,4 +1,8 @@
 @php use Illuminate\Support\Str; @endphp
+@php
+    $inicioPeriodoSolicitado = \Carbon\Carbon::parse($user->fecha_ingreso)->addYears($solicitud->periodo);
+    $finPeriodoSolicitado = \Carbon\Carbon::parse($user->fecha_ingreso)->addYears($solicitud->periodo+1);
+@endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -84,9 +88,12 @@
     <p style="margin-top: 50px;"><strong>NOMBRE:</strong> <span class="subrayado">{{ $user->name }}</span></p><br>
     <p><strong>FECHA DE INGRESO:</strong> {{ \Carbon\Carbon::parse($user->fecha_ingreso)->translatedFormat('d \\d\\e F \\d\\e\\l Y') }}</p>
 
-    <div class="seccion">
-        <p><strong>SOLICITADAS PARA EL PERIODO Nº{{$periodo}} COMPRENDIDO DEL</strong> {{ \Carbon\Carbon::parse($inicioPeriodo)->translatedFormat('d \\d\\e F \\d\\e\\l Y') }} <strong>AL</strong> {{ \Carbon\Carbon::parse($finPeriodo)->translatedFormat('d \\d\\e F \\d\\e\\l Y') }}</p>
-    </div>
+    <p>
+        <strong>SOLICITADAS PARA EL PERIODO Nº{{ $solicitud->periodo }} COMPRENDIDO DEL</strong>
+        {{ $inicioPeriodoSolicitado->translatedFormat('d \\d\\e F \\d\\e\\l Y') }}
+        <strong>AL</strong>
+        {{ $finPeriodoSolicitado->translatedFormat('d \\d\\e F \\d\\e\\l Y') }}
+    </p>
 
     <div class="seccion">
         <p><strong>OBSERVACIONES:</strong></p>
@@ -100,7 +107,7 @@
             @if(Str::contains($antiguedad, ['MES', 'MESES']))
                 <strong>POR ADELANTADO </strong>
             @endif
-            DE VACACIONES DEL PERIODO Nº{{$periodo}}.
+            DE VACACIONES DEL PERIODO Nº{{$solicitud->periodo}}.
             ({{ $solicitud->dias_solicitados }}
             @if($solicitud->dias_solicitados == 1)
                 DÍA
@@ -115,7 +122,7 @@
             @else
                 QUEDANDO SALDADOS LOS DÍAS DE LAS VACACIONES DEL MISMO PERIODO
             @endif
-            Nº{{$periodo}}.
+            Nº{{$solicitud->periodo}}.
         </p>
     </div>
 

@@ -9,6 +9,12 @@
                     'color' => 'bg-red-100 dark:bg-red-700'
                 ],
                 [
+                    'titulo' => 'Registro de Eventuales',
+                    'ruta' => route('operaciones.eventuales'),
+                    'icono' => 'calendar',
+                    'color' => 'bg-yellow-100 dark:bg-yellow-700'
+                ],
+                [
                     'titulo' => 'Solicitar Vacaciones',
                     'ruta' => route('user.solicitarVacacionesForm'),
                     'icono' => 'confetti',
