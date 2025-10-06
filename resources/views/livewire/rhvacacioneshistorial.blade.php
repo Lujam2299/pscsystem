@@ -211,6 +211,9 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @php
+                                        $mostrarArchivoSubido = $solicitud->estatus === 'Aceptada' && $solicitud->archivo_solicitud !== null;
+                                        $textoEstatus = $mostrarArchivoSubido ? 'Aceptada - Archivo subido' : $solicitud->estatus;
+
                                         $statusConfig = match($solicitud->estatus) {
                                             'En Proceso' => ['bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200', 'clock'],
                                             'Aceptada' => ['bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200', 'check'],
@@ -232,11 +235,12 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                             </svg>
                                         @endif
-                                        {{ $solicitud->estatus }}
+                                        {{ $textoEstatus }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <div class="flex flex-wrap gap-2">
+                                                    @if($solicitud->archivo_solicitud == null)
                                                     <button onclick="abrirModalArchivo({{ $solicitud->id }})"
                                                             class="inline-flex items-center px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg transition duration-200 shadow-sm">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -244,6 +248,7 @@
                                                         </svg>
                                                         Subir
                                                     </button>
+                                                    @endif
 
                                                         <a href="{{ route('sup.descargarSolicitudVacaciones', $solicitud->id) }}"
                                                            class="inline-flex items-center px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition duration-200 shadow-sm">
@@ -332,3 +337,109 @@
         </div>
     </div>
 </div>
+<script>
+    function abrirModalArchivo(solicitudId) {
+        Swal.fire({
+            title: 'Subir Archivo',
+            html: `
+                <input type="file" id="archivo" class="swal2-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                <p style="font-size:12px; color:#888">Formatos permitidos: PDF, DOC, JPG, PNG (Máx. 5MB)</p>
+                <div id="progress-container" style="margin-top:10px; display:none;">
+                    <progress id="upload-progress" value="0" max="100" style="width:100%"></progress>
+                    <p id="progress-text" style="text-align:center; font-size:12px;">0% completado</p>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Subir',
+            cancelButtonText: 'Cancelar',
+            didOpen: () => {
+                const fileInput = document.getElementById('archivo');
+                fileInput.addEventListener('change', (e) => {
+                    if(e.target.files[0].size > 5 * 1024 * 1024) {
+                        Swal.showValidationMessage('El archivo no puede exceder los 5MB');
+                    }
+                });
+            },
+            preConfirm: () => {
+                const archivo = document.getElementById('archivo').files[0];
+                if (!archivo) {
+                    Swal.showValidationMessage('Debes seleccionar un archivo');
+                    return false;
+                }
+
+                const formData = new FormData();
+                formData.append('archivo', archivo);
+                formData.append('_token', '{{ csrf_token() }}');
+
+                document.getElementById('progress-container').style.display = 'block';
+                const progressBar = document.getElementById('upload-progress');
+                const progressText = document.getElementById('progress-text');
+
+                return fetch(`/solicitud-vacaciones/${solicitudId}/subir-archivo`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw new Error(err.message || 'Error al subir el archivo') });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.message);
+                    }
+                    return data;
+                })
+                .catch(error => {
+                    Swal.showValidationMessage(`Error: ${error.message}`);
+                    return false;
+                });
+            }
+        }).then(result => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: '¡Éxito!',
+                    text: result.value.message,
+                    icon: 'success'
+                }).then(() => {
+                    window.location.reload();
+                });
+            }
+        });
+    }
+    function confirmarCancelacion(solicitudId) {
+        Swal.fire({
+            title: '¿Cancelar solicitud?',
+            text: "Esta acción no se puede deshacer.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, cancelar',
+            cancelButtonText: 'No, mantener',
+            reverseButtons: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6b7280'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Enviar formulario oculto o usar fetch
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/solicitud-vacaciones/${solicitudId}/cancelar`;
+                form.style.display = 'none';
+
+                const token = document.createElement('input');
+                token.type = 'hidden';
+                token.name = '_token';
+                token.value = '{{ csrf_token() }}';
+                form.appendChild(token);
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+</script>
