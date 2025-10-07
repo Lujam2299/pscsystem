@@ -4,10 +4,11 @@
         $tipoSeleccionado='oficina';
             $cards = [
                 [
-                    'titulo' => 'Finiquitos',
-                    'ruta' => route('auxcont.finiquitos'),
-                    'icono' => 'file-text',
-                    'color' => 'bg-red-100 dark:bg-red-700',
+                    'titulo' => 'Registros de Eventuales',
+                    'ruta' => route('auxcont.eventuales'),
+                    'icono' => 'calendar',
+                    'color' => 'bg-green-100 dark:bg-green-700',
+                    'mostrar' => (Auth::user()->rol == 'CONTADORA' || Auth::user()->rol == 'admin' || Auth::user()->rol == 'ADMINISTRADOR')
                 ],
                 [
                     'titulo' => 'Historial de Registros de Cheques',
@@ -16,11 +17,10 @@
                     'color' => 'bg-yellow-100 dark:bg-yellow-700',
                 ],
                 [
-                    'titulo' => 'Registros de Eventuales',
-                    'ruta' => route('auxcont.eventuales'),
-                    'icono' => 'calendar',
-                    'color' => 'bg-green-100 dark:bg-green-700',
-                    'mostrar' => (Auth::user()->rol == 'CONTADORA' || Auth::user()->rol == 'admin' || Auth::user()->rol == 'ADMINISTRADOR')
+                    'titulo' => 'Finiquitos',
+                    'ruta' => route('auxcont.finiquitos'),
+                    'icono' => 'file-text',
+                    'color' => 'bg-red-100 dark:bg-red-700',
                 ],
                 [
                     'titulo' => 'Solicitar Vacaciones',

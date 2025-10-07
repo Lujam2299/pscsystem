@@ -27,8 +27,8 @@ class Eventuales extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function punto()
+    public function subpunto()
     {
-        return $this->belongsTo(Punto::class);
+        return $this->belongsTo(Subpunto::class);
     }
 }

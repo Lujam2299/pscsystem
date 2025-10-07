@@ -195,7 +195,6 @@
                 });
             }
         }).then((result) => {
-            // ✅ Este bloque es el que muestra el mensaje de éxito
             if (result.isConfirmed) {
                 Swal.fire('¡Éxito!', result.value.message, 'success').then(() => {
                     window.location.reload();
