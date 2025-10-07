@@ -338,61 +338,60 @@
             });
         },
         preConfirm: () => {
-            const fileImss = document.getElementById('file-imss').files[0];
-            const fileInfonavit = document.getElementById('file-infonavit').files[0];
-            const fileAlta = document.getElementById('file-alta').files[0];
-            const sd = document.getElementById('input-sd').value;
-            const sdi = document.getElementById('input-sdi').value;
+    const fileImss = document.getElementById('file-imss').files[0];
+    const fileInfonavit = document.getElementById('file-infonavit').files[0];
+    const sd = document.getElementById('input-sd').value;
+    const sdi = document.getElementById('input-sdi').value;
 
-            if (!fileImss) {
-                Swal.showValidationMessage('Debes seleccionar el archivo de Acuse IMSS');
-                return false;
-            }
+    if (!fileImss) {
+        Swal.showValidationMessage('Debes seleccionar el archivo de Acuse IMSS');
+        return false;
+    }
 
-            if (!sd || sd <= 0) {
-                Swal.showValidationMessage('Debes ingresar un valor válido para SD');
-                return false;
-            }
+    if (!sd || sd <= 0) {
+        Swal.showValidationMessage('Debes ingresar un valor válido para SD');
+        return false;
+    }
 
-            if (!sdi || sdi <= 0) {
-                Swal.showValidationMessage('Debes ingresar un valor válido para SDI');
-                return false;
-            }
+    if (!sdi || sdi <= 0) {
+        Swal.showValidationMessage('Debes ingresar un valor válido para SDI');
+        return false;
+    }
 
-            const formData = new FormData();
-            formData.append('solicitud_id', solicitudId);
-            formData.append('arch_acuse_imss', fileImss);
-            if (fileInfonavit) {
-                formData.append('arch_retencion_infonavit', fileInfonavit);
-            }
-            if (fileAlta) {
-                formData.append('arch_acuse_alta', fileAlta);
-            }
-            formData.append('sd', sd);
-            formData.append('sdi', sdi);
-            formData.append('_token', '{{ csrf_token() }}');
+    const formData = new FormData();
+    formData.append('solicitud_id', solicitudId);
+    formData.append('arch_acuse_imss', fileImss);
+    if (fileInfonavit) {
+        formData.append('arch_retencion_infonavit', fileInfonavit);
+    }
+    formData.append('sd', sd);
+    formData.append('sdi', sdi);
 
-            return fetch(`/subida_documentacion/${solicitudId}`, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => { throw new Error(err.message || 'Error al subir archivos') });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (!data.success) {
-                    throw new Error(data.message);
-                }
-                return data;
-            })
-            .catch(error => {
-                Swal.showValidationMessage(`Error: ${error.message}`);
-                return false;
-            });
+    return fetch(`/subida_documentacion/${solicitudId}`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         }
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw new Error(err.message || 'Error al subir archivos') });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.message || 'Error desconocido');
+        }
+        return data;
+    })
+    .catch(error => {
+        Swal.showValidationMessage(`Error: ${error.message}`);
+        return false;
+    });
+}
     }).then(result => {
         if (result.isConfirmed) {
             Swal.fire({
