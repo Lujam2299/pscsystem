@@ -116,7 +116,7 @@
             'titulo' => 'Historial de Cedulas',
             'ruta' => route('aux.historialCedulas'),
             'icono' => 'calendar',
-            'color' => 'bg-green-100 dark:bg-green-700',
+            'color' => 'bg-yellow-100 dark:bg-yellow-700',
         ],
         [
             'titulo' => 'Historial de Acuses de Bajas',

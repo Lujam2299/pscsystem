@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Models\SolicitudBajas;
+use App\Models\User;
 
 class AuxcontController extends Controller
 {
@@ -104,6 +105,10 @@ class AuxcontController extends Controller
     }
 
     public function eventualesList(){
-        return view ('auxcont.eventualesList');
+        $users = User::where('rol', 'EVENTUAL')
+            ->where('estatus', 'Activo')
+            ->paginate(10);
+
+        return view ('auxcont.eventualesList', compact('users'));
     }
 }
