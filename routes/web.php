@@ -238,6 +238,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/historial_cedulas', [AuxadminController::class, 'historialCedulas'])->name('aux.historialCedulas');
     Route::get('/historial_sipare', [AuxadminController::class, 'historialSipare'])->name('aux.historialSipare');
+    Route::get('/historial_acuses_altas', [AuxadminController::class, 'historialAcusesAlta'])->name('aux.historialAcusesAlta');
 
     //nuevass rutas
     Route::get('/riesgos-trabajo', [RiesgoTrabajoController::class, 'index'])->name('aux.riesgosTrabajo');

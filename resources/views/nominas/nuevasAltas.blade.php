@@ -96,7 +96,7 @@
                                 </thead>
                                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                     @foreach($solicitudes as $solicitud)
-                                        @if($solicitud->usuario)
+                                        @if($solicitud->usuario && ($solicitud->usuario->num_empleado == null))
                                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                                                     {{ $loop->iteration }}
@@ -171,7 +171,7 @@
                     </div>
                 @endif
 
-                <div class="flex justify-center space-x-3">
+                <div class="flex justify-center space-x-3 mt-4">
     <button
         onclick="abrirModalCorte()"
         class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-200 shadow-sm"

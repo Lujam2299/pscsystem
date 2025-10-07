@@ -213,4 +213,8 @@ class AuxadminController extends Controller
     public function historialSipare(){
         return view('auxadmin.historialSipare');
     }
+
+    public function historialAcusesAlta(){
+        return view('auxadmin.historialAcusesAlta');
+    }
 }

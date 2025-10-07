@@ -40,6 +40,7 @@ class NominasController extends Controller
             ->with('usuario')
             ->get();
         $users = User::where('estatus', 'Activo')
+            ->where('num_empleado', null)
             ->where('fecha_ingreso', '>=', Carbon::today('America/Mexico_City')->subDays(15))
             ->get();
         return view('nominas.nuevasAltas', compact('solicitudes', 'users'));

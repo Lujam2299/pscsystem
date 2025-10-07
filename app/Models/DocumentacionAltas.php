@@ -24,6 +24,7 @@ class DocumentacionAltas extends Model
         'arch_fonacot',
         'arch_licencia_conducir',
         'arch_carta_no_penales',
+        'arch_acuse_alta',
         'arch_foto',
         'visa',
         'pasaporte'
