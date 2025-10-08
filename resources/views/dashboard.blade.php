@@ -67,7 +67,7 @@
 
                         // Verificamos específicamente el rol "Auxiliar contabilidad"
                         $rolOriginal = strtolower(Auth::user()->rol ?? '');
-                        if (strpos($rolOriginal, 'auxiliar contabilidad') !== false) {
+                        if (strpos($rolOriginal, 'auxiliar contabilidad') !== false || strpos($rolOriginal, 'contadora') !== false) {
                             $navbar = 'auxcont-navbar';
                         }
                         // Considerando que los roles pueden ser muy variables, buscaremos cadenas básicas

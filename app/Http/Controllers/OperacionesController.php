@@ -18,40 +18,43 @@ class OperacionesController extends Controller
     }
 
     public function storeRegistroEventual(Request $request)
-{
-    try {
-        $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,id',
-            'fecha' => 'required|date',
-            'subpunto_id' => 'required|exists:subpuntos,id',
-            'turnos' => 'required|array|min:1',
-            'turnos.*' => 'in:dia,tarde,noche',
-            'tipo_pago' => 'required|in:nomina,efectivo',
-        ]);
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'user_id' => 'required|exists:users,id',
+                'fecha' => 'required|date',
+                'subpunto_id' => 'required|exists:subpuntos,id',
+                'turnos' => 'required|array|min:1',
+                'turnos.*' => 'in:dia,tarde,noche',
+                'tipo_pago' => 'required|in:nomina,efectivo',
+            ]);
 
-        if ($validator->fails()) {
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al guardar el registro'
+                ], 422);
+            }
+
+            $data = $validator->validated();
+            Eventuales::create($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Registro guardado correctamente'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error al registrar eventual: ' . $e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Error al guardar el registro'
-            ], 422);
+            ], 500);
         }
-
-        $data = $validator->validated();
-        Eventuales::create($data);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Registro guardado correctamente'
-        ]);
-
-    } catch (\Exception $e) {
-        // Opcional: loguear el error real para ti, pero no exponerlo al usuario
-        \Log::error('Error al registrar eventual: ' . $e->getMessage());
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Error al guardar el registro'
-        ], 500);
     }
-}
+
+    public function valesIndex(){
+        return view('operaciones.valesComidas');
+    }
 }

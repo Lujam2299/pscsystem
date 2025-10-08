@@ -3,10 +3,16 @@
         @php
             $cards = [
                 [
+                    'titulo' => 'Vales de Comida',
+                    'ruta' => route('operaciones.valesComida'),
+                    'icono' => 'burger',
+                    'color' => 'bg-blue-100 dark:bg-blue-700'
+                ],
+                [
                     'titulo' => 'Listas de Asistencia',
                     'ruta' => route('sup.listaAsistencia'),
                     'icono' => 'users',
-                    'color' => 'bg-red-100 dark:bg-red-700'
+                    'color' => 'bg-green-100 dark:bg-green-700'
                 ],
                 [
                     'titulo' => 'Registro de Eventuales',

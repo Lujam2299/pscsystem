@@ -4,11 +4,17 @@
         $tipoSeleccionado='oficina';
             $cards = [
                 [
-                    'titulo' => 'Registros de Eventuales',
-                    'ruta' => route('auxcont.eventuales'),
-                    'icono' => 'calendar',
+                    'titulo' => 'Registros de Vales de Comida',
+                    'ruta' => route('auxcont.valesComida'),
+                    'icono' => 'burger',
                     'color' => 'bg-green-100 dark:bg-green-700',
                     'mostrar' => (Auth::user()->rol == 'CONTADORA' || Auth::user()->rol == 'admin' || Auth::user()->rol == 'ADMINISTRADOR')
+                ],
+                [
+                    'titulo' => 'Finiquitos',
+                    'ruta' => route('auxcont.finiquitos'),
+                    'icono' => 'file-text',
+                    'color' => 'bg-red-100 dark:bg-red-700',
                 ],
                 [
                     'titulo' => 'Historial de Registros de Cheques',
@@ -16,11 +22,13 @@
                     'icono' => 'clipboard-list',
                     'color' => 'bg-yellow-100 dark:bg-yellow-700',
                 ],
+
                 [
-                    'titulo' => 'Finiquitos',
-                    'ruta' => route('auxcont.finiquitos'),
-                    'icono' => 'file-text',
-                    'color' => 'bg-red-100 dark:bg-red-700',
+                    'titulo' => 'Registros de Eventuales',
+                    'ruta' => route('auxcont.eventuales'),
+                    'icono' => 'calendar',
+                    'color' => 'bg-green-100 dark:bg-green-700',
+                    'mostrar' => (Auth::user()->rol == 'CONTADORA' || Auth::user()->rol == 'admin' || Auth::user()->rol == 'ADMINISTRADOR')
                 ],
                 [
                     'titulo' => 'Solicitar Vacaciones',
@@ -41,16 +49,16 @@
                     'color' => 'bg-purple-100 dark:bg-purple-700',
                 ],
                 [
+                    'titulo' => 'Mensajes',
+                    'ruta' => route('mensajes.index'),
+                    'icono' => 'message',
+                    'color' => 'bg-blue-100 dark:bg-blue-700',
+                ],
+                [
                     'titulo' => 'Ficha Técnica',
                     'ruta' => route('user.verFicha', auth()->user()->id),
                     'icono' => 'file-description',
                     'color' => 'bg-yellow-100 dark:bg-yellow-700',
-                ],
-                [
-                    'titulo' => 'Mensajes',
-                    'ruta' => route('mensajes.index'),
-                    'icono' => 'message',
-                    'color' => 'bg-purple-100 dark:bg-purple-700',
                 ],
             ];
         @endphp

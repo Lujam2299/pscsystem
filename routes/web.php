@@ -312,6 +312,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/solicitud_bajas/{id}/actualizar_cheque', [AuxcontController::class, 'actualizarCheque']);
     Route::get('historial_cheques', [AuxcontController::class, 'historialCheques'])->name('auxcont.finiquitos.historial');
     Route::get('/eventuales',[AuxcontController::class, 'eventualesList'])->name('auxcont.eventuales');
+    Route::get('/vales-comida', [AuxcontController::class, 'valesComida'])->name('auxcont.valesComida');
 
     //Usuario Juridico
     Route::get('lista_nuevasBajas', [JuridicoController::class, 'listaNuevasBajas'])->name('juridico.nuevasBajas');
@@ -320,7 +321,7 @@ Route::middleware('auth')->group(function () {
     //Usuario Operaciones
     Route::get('/eventuales_list', [OperacionesController::class, 'eventualesList'])->name('operaciones.eventuales');
     Route::post('/operaciones/registrar-eventual', [OperacionesController::class, 'storeRegistroEventual'])->name('operaciones.registrar.eventual');
-
+    Route::get('/vales', [OperacionesController::class, 'valesIndex'])->name('operaciones.valesComida');
     //Mensajería
     Route::get('/mensajes/nuevo', [ChatWebController::class, 'crear'])->name('mensajes.crearChat');
     Route::post('/mensajes/nuevo', [ChatWebController::class, 'storeConversacion'])->name('mensajes.nueva');

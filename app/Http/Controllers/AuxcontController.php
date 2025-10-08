@@ -77,21 +77,14 @@ class AuxcontController extends Controller
 
         $solicitud = SolicitudBajas::findOrFail($id);
 
-        // Eliminar archivo anterior si existe
         if ($solicitud->arch_cheque) {
             Storage::delete($solicitud->arch_cheque);
         }
 
-        // Obtener la extensión del archivo subido
         $extension = $request->file('archivo')->getClientOriginalExtension();
-
-        // Generar el nombre del archivo: {id->name}_fechaDeHoy.extension
         $nombreArchivo = Str::slug($solicitud->user->name ?? 'usuario') . '_' . now()->format('Ymd_His') . '.' . $extension;
-
-        // Guardar en la carpeta solicitada: solicitudesBajas/{id}/
         $ruta = $request->file('archivo')->storeAs("solicitudesBajas/{$id}", $nombreArchivo, 'public');
 
-        // Actualizar la base de datos
         $solicitud->update([
             'arch_cheque' => $ruta,
             'observaciones' => 'Cheque cancelado.',
@@ -110,5 +103,9 @@ class AuxcontController extends Controller
             ->paginate(10);
 
         return view ('auxcont.eventualesList', compact('users'));
+    }
+
+    public function valesComida(){
+        return view('auxcont.valesComida');
     }
 }
