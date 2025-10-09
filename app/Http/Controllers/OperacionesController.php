@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Eventuales;
 use App\Models\Punto;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 use App\Models\User;
 
@@ -52,6 +54,40 @@ class OperacionesController extends Controller
                 'message' => 'Error al guardar el registro'
             ], 500);
         }
+    }
+
+    public function pagosEventuales(){
+        $registros = Eventuales::where('arch_pago', null)
+            ->where('fecha', '>=', now()->subDays(15))
+            ->paginate(10);
+        return view('operaciones.pagosEventuales', compact('registros'));
+    }
+
+    public function subirPagoEventual(Request $request, $id)
+    {
+        $request->validate([
+            'archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $registro = Eventuales::findOrFail($id);
+
+        $directorio = "PagoEventuales/{$id}";
+        $archivo = $request->file('archivo');
+        $nombreArchivo = Str::random(20) . '.' . $archivo->getClientOriginalExtension();
+
+        $ruta = $archivo->storeAs($directorio, $nombreArchivo, 'public');
+
+        $registro->arch_pago = $ruta;
+        $registro->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Comprobante subido correctamente'
+        ]);
+    }
+
+    public function historialPagosEventuales(){
+        return view('operaciones.historialPagosEventuales');
     }
 
     public function valesIndex(){

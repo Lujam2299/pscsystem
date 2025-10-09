@@ -42,8 +42,34 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                                                 {{ $loop->iteration }}
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                                {{ $user->name }}
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="flex items-center">
+                                                    <div class="flex-shrink-0 h-8 w-8">
+                                                        @php
+                                                            $foto = null;
+                                                            if ($user->documentacionAltas?->arch_foto) {
+                                                                $foto = asset($user->documentacionAltas->arch_foto);
+                                                            }
+                                                        @endphp
+
+                                                        @if($foto)
+                                                            <img src="{{ $foto }}"
+                                                                alt="Foto de {{ $user->name ?? 'usuario' }}"
+                                                                class="h-8 w-8 rounded-full object-cover border border-gray-200 dark:border-gray-700">
+                                                        @else
+                                                            <div class="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                                                                <span class="text-white font-medium text-xs">
+                                                                    {{ substr(trim($user->name ?? 'ND'), 0, 2) }}
+                                                                </span>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                    <div class="ml-3">
+                                                        <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                                            {{ $user->name }}
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                                 <button type="button"

@@ -21,6 +21,24 @@
                     'color' => 'bg-yellow-100 dark:bg-yellow-700'
                 ],
                 [
+                    'titulo' => 'Pagos Pendientes de Eventuales',
+                    'ruta' => route('operaciones.pagosEventuales'),
+                    'icono' => 'calendar',
+                    'color' => 'bg-blue-100 dark:bg-blue-700'
+                ],
+                [
+                    'titulo' => 'Historial de Pagos a Eventuales',
+                    'ruta' => route('operaciones.historialPagosEventuales'),
+                    'icono' => 'calendar',
+                    'color' => 'bg-green-100 dark:bg-green-700'
+                ],
+                [
+                    'titulo' => 'Ficha Técnica',
+                    'ruta' => route('user.verFicha', auth()->user()->id),
+                    'icono' => 'file-description',
+                    'color' => 'bg-yellow-100 dark:bg-yellow-700'
+                ],
+                [
                     'titulo' => 'Solicitar Vacaciones',
                     'ruta' => route('user.solicitarVacacionesForm'),
                     'icono' => 'confetti',
@@ -31,12 +49,6 @@
                     'ruta' => route('user.historialVacaciones'),
                     'icono' => 'calendar',
                     'color' => 'bg-green-100 dark:bg-green-700'
-                ],
-                [
-                    'titulo' => 'Ficha Técnica',
-                    'ruta' => route('user.verFicha', auth()->user()->id),
-                    'icono' => 'file-description',
-                    'color' => 'bg-yellow-100 dark:bg-yellow-700'
                 ],
                 [
                     'titulo' => 'Buzón de Quejas y Sugerencias',

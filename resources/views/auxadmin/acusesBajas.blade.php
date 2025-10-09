@@ -188,13 +188,24 @@
                                                           enctype="multipart/form-data"
                                                           class="flex flex-col sm:flex-row items-center gap-2">
                                                         @csrf
-                                                        <div class="relative">
-                                                            <input type="file"
-                                                                   name="archivo"
-                                                                   accept="application/pdf"
-                                                                   required
-                                                                   class="block w-full text-xs text-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
-                                                        </div>
+                                                        <div class="flex items-center gap-2">
+    <label for="archivo-{{ $baja->id }}" class="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 transition duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+        Seleccionar archivo
+    </label>
+    <input type="file"
+           id="archivo-{{ $baja->id }}"
+           name="archivo"
+           accept="application/pdf"
+           required
+           class="hidden"
+           onchange="document.getElementById('nombre-archivo-{{ $baja->id }}').textContent = this.files[0]?.name || 'Sin archivo';">
+    <span id="nombre-archivo-{{ $baja->id }}" class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">
+        Sin archivo
+    </span>
+</div>
                                                         <button type="submit"
                                                                 class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 shadow-sm text-xs">
                                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

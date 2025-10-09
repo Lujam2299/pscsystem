@@ -322,6 +322,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/eventuales_list', [OperacionesController::class, 'eventualesList'])->name('operaciones.eventuales');
     Route::post('/operaciones/registrar-eventual', [OperacionesController::class, 'storeRegistroEventual'])->name('operaciones.registrar.eventual');
     Route::get('/vales', [OperacionesController::class, 'valesIndex'])->name('operaciones.valesComida');
+    Route::get('/pagos_eventuales', [OperacionesController::class, 'pagosEventuales'])->name('operaciones.pagosEventuales');
+    Route::post('/operaciones/subir-pago-eventual/{id}', [OperacionesController::class, 'subirPagoEventual'])->name('operaciones.subir.pago.eventual');
+    Route::get('/historial-pagos-eventuales', [OperacionesController::class, 'historialPagosEventuales'])->name('operaciones.historialPagosEventuales');
+
     //Mensajería
     Route::get('/mensajes/nuevo', [ChatWebController::class, 'crear'])->name('mensajes.crearChat');
     Route::post('/mensajes/nuevo', [ChatWebController::class, 'storeConversacion'])->name('mensajes.nueva');
