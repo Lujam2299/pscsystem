@@ -63,28 +63,26 @@ class OperacionesController extends Controller
         return view('operaciones.pagosEventuales', compact('registros'));
     }
 
-    public function subirPagoEventual(Request $request, $id)
-    {
-        $request->validate([
-            'archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
-        ]);
+public function subirPagoEventual(Request $request, $id)
+{
+    $request->validate([
+        'archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+    ]);
 
-        $registro = Eventuales::findOrFail($id);
+    $registro = Eventuales::findOrFail($id);
 
-        $directorio = "PagoEventuales/{$id}";
-        $archivo = $request->file('archivo');
-        $nombreArchivo = Str::random(20) . '.' . $archivo->getClientOriginalExtension();
+    // Guarda el archivo en storage/app/public/PagoEventuales/{id}/...
+    $rutaRelativa = $request->file('archivo')->store("PagoEventuales/{$id}", 'public');
 
-        $ruta = $archivo->storeAs($directorio, $nombreArchivo, 'public');
+    // ✅ Guarda en BD: "storage/" + ruta relativa
+    $registro->arch_pago = "storage/" . $rutaRelativa;
+    $registro->save();
 
-        $registro->arch_pago = $ruta;
-        $registro->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Comprobante subido correctamente'
-        ]);
-    }
+    return response()->json([
+        'success' => true,
+        'message' => 'Comprobante subido correctamente'
+    ]);
+}
 
     public function historialPagosEventuales(){
         return view('operaciones.historialPagosEventuales');

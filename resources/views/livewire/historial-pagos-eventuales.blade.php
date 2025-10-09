@@ -99,7 +99,7 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     @if($registro->arch_pago)
-                                        <a href="{{ Storage::url($registro->arch_pago) }}"
+                                        <a href="{{ asset($registro->arch_pago) }}"
                                            target="_blank"
                                            class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg transition duration-200 shadow-sm"
                                            title="Ver comprobante">
