@@ -4,7 +4,7 @@
         $tipoSeleccionado='oficina';
             $cards = [
                 [
-                    'titulo' => 'Registros de Vales de Comida',
+                    'titulo' => 'Solicitudes para Vales de Comida',
                     'ruta' => route('auxcont.valesComida'),
                     'icono' => 'burger',
                     'color' => 'bg-green-100 dark:bg-green-700',

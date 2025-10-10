@@ -313,6 +313,8 @@ Route::middleware('auth')->group(function () {
     Route::get('historial_cheques', [AuxcontController::class, 'historialCheques'])->name('auxcont.finiquitos.historial');
     Route::get('/eventuales',[AuxcontController::class, 'eventualesList'])->name('auxcont.eventuales');
     Route::get('/vales-comida', [AuxcontController::class, 'valesComida'])->name('auxcont.valesComida');
+    Route::post('/vales-comida/{id}/aceptar', [AuxcontController::class, 'aceptarSolicitudVales'])->name('vales.comida.aceptar');
+    Route::post('/vales-comida/{id}/rechazar', [AuxcontController::class, 'rechazarSolicitudVales'])->name('vales.comida.rechazar');
 
     //Usuario Juridico
     Route::get('lista_nuevasBajas', [JuridicoController::class, 'listaNuevasBajas'])->name('juridico.nuevasBajas');

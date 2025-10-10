@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Models\SolicitudBajas;
+use App\Models\ValesComida;
 use App\Models\User;
 
 class AuxcontController extends Controller
@@ -106,6 +109,31 @@ class AuxcontController extends Controller
     }
 
     public function valesComida(){
-        return view('auxcont.valesComida');
+        $registros = ValesComida::where('estatus', 'En Proceso')
+        ->paginate(10);
+        return view('auxcont.valesComida', compact('registros'));
+    }
+
+    public function aceptarSolicitudVales(Request $request, $id): RedirectResponse
+    {
+        $vale = ValesComida::findOrFail($id);
+        $vale->estatus = 'Aceptada';
+        $vale->observaciones = 'Pendiente subir archivos';
+        $vale->save();
+
+        return redirect()->back()->with('success', 'Vale aceptado correctamente');
+    }
+
+    public function rechazarSolicitudVales(Request $request, $id): JsonResponse
+    {
+        $vale = ValesComida::findOrFail($id);
+        $vale->estatus = 'Rechazada';
+        $vale->observaciones = $request->observaciones ?? '';
+        $vale->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Vale rechazado correctamente'
+        ]);
     }
 }
