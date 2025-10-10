@@ -325,6 +325,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/pagos_eventuales', [OperacionesController::class, 'pagosEventuales'])->name('operaciones.pagosEventuales');
     Route::post('/operaciones/subir-pago-eventual/{id}', [OperacionesController::class, 'subirPagoEventual'])->name('operaciones.subir.pago.eventual');
     Route::get('/historial-pagos-eventuales', [OperacionesController::class, 'historialPagosEventuales'])->name('operaciones.historialPagosEventuales');
+    Route::get('/vales-comida/crear',[OperacionesController::class, 'createValeComida'])->name('vales.comida.crear');
 
     //Mensajería
     Route::get('/mensajes/nuevo', [ChatWebController::class, 'crear'])->name('mensajes.crearChat');

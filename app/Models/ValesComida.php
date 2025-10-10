@@ -13,4 +13,14 @@ class ValesComida extends Model
         'user_id',
         'estatus',
     ];
+
+    protected $casts = [
+        'fecha' => 'date',
+        'monto' => 'decimal:2',
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

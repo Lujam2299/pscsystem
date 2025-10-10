@@ -6,6 +6,12 @@
                     'titulo' => 'Vales de Comida',
                     'ruta' => route('operaciones.valesComida'),
                     'icono' => 'burger',
+                    'color' => 'bg-yellow-100 dark:bg-yellow-700'
+                ],
+                [
+                    'titulo' => 'Subir Vales de Comida',
+                    'ruta' => '#',
+                    'icono' => 'burger',
                     'color' => 'bg-blue-100 dark:bg-blue-700'
                 ],
                 [
@@ -33,21 +39,21 @@
                     'color' => 'bg-green-100 dark:bg-green-700'
                 ],
                 [
-                    'titulo' => 'Ficha Técnica',
-                    'ruta' => route('user.verFicha', auth()->user()->id),
-                    'icono' => 'file-description',
-                    'color' => 'bg-yellow-100 dark:bg-yellow-700'
-                ],
-                [
                     'titulo' => 'Solicitar Vacaciones',
                     'ruta' => route('user.solicitarVacacionesForm'),
                     'icono' => 'confetti',
-                    'color' => 'bg-blue-100 dark:bg-blue-700'
+                    'color' => 'bg-yellow-100 dark:bg-yellow-700'
                 ],
                 [
                     'titulo' => 'Mi Historial de Vacaciones',
                     'ruta' => route('user.historialVacaciones'),
                     'icono' => 'calendar',
+                    'color' => 'bg-blue-100 dark:bg-blue-700'
+                ],
+                [
+                    'titulo' => 'Ficha Técnica',
+                    'ruta' => route('user.verFicha', auth()->user()->id),
+                    'icono' => 'file-description',
                     'color' => 'bg-green-100 dark:bg-green-700'
                 ],
                 [

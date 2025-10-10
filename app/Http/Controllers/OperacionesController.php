@@ -63,26 +63,24 @@ class OperacionesController extends Controller
         return view('operaciones.pagosEventuales', compact('registros'));
     }
 
-public function subirPagoEventual(Request $request, $id)
-{
-    $request->validate([
-        'archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
-    ]);
+    public function subirPagoEventual(Request $request, $id)
+    {
+        $request->validate([
+            'archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
 
-    $registro = Eventuales::findOrFail($id);
+        $registro = Eventuales::findOrFail($id);
 
-    // Guarda el archivo en storage/app/public/PagoEventuales/{id}/...
-    $rutaRelativa = $request->file('archivo')->store("PagoEventuales/{$id}", 'public');
+        $rutaRelativa = $request->file('archivo')->store("PagoEventuales/{$id}", 'public');
 
-    // ✅ Guarda en BD: "storage/" + ruta relativa
-    $registro->arch_pago = "storage/" . $rutaRelativa;
-    $registro->save();
+        $registro->arch_pago = "storage/" . $rutaRelativa;
+        $registro->save();
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Comprobante subido correctamente'
-    ]);
-}
+        return response()->json([
+            'success' => true,
+            'message' => 'Comprobante subido correctamente'
+        ]);
+    }
 
     public function historialPagosEventuales(){
         return view('operaciones.historialPagosEventuales');
@@ -90,5 +88,9 @@ public function subirPagoEventual(Request $request, $id)
 
     public function valesIndex(){
         return view('operaciones.valesComidas');
+    }
+
+    public function createValeComida(){
+        return view('operaciones.createValeComida');
     }
 }
