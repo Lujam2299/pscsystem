@@ -315,6 +315,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/vales-comida', [AuxcontController::class, 'valesComida'])->name('auxcont.valesComida');
     Route::post('/vales-comida/{id}/aceptar', [AuxcontController::class, 'aceptarSolicitudVales'])->name('vales.comida.aceptar');
     Route::post('/vales-comida/{id}/rechazar', [AuxcontController::class, 'rechazarSolicitudVales'])->name('vales.comida.rechazar');
+    Route::get('/vales-comida/ver-comprobantes', [AuxcontController::class, 'verComprobantes'])->name('auxcont.comprobantesVales');
+    Route::post('/vales-comida/{id}/aprobar-comprobacion', [AuxcontController::class, 'aprobarComprobacion'])->name('vales.comprobacion.aprobar');
+    Route::post('/vales-comida/{id}/rechazar-comprobacion', [AuxcontController::class, 'rechazarComprobacion'])->name('vales.comprobacion.rechazar');
+    Route::get('/historial_vales_comida', [AuxcontController::class, 'historialValesComida'])->name('auxcont.historialVales');
+    Route::get('/api/vales-comida/{id}/comprobantes', [AuxcontController::class, 'obtenerComprobantes'])->name('vales.comprobantes.api');
 
     //Usuario Juridico
     Route::get('lista_nuevasBajas', [JuridicoController::class, 'listaNuevasBajas'])->name('juridico.nuevasBajas');
@@ -328,6 +333,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/operaciones/subir-pago-eventual/{id}', [OperacionesController::class, 'subirPagoEventual'])->name('operaciones.subir.pago.eventual');
     Route::get('/historial-pagos-eventuales', [OperacionesController::class, 'historialPagosEventuales'])->name('operaciones.historialPagosEventuales');
     Route::get('/vales-comida/crear',[OperacionesController::class, 'createValeComida'])->name('vales.comida.crear');
+    Route::get('/vales_pendientes', [operacionesController::class, 'valesPendientes'])->name('operaciones.valesPendientes');
+
+    Route::get('/vales-comida/{id}/comprobantes', [OperacionesController::class, 'mostrarFormularioComprobantes'])->name('vales.comprobantes.formulario');
+    Route::post('/vales-comida/{id}/comprobantes', [OperacionesController::class, 'subirComprobantes'])->name('vales.comprobantes.subir');
 
     //Mensajería
     Route::get('/mensajes/nuevo', [ChatWebController::class, 'crear'])->name('mensajes.crearChat');

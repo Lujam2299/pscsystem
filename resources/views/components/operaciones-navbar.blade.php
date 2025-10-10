@@ -6,13 +6,19 @@
                     'titulo' => 'Vales de Comida',
                     'ruta' => route('operaciones.valesComida'),
                     'icono' => 'burger',
-                    'color' => 'bg-yellow-100 dark:bg-yellow-700'
+                    'color' => 'bg-green-100 dark:bg-green-700'
                 ],
                 [
                     'titulo' => 'Subir Vales de Comida',
-                    'ruta' => '#',
+                    'ruta' => route('operaciones.valesPendientes'),
                     'icono' => 'burger',
-                    'color' => 'bg-blue-100 dark:bg-blue-700'
+                    'color' => 'bg-yellow-100 dark:bg-yellow-700'
+                ],
+                [
+                    'titulo' => 'Historial de Solicitudes de Vales de Comida',
+                    'ruta' => route('auxcont.historialVales'),
+                    'icono' => 'file-text',
+                    'color' => 'bg-blue-100 dark:bg-blue-700',
                 ],
                 [
                     'titulo' => 'Listas de Asistencia',

@@ -11,6 +11,7 @@ class ValesComida extends Model
         'fecha',
         'monto',
         'user_id',
+        'num_elementos',
         'estatus',
     ];
 
@@ -22,5 +23,10 @@ class ValesComida extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function comprobantes()
+    {
+        return $this->hasMany(ComprobanteVale::class, 'vale_comida_id');
     }
 }

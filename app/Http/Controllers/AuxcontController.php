@@ -136,4 +136,51 @@ class AuxcontController extends Controller
             'message' => 'Vale rechazado correctamente'
         ]);
     }
+
+    public function verComprobantes(){
+        $vales = ValesComida::with('comprobantes', 'user')
+            ->where('estatus', 'Comprobación En Revisión')
+            ->paginate(10);
+
+        return view('auxcont.verComprobantes', compact('vales'));
+    }
+
+    public function aprobarComprobacion(Request $request, $id)
+{
+    $vale = ValesComida::findOrFail($id);
+    $vale->estatus = 'Comprobación Aprobada';
+    $vale->save();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Comprobación aprobada correctamente'
+    ]);
+}
+
+    public function rechazarComprobacion(Request $request)
+    {
+        $vale = ValesComida::findOrFail($request->route('id'));
+        $vale->estatus = 'Comprobación Rechazada';
+        $vale->observaciones = $request->input('motivo') ?? '';
+        $vale->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Comprobación rechazada correctamente'
+        ]);
+    }
+
+    public function historialValesComida(){
+        return view('auxcont.historialVales');
+    }
+
+    public function obtenerComprobantes($id)
+    {
+        $vale = ValesComida::with('comprobantes')->findOrFail($id);
+
+        return response()->json([
+            'comprobantes' => $vale->comprobantes
+        ]);
+    }
+
 }

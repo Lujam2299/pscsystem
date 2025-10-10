@@ -7,6 +7,20 @@
                     'titulo' => 'Solicitudes para Vales de Comida',
                     'ruta' => route('auxcont.valesComida'),
                     'icono' => 'burger',
+                    'color' => 'bg-blue-100 dark:bg-blue-700',
+                    'mostrar' => (Auth::user()->rol == 'CONTADORA' || Auth::user()->rol == 'admin' || Auth::user()->rol == 'ADMINISTRADOR')
+                ],
+                [
+                    'titulo' => 'Comprobantes de Vales de Comida',
+                    'ruta' => route('auxcont.comprobantesVales'),
+                    'icono' => 'file-text',
+                    'color' => 'bg-yellow-100 dark:bg-yellow-700',
+                    'mostrar' => (Auth::user()->rol == 'CONTADORA' || Auth::user()->rol == 'admin' || Auth::user()->rol == 'ADMINISTRADOR')
+                ],
+                [
+                    'titulo' => 'Historial de Solicitudes de Vales de Comida',
+                    'ruta' => route('auxcont.historialVales'),
+                    'icono' => 'file-text',
                     'color' => 'bg-green-100 dark:bg-green-700',
                     'mostrar' => (Auth::user()->rol == 'CONTADORA' || Auth::user()->rol == 'admin' || Auth::user()->rol == 'ADMINISTRADOR')
                 ],
@@ -14,7 +28,7 @@
                     'titulo' => 'Finiquitos',
                     'ruta' => route('auxcont.finiquitos'),
                     'icono' => 'file-text',
-                    'color' => 'bg-red-100 dark:bg-red-700',
+                    'color' => 'bg-blue-100 dark:bg-blue-700',
                 ],
                 [
                     'titulo' => 'Historial de Registros de Cheques',
@@ -43,10 +57,10 @@
                     'color' => 'bg-yellow-100 dark:bg-yellow-700'
                 ],
                 [
-                    'titulo' => 'Buzón de Quejas y Sugerencias',
-                    'ruta' => route('user.buzon'),
-                    'icono' => 'message',
-                    'color' => 'bg-purple-100 dark:bg-purple-700',
+                    'titulo' => 'Ficha Técnica',
+                    'ruta' => route('user.verFicha', auth()->user()->id),
+                    'icono' => 'file-description',
+                    'color' => 'bg-green-100 dark:bg-green-700',
                 ],
                 [
                     'titulo' => 'Mensajes',
@@ -55,10 +69,10 @@
                     'color' => 'bg-blue-100 dark:bg-blue-700',
                 ],
                 [
-                    'titulo' => 'Ficha Técnica',
-                    'ruta' => route('user.verFicha', auth()->user()->id),
-                    'icono' => 'file-description',
-                    'color' => 'bg-yellow-100 dark:bg-yellow-700',
+                    'titulo' => 'Buzón de Quejas y Sugerencias',
+                    'ruta' => route('user.buzon'),
+                    'icono' => 'message',
+                    'color' => 'bg-purple-100 dark:bg-purple-700',
                 ],
             ];
         @endphp

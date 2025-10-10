@@ -1,0 +1,16 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class ComprobanteVale extends Model
+{
+    protected $fillable = ['vale_comida_id', 'archivo', 'monto'];
+    protected $casts = ['monto' => 'decimal:2'];
+
+    public function vale()
+    {
+        return $this->belongsTo(ValesComida::class, 'vale_comida_id');
+    }
+}
