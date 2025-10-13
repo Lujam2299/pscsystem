@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\RegistrosValesComidasExport;
+use App\Exports\RegistrosEventualesExport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -181,6 +183,48 @@ class AuxcontController extends Controller
         return response()->json([
             'comprobantes' => $vale->comprobantes
         ]);
+    }
+
+    public function exportarValesComida(Request $request)
+    {
+        $request->validate([
+            'search' => 'nullable|string|max:255',
+            'fecha_desde' => 'nullable|date',
+            'fecha_hasta' => 'nullable|date|after_or_equal:fecha_desde',
+            'monto_desde' => 'nullable|numeric|min:0',
+            'monto_hasta' => 'nullable|numeric|min:0|gte:monto_desde',
+            'estatus' => 'nullable|string|in:En Proceso,Aceptada,Comprobación Pendiente,Comprobación En Revisión,Comprobación Aprobada,Comprobación Rechazada'
+        ]);
+
+        $search = $request->search;
+        $fecha_desde = $request->fecha_desde;
+        $fecha_hasta = $request->fecha_hasta;
+        $monto_desde = $request->monto_desde;
+        $monto_hasta = $request->monto_hasta;
+        $estatus = $request->estatus;
+
+        return (new RegistrosValesComidasExport(
+            $search, $fecha_desde, $fecha_hasta, $monto_desde, $monto_hasta, $estatus
+        ))->generateFile();
+    }
+
+    public function exportarRegistrosEventuales(Request $request)
+    {
+        $request->validate([
+            'search' => 'nullable|string|max:255',
+            'tipo_pago' => 'nullable|in:nomina,efectivo',
+            'subpunto_id' => 'nullable|exists:subpuntos,id',
+            'fecha_desde' => 'nullable|date',
+            'fecha_hasta' => 'nullable|date|after_or_equal:fecha_desde'
+        ]);
+
+        $search = $request->search;
+        $tipo_pago = $request->tipo_pago;
+        $subpunto_id = $request->subpunto_id;
+        $fecha_desde = $request->fecha_desde;
+        $fecha_hasta = $request->fecha_hasta;
+
+        return (new RegistrosEventualesExport($search, $tipo_pago, $subpunto_id, $fecha_desde, $fecha_hasta))->generateFile();
     }
 
 }

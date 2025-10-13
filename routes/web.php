@@ -320,6 +320,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/vales-comida/{id}/rechazar-comprobacion', [AuxcontController::class, 'rechazarComprobacion'])->name('vales.comprobacion.rechazar');
     Route::get('/historial_vales_comida', [AuxcontController::class, 'historialValesComida'])->name('auxcont.historialVales');
     Route::get('/api/vales-comida/{id}/comprobantes', [AuxcontController::class, 'obtenerComprobantes'])->name('vales.comprobantes.api');
+    Route::get('/exportar-vales-comida', [AuxcontController::class, 'exportarValesComida'])->name('vales.comida.exportar');
+    Route::get('/exportar-registros-eventuales', [AuxcontController::class, 'exportarRegistrosEventuales'])->name('registros.eventuales.exportar');
 
     //Usuario Juridico
     Route::get('lista_nuevasBajas', [JuridicoController::class, 'listaNuevasBajas'])->name('juridico.nuevasBajas');

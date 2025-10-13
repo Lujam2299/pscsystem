@@ -23,13 +23,23 @@
                     <span class="text-sm font-medium">{{ $vales->total() }}</span>
                     <span class="text-xs">vales</span>
                 </div>
+                <button type="button"
+                        wire:click="exportarConFiltros"
+                        x-data="{}"
+                        x-on:click="$wire.exportarConFiltros().then(url => {
+                            confirmarExportacion(url);
+                        })"
+                        class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition duration-200 shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Exportar a Excel
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Filtros -->
     <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <!-- Búsqueda por nombre -->
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nombre del usuario</label>
             <input type="text"
@@ -38,7 +48,6 @@
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white">
         </div>
 
-        <!-- Fecha desde -->
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Desde</label>
             <input type="date"
@@ -46,7 +55,6 @@
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white">
         </div>
 
-        <!-- Fecha hasta -->
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Hasta</label>
             <input type="date"
@@ -54,7 +62,6 @@
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white">
         </div>
 
-        <!-- Estatus -->
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estado</label>
             <select wire:model.live="estatus"
@@ -67,9 +74,8 @@
         </div>
     </div>
 
-    <!-- Filtros adicionales: Monto -->
     <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Monto desde -->
+
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monto Desde</label>
             <input type="number"
@@ -79,7 +85,6 @@
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white">
         </div>
 
-        <!-- Monto hasta -->
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monto Hasta</label>
             <input type="number"
@@ -173,10 +178,10 @@
                                     @if($vale->comprobantes->count() > 0)
                                         <button type="button"
                                                 onclick="abrirModalComprobantes({{ $vale->id }}, '{{ addslashes($vale->user?->name ?? 'N/D') }}', {{ $vale->monto }}, {{ $vale->comprobantes->sum('monto') }})"
-                                                class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition duration-200 shadow-sm">
+                                                class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition duration-200 shadow-sm">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
                                             Ver Comprobantes
                                         </button>
@@ -255,11 +260,40 @@
     </div>
 </div>
 
-<!-- SweetAlert2 para modal de comprobantes -->
 <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    function confirmarExportacion(url) {
+        Swal.fire({
+            title: '¿Exportar a Excel?',
+            text: "¿Está seguro de que desea descargar el reporte con los filtros aplicados?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, descargar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+            confirmButtonColor: '#22c55e',
+            cancelButtonColor: '#ef4444',
+            showLoaderOnConfirm: true,
+            preConfirm: () => {
+                // Abrir la URL de descarga
+                window.location.href = url;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Mostrar mensaje de éxito mientras se descarga
+                Swal.fire({
+                    title: '¡Descargando!',
+                    text: 'El archivo se está generando...',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        });
+    }
+</script>
+<script>
     function abrirModalComprobantes(valeId, userName, montoTotal, montoComprobado) {
-        // Hacer una llamada AJAX para obtener los comprobantes del vale
         fetch(`/api/vales-comida/${valeId}/comprobantes`, {
             method: 'GET',
             headers: {

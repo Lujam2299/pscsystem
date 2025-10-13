@@ -23,47 +23,62 @@
                     <span class="text-sm font-medium">{{ $registros->total() }}</span>
                     <span class="text-xs">registros</span>
                 </div>
+                <button type="button"
+                        onclick="confirmarExportacionRegistros()"
+                        class="inline-flex items-center px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded-lg transition duration-200 shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Exportar a Excel
+                </button>
             </div>
         </div>
     </div>
 
-    <div class="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nombre del usuario</label>
-            <input type="text"
-                wire:model.live.debounce.300ms="search"
-                placeholder="Buscar por nombre..."
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white">
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Pago</label>
-            <select wire:model.live="tipo_pago"
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white">
-                <option value="todos">Todos</option>
-                <option value="nomina">Nómina</option>
-                <option value="efectivo">Efectivo</option>
-            </select>
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subpunto</label>
-            <select wire:model.live="subpunto_id"
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white">
-                <option value="">Todos</option>
-                @foreach($subpuntos as $subpunto)
-                    <option value="{{ $subpunto->id }}">{{ $subpunto->nombre }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha</label>
-            <input type="date"
-                wire:model.live="fecha"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white">
-        </div>
+    <div class="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nombre del usuario</label>
+        <input type="text"
+            wire:model.live.debounce.300ms="search"
+            placeholder="Buscar por nombre..."
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white">
     </div>
+
+    <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Pago</label>
+        <select wire:model.live="tipo_pago"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white">
+            <option value="todos">Todos</option>
+            <option value="nomina">Nómina</option>
+            <option value="efectivo">Efectivo</option>
+        </select>
+    </div>
+
+    <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subpunto</label>
+        <select wire:model.live="subpunto_id"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white">
+            <option value="">Todos</option>
+            @foreach($subpuntos as $subpunto)
+                <option value="{{ $subpunto->id }}">{{ $subpunto->nombre }}</option>
+            @endforeach
+        </select>
+    </div>
+
+    <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Desde</label>
+        <input type="date"
+            wire:model.live="fecha_desde"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white">
+    </div>
+
+    <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Hasta</label>
+        <input type="date"
+            wire:model.live="fecha_hasta"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white">
+    </div>
+</div>
 
     <div wire:loading class="mb-4 flex items-center text-sm text-purple-600 dark:text-purple-400">
         <svg class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -246,4 +261,55 @@
             </a>
         </div>
     </div>
+    <!-- SweetAlert2 para confirmar exportación -->
+<script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    function confirmarExportacionRegistros() {
+        // Usar Livewire para obtener los valores actuales de los filtros
+        const component = document.querySelector('[wire\\:id]').__livewire;
+        const search = component.$wire.search;
+        const tipo_pago = component.$wire.tipo_pago;
+        const subpunto_id = component.$wire.subpunto_id;
+        const fecha_desde = component.$wire.fecha_desde;
+        const fecha_hasta = component.$wire.fecha_hasta;
+
+        // Construir la URL con los filtros
+        const params = new URLSearchParams();
+        if (search) params.append('search', search);
+        if (tipo_pago && tipo_pago !== 'todos') params.append('tipo_pago', tipo_pago);
+        if (subpunto_id) params.append('subpunto_id', subpunto_id);
+        if (fecha_desde) params.append('fecha_desde', fecha_desde);
+        if (fecha_hasta) params.append('fecha_hasta', fecha_hasta);
+
+        const url = `{{ route('registros.eventuales.exportar') }}?${params.toString()}`;
+
+        Swal.fire({
+            title: '¿Exportar a Excel?',
+            text: "¿Está seguro de que desea descargar el reporte con los filtros aplicados?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, descargar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+            confirmButtonColor: '#22c55e',
+            cancelButtonColor: '#ef4444',
+            showLoaderOnConfirm: true,
+            preConfirm: () => {
+                // Abrir la URL de descarga
+                window.location.href = url;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Mostrar mensaje de éxito mientras se descarga
+                Swal.fire({
+                    title: '¡Descargando!',
+                    text: 'El archivo se está generando...',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        });
+    }
+</script>
 </div>

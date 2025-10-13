@@ -72,4 +72,22 @@ class HistorialValesComida extends Component
             'estatusOptions' => $estatusOptions,
         ]);
     }
+
+    public function exportarConFiltros()
+    {
+        $params = [
+            'search' => $this->search,
+            'fecha_desde' => $this->fecha_desde,
+            'fecha_hasta' => $this->fecha_hasta,
+            'monto_desde' => $this->monto_desde,
+            'monto_hasta' => $this->monto_hasta,
+            'estatus' => $this->estatus
+        ];
+
+        $queryString = http_build_query($params);
+        $url = route('vales.comida.exportar') . '?' . $queryString;
+
+        // Devolver la URL para que el frontend la use
+        return $url;
+    }
 }
