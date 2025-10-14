@@ -185,6 +185,9 @@ Route::middleware('auth')->group(function () {
     return response()->json(['dias_utilizados' => $diasUtilizados]);
 })->name('api.dias.utilizados');
 
+    Route::post('/api/usuarios/buscar', [UserController::class, 'buscarUsuarios'])
+    ->name('api.usuarios.buscar');
+
     /*
      * MONITORISTA
      */

@@ -79,19 +79,17 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                                 <div class="flex flex-wrap gap-2">
-                                                    <form action="{{ route('vales.comida.aceptar', $registro->id) }}" method="POST" class="inline-block">
-                                                        @csrf
-                                                        @method('POST')
-                                                        <button type="submit"
-                                                                class="inline-flex items-center px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg transition duration-200 shadow-sm"
-                                                                onclick="return confirm('¿Aceptar este vale de comida?')">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                            Aceptar
-                                                        </button>
-                                                    </form>
+                                                    <!-- Botón Aceptar con SweetAlert2 -->
+                                                    <button type="button"
+                                                            onclick="confirmarAceptacion({{ $registro->id }}, '{{ addslashes($registro->user?->name ?? 'N/D') }}')"
+                                                            class="inline-flex items-center px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg transition duration-200 shadow-sm">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                        Aceptar
+                                                    </button>
 
+                                                    <!-- Botón Rechazar -->
                                                     <button type="button"
                                                             onclick="abrirModalRechazar({{ $registro->id }}, '{{ addslashes($registro->user?->name ?? 'N/D') }}')"
                                                             class="inline-flex items-center px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition duration-200 shadow-sm">
@@ -128,62 +126,114 @@
             </div>
         </div>
     </div>
+
     <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-    function abrirModalRechazar(valeId, userName) {
-        Swal.fire({
-            title: `Rechazar Vale - ${userName}`,
-            html: `
-                <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones (opcional)</label>
-                <textarea id="observaciones"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
-                          rows="3"
-                          placeholder="Escriba el motivo del rechazo..."></textarea>
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Rechazar',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#d33',
-            preConfirm: () => {
-                const observaciones = document.getElementById('observaciones').value;
+    <script>
+        // Función para confirmar aceptación con SweetAlert2
+        function confirmarAceptacion(valeId, userName) {
+            Swal.fire({
+                title: `¿Aceptar vale de ${userName}?`,
+                text: "¿Está seguro de que desea aceptar este vale de comida?",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, aceptar',
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true,
+                confirmButtonColor: '#22c55e',
+                cancelButtonColor: '#ef4444',
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    const formData = new FormData();
+                    formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+                    formData.append('_method', 'POST');
 
-                const formData = new FormData();
-                formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
-                formData.append('_method', 'POST');
-                if (observaciones) {
-                    formData.append('observaciones', observaciones);
+                    return fetch(`/vales-comida/${valeId}/aceptar`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.message || 'Error al aceptar el vale');
+                        }
+                        return data;
+                    })
+                    .catch(error => {
+                        Swal.showValidationMessage(`Error: ${error.message}`);
+                        return false;
+                    });
                 }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: '¡Éxito!',
+                        text: result.value.message,
+                        icon: 'success'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                }
+            });
+        }
 
-                return fetch(`/vales-comida/${valeId}/rechazar`, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
+        // Función para rechazar con modal
+        function abrirModalRechazar(valeId, userName) {
+            Swal.fire({
+                title: `Rechazar Vale - ${userName}`,
+                html: `
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones (opcional)</label>
+                    <textarea id="observaciones"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
+                              rows="3"
+                              placeholder="Escriba el motivo del rechazo..."></textarea>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Rechazar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#d33',
+                preConfirm: () => {
+                    const observaciones = document.getElementById('observaciones').value;
+
+                    const formData = new FormData();
+                    formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+                    formData.append('_method', 'POST');
+                    if (observaciones) {
+                        formData.append('observaciones', observaciones);
                     }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.message || 'Error al rechazar el vale');
-                    }
-                    return data;
-                })
-                .catch(error => {
-                    Swal.showValidationMessage(`Error: ${error.message}`);
-                    return false;
-                });
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire({
-                    title: '¡Éxito!',
-                    text: result.value.message,
-                    icon: 'success'
-                }).then(() => {
-                    window.location.reload();
-                });
-            }
-        });
-    }
-</script>
+
+                    return fetch(`/vales-comida/${valeId}/rechazar`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.message || 'Error al rechazar el vale');
+                        }
+                        return data;
+                    })
+                    .catch(error => {
+                        Swal.showValidationMessage(`Error: ${error.message}`);
+                        return false;
+                    });
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: '¡Éxito!',
+                        text: result.value.message,
+                        icon: 'success'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                }
+            });
+        }
+    </script>
 </x-app-layout>

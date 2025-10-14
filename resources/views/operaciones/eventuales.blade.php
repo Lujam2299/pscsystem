@@ -74,9 +74,9 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                                 <button type="button"
                                                         onclick="abrirModalRegistro({{ $user->id }}, '{{ addslashes($user->name) }}')"
-                                                        class="inline-flex items-center px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded-lg transition duration-200 shadow-sm">
+                                                        class="inline-flex items-center px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition duration-200 shadow-sm">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                                     </svg>
                                                     Registrar Turno
                                                 </button>

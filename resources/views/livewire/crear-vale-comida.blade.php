@@ -29,50 +29,8 @@
     @endif
 
     <form wire:submit.prevent="save" class="space-y-6">
-        <!-- Búsqueda de usuario -->
-        <div class="relative">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Usuario <span class="text-red-500">*</span>
-            </label>
-            <input type="text"
-                   wire:model.live="search"
-                   placeholder="Buscar por nombre..."
-                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white"
-                   autocomplete="off">
 
-            <!-- Resultados de búsqueda -->
-            @if(count($usuarios) > 0)
-                <div class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto">
-                    @foreach($usuarios as $usuario)
-                        <div wire:click="selectUser({{ $usuario->id }}, '{{ addslashes($usuario->name) }}')"
-                             class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-sm text-gray-900 dark:text-white">
-                            {{ $usuario->name }}
-                        </div>
-                    @endforeach
-                </div>
-            @endif
 
-            <!-- Usuario seleccionado -->
-            @if($selectedUserId)
-                <div class="mt-2 flex items-center bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600 dark:text-blue-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    <span class="text-sm text-blue-800 dark:text-blue-200">{{ $selectedUserName }}</span>
-                    <button type="button"
-                            wire:click="$set('selectedUserId', ''); $set('selectedUserName', ''); $set('search', '');"
-                            class="ml-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
-                        ×
-                    </button>
-                </div>
-            @endif
-
-            @error('selectedUserId')
-                <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
-            @enderror
-        </div>
-
-        <!-- Fecha -->
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Fecha <span class="text-red-500">*</span>
@@ -83,7 +41,6 @@
             @error('fecha') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
         </div>
 
-        <!-- Monto -->
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Monto <span class="text-red-500">*</span>
@@ -97,7 +54,6 @@
             @error('monto') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
         </div>
 
-        <!-- Número de elementos -->
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Número de Elementos <span class="text-red-500">*</span>
@@ -110,7 +66,6 @@
             @error('num_elementos') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
         </div>
 
-        <!-- Botones -->
         <div class="flex flex-wrap gap-3 pt-4">
             <button type="submit"
                     class="inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">

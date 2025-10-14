@@ -115,38 +115,41 @@ class OperacionesController extends Controller
         return view('operaciones.formularioComprobantes', compact('vale'));
     }
 
-    public function subirComprobantes(Request $request, $id)
-    {
-        $vale = ValesComida::findOrFail($id);
+public function subirComprobantes(Request $request, $id)
+{
+    $vale = ValesComida::findOrFail($id);
 
-        $request->validate([
-            'archivos' => 'required|array|min:1',
-            'archivos.*' => 'file|mimes:pdf,jpg,jpeg,png|max:5120',
-            'montos' => 'required|array|min:1',
-            'montos.*' => 'required|numeric|min:0.01'
-        ]);
+    $request->validate([
+        'archivos' => 'required|array|min:1',
+        'archivos.*' => 'file|mimes:pdf,jpg,jpeg,png|max:5120',
+        'montos' => 'required|array|min:1',
+        'montos.*' => 'required|numeric|min:0.01',
+        'comprobantes' => 'required|array',
+        'comprobantes.*.usuario_id' => 'required|exists:users,id'
+    ]);
 
-        if (count($request->archivos) !== count($request->montos)) {
-            return back()->withErrors(['error' => 'El número de archivos debe coincidir con el número de montos']);
-        }
-
-        $sumaMontos = array_sum($request->montos);
-        if (abs($sumaMontos - $vale->monto) > 0.01) {
-            return back()->withErrors(['error' => 'La suma de los montos debe ser igual al monto del vale: $' . number_format($vale->monto, 2)]);
-        }
-
-        foreach ($request->archivos as $index => $archivo) {
-            $ruta = $archivo->store('comprobantes-vales/' . $vale->id, 'public');
-            ComprobanteVale::create([
-                'vale_comida_id' => $vale->id,
-                'archivo' => 'storage/' . $ruta,
-                'monto' => $request->montos[$index]
-            ]);
-        }
-
-        $vale->estatus = 'Comprobación En Revisión';
-        $vale->save();
-
-        return redirect()->route('operaciones.valesPendientes')->with('success', 'Comprobantes subidos correctamente');
+    if (count($request->archivos) !== count($request->montos)) {
+        return back()->withErrors(['error' => 'El número de archivos debe coincidir con el número de montos']);
     }
+
+    $sumaMontos = array_sum($request->montos);
+    if (abs($sumaMontos - $vale->monto) > 0.01) {
+        return back()->withErrors(['error' => 'La suma de los montos debe ser igual al monto del vale: $' . number_format($vale->monto, 2)]);
+    }
+
+    foreach ($request->archivos as $index => $archivo) {
+        $ruta = $archivo->store('comprobantes-vales/' . $vale->id, 'public');
+        ComprobanteVale::create([
+            'vale_comida_id' => $vale->id,
+            'archivo' => 'storage/' . $ruta,
+            'monto' => $request->montos[$index],
+            'user_id' => $request->comprobantes[$index]['usuario_id'] // ✅ Guardar usuario por comprobante
+        ]);
+    }
+
+    $vale->estatus = 'Comprobación En Revisión';
+    $vale->save();
+
+    return redirect()->route('operaciones.valesPendientes')->with('success', 'Comprobantes subidos correctamente');
+}
 }

@@ -27,21 +27,20 @@
         </div>
     </div>
 
-    <!-- Filtros -->
     <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nombre del usuario</label>
             <input type="text"
-                   wire:model.live.debounce.300ms="search"
-                   placeholder="Buscar por nombre..."
-                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white">
+                wire:model.live.debounce.300ms="search"
+                placeholder="Buscar por nombre..."
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white">
         </div>
 
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha</label>
             <input type="date"
-                   wire:model.live="fecha"
-                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white">
+                wire:model.live="fecha"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white">
         </div>
     </div>
 
@@ -121,7 +120,6 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <!-- Aquí irán las acciones (ver, editar, etc.) -->
                                     <span class="text-gray-400">—</span>
                                 </td>
                             </tr>

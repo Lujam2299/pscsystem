@@ -4,6 +4,35 @@
     <div class="py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+                @if(session('success'))
+                    <div class="mb-6 bg-green-100 border-l-4 border-green-500 rounded-r text-green-900 px-4 py-3 shadow-md" role="alert">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium">{{ session('success') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                @if(session('error'))
+                    <div class="mb-6 bg-red-100 border-l-4 border-red-500 rounded-r text-red-900 px-4 py-3 shadow-md" role="alert">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium">{{ session('error') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 <div class="border-b border-gray-200 dark:border-gray-700 pb-6 mb-6">
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -70,9 +99,9 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                                 <a href="{{ route('vales.comprobantes.formulario', $vale->id) }}"
-                                                   class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition duration-200 shadow-sm">
+                                                   class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition duration-200 shadow-sm">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                                     </svg>
                                                     Subir Comprobantes
                                                 </a>

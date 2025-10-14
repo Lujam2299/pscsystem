@@ -261,4 +261,22 @@ class UserController extends Controller
 
         return redirect()->route('user.buzon')->with('success', 'Mensaje enviado correctamente');
     }
+
+    public function buscarUsuarios(Request $request)
+    {
+        $request->validate([
+            'search' => 'required|string|min:2|max:100'
+        ]);
+
+        $usuarios = User::where('estatus', 'Activo')
+            ->where('name', 'like', '%' . $request->search . '%')
+            ->select('id', 'name')
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'usuarios' => $usuarios
+        ]);
+    }
 }

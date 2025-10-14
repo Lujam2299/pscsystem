@@ -116,14 +116,17 @@ class AuxcontController extends Controller
         return view('auxcont.valesComida', compact('registros'));
     }
 
-    public function aceptarSolicitudVales(Request $request, $id): RedirectResponse
+    public function aceptarSolicitudVales(Request $request, $id):JsonResponse
     {
         $vale = ValesComida::findOrFail($id);
         $vale->estatus = 'Aceptada';
         $vale->observaciones = 'Pendiente subir archivos';
         $vale->save();
 
-        return redirect()->back()->with('success', 'Vale aceptado correctamente');
+        return response()->json([
+            'success' => true,
+            'message' => 'Solicitud respondida correctamente'
+        ]);
     }
 
     public function rechazarSolicitudVales(Request $request, $id): JsonResponse

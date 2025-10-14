@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use App\Models\User;
 use App\Models\ValesComida;
@@ -41,12 +42,10 @@ class CrearValeComida extends Component
     public function save()
     {
         $this->validate([
-            'selectedUserId' => 'required|exists:users,id',
             'fecha' => 'required|date',
             'monto' => 'required|numeric|min:0.01',
             'num_elementos' => 'required|integer|min:1',
         ], [
-            'selectedUserId.required' => 'Debe seleccionar un usuario',
             'fecha.required' => 'La fecha es requerida',
             'monto.required' => 'El monto es requerido',
             'monto.min' => 'El monto debe ser mayor a 0',
@@ -55,7 +54,7 @@ class CrearValeComida extends Component
         ]);
 
         ValesComida::create([
-            'user_id' => $this->selectedUserId,
+            'user_id' => Auth::user()->id,
             'fecha' => $this->fecha,
             'monto' => $this->monto,
             'num_elementos' => $this->num_elementos,
