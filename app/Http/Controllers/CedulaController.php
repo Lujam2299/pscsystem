@@ -56,7 +56,7 @@ class CedulaController extends Controller
                     $name = "EMA_{$e}_{$mesEma}.pdf";
                     $path = "cedulas/ema/{$anio}/{$mesEma}";
                     $file->storeAs($path, $name, 'public');
-                    $record["ema_{$e}"] = "{$path}/{$name}";
+                    $record["ema_{$e}"] = "storage/{$path}/{$name}";
                 }
             }
             $record->mes_ema = $mesEma;
@@ -70,7 +70,7 @@ class CedulaController extends Controller
                     $name = "EVA_{$e}_{$periodoEva}.pdf";
                     $path = "cedulas/eva/{$anio}/{$periodoEva}";
                     $file->storeAs($path, $name, 'public');
-                    $record["eva_{$e}"] = "{$path}/{$name}";
+                    $record["eva_{$e}"] = "storage/{$path}/{$name}";
                 }
             }
             $record->periodo_eva = $periodoEva;
