@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\RiesgoTrabajo;
 use Illuminate\Support\Facades\Storage; // Para manejar la subida de archivos
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 class RiesgoTrabajoController extends Controller
 {
     /**
@@ -42,27 +43,37 @@ class RiesgoTrabajoController extends Controller
         'arch_alta' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
     ]);
 
+    $userId = $request->user_id;
+    $baseDir = "RiesgosTrabajo/{$userId}";
+
     $rutaArchivoPdf = null;
     if ($request->hasFile('archivo_pdf')) {
-        $rutaArchivoPdf = $request->file('archivo_pdf')->store('riesgos_trabajo_pdfs', 'public');
+        $originalName = $request->file('archivo_pdf')->getClientOriginalName();
+        $extension = $request->file('archivo_pdf')->getClientOriginalExtension();
+        $fileName = Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) . '.' . $extension;
+        $rutaArchivoPdf = $request->file('archivo_pdf')->storeAs($baseDir, $fileName, 'public');
     }
 
     $rutaArchAlta = null;
     if ($request->hasFile('arch_alta')) {
-        $rutaArchAlta = $request->file('arch_alta')->store('riesgos_trabajo_altas', 'public');
+        $originalName = $request->file('arch_alta')->getClientOriginalName();
+        $extension = $request->file('arch_alta')->getClientOriginalExtension();
+        $fileName = Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) . '.' . $extension;
+        $rutaArchAlta = $request->file('arch_alta')->storeAs($baseDir, $fileName, 'public');
     }
 
     RiesgoTrabajo::create([
-        'user_id' => $request->user_id,
+        'user_id' => $userId,
         'tipo_riesgo' => $request->tipo_riesgo,
         'descripcion_observaciones' => $request->descripcion_observaciones,
         'fecha' => $request->fecha,
         'folio' => $request->folio,
-        'ruta_archivo_pdf' => $rutaArchivoPdf,
-        'arch_alta' => $rutaArchAlta,
+        'ruta_archivo_pdf' => $rutaArchivoPdf ? 'storage/' . $rutaArchivoPdf : null,
+        'arch_alta' => $rutaArchAlta ? 'storage/' . $rutaArchAlta : null,
     ]);
 
-    return redirect()->route('aux.riesgosTrabajo')->with('success', 'Riesgo de trabajo registrado exitosamente.');
+    return redirect()->route('aux.riesgosTrabajo')
+        ->with('success', 'Riesgo de trabajo registrado exitosamente.');
 }
  public function showHistorialRiesgosTrabajo()
     {
