@@ -81,6 +81,31 @@
                         </div>
                     </div>
 
+                    <!-- Campo Fecha -->
+                    <div>
+                        <label for="fecha" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Fecha del Incidente
+                        </label>
+                        <input type="date"
+                            name="fecha"
+                            id="fecha"
+                            value="{{ old('fecha') }}"
+                            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white">
+                    </div>
+
+                    <!-- Campo Folio -->
+                    <div>
+                        <label for="folio" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Folio
+                        </label>
+                        <input type="text"
+                            name="folio"
+                            id="folio"
+                            value="{{ old('folio') }}"
+                            placeholder="Ingrese el folio (opcional)"
+                            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white">
+                    </div>
+
                     <div>
                         <label for="tipo_riesgo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Tipo de Riesgo

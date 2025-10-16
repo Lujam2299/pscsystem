@@ -15,7 +15,13 @@ class RiesgoTrabajo extends Model
         'tipo_riesgo',
         'descripcion_observaciones',
         'ruta_archivo_pdf',
-        'arch_alta'
+        'arch_alta',
+        'fecha',
+        'folio',
+    ];
+
+    protected $casts = [
+        'fecha' => 'date',
     ];
 
     // Define la relación con el modelo User

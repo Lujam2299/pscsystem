@@ -36,8 +36,10 @@ class RiesgoTrabajoController extends Controller
         'user_id' => 'required|exists:users,id',
         'tipo_riesgo' => 'required|in:En el trabajo,En trayecto',
         'descripcion_observaciones' => 'nullable|string',
-        'archivo_pdf' => 'nullable|file|mimes:pdf|max:2048', // PDF, max 2MB
-        'arch_alta' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048', // PDF o imágenes, max 2MB
+        'fecha' => 'nullable|date',
+        'folio' => 'nullable|string|max:100',
+        'archivo_pdf' => 'nullable|file|mimes:pdf|max:2048',
+        'arch_alta' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
     ]);
 
     $rutaArchivoPdf = null;
@@ -54,6 +56,8 @@ class RiesgoTrabajoController extends Controller
         'user_id' => $request->user_id,
         'tipo_riesgo' => $request->tipo_riesgo,
         'descripcion_observaciones' => $request->descripcion_observaciones,
+        'fecha' => $request->fecha,
+        'folio' => $request->folio,
         'ruta_archivo_pdf' => $rutaArchivoPdf,
         'arch_alta' => $rutaArchAlta,
     ]);
