@@ -163,7 +163,7 @@
                     <select id="tipo-pago" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                         <option value="">Seleccione</option>
                         <option value="nomina">Nómina</option>
-                        <option value="efectivo">Efectivo</option>
+                        <option value="eventual">Eventual</option>
                     </select>
                 </div>
             `,

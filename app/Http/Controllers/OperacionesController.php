@@ -30,7 +30,7 @@ class OperacionesController extends Controller
                 'subpunto_id' => 'required|exists:subpuntos,id',
                 'turnos' => 'required|array|min:1',
                 'turnos.*' => 'in:dia,tarde,noche',
-                'tipo_pago' => 'required|in:nomina,efectivo',
+                'tipo_pago' => 'required|in:nomina,eventual',
             ]);
 
             if ($validator->fails()) {
@@ -49,11 +49,14 @@ class OperacionesController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Error al registrar eventual: ' . $e->getMessage());
+            \Log::error('Error al registrar eventual: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all()
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error al guardar el registro'
+                'message' => 'Error al guardar el registro: ' . $e->getMessage()
             ], 500);
         }
     }
