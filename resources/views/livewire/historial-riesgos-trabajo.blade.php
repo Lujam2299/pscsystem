@@ -105,8 +105,11 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
-                                    Acciones
+                                    Archivo
                                 </div>
+                            </th>
+                            <th scope="col" class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                Acciones
                             </th>
                         </tr>
                     </thead>
@@ -144,25 +147,36 @@
                                     {{ optional($riesgo->fecha)->format('d/m/Y') ?? 'Sin fecha' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
-    @if ($riesgo->ruta_archivo_pdf)
-        <a href="{{ asset($riesgo->ruta_archivo_pdf) }}" target="_blank"
-            class="inline-flex items-center justify-center p-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white transition duration-200 shadow-sm"
-            title="Ver PDF">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-        </a>
-    @else
-        <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-            N/A
-        </span>
-    @endif
-</td>
+                                    @if ($riesgo->ruta_archivo_pdf)
+                                        <a href="{{ asset($riesgo->ruta_archivo_pdf) }}" target="_blank"
+                                            class="inline-flex items-center justify-center p-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white transition duration-200 shadow-sm"
+                                            title="Ver PDF">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </a>
+                                    @else
+                                        <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                                            N/A
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+                                    <button
+                                        wire:click="abrirModalEdicion({{ $riesgo->id }})"
+                                        class="inline-flex items-center justify-center p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition duration-200 shadow-sm"
+                                        title="Editar riesgo"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </button>
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-6 py-12 whitespace-nowrap text-center">
+                                <td colspan="7" class="px-6 py-12 whitespace-nowrap text-center">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
@@ -238,3 +252,115 @@
         </div>
     </div>
 </div>
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+    Livewire.on('abrir-modal-riesgo', (data) => {
+        const riesgo = data;
+        console.log('Datos recibidos en modal:', riesgo); // ✅ Añade esta línea
+
+        const form = `
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Riesgo</label>
+                    <select id="tipo_riesgo_edit" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="En el trabajo" ${riesgo.tipo_riesgo === 'En el trabajo' ? 'selected' : ''}>En el trabajo</option>
+                        <option value="En trayecto" ${riesgo.tipo_riesgo === 'En trayecto' ? 'selected' : ''}>En trayecto</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observaciones</label>
+                    <textarea id="descripcion_observaciones_edit" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">${riesgo.descripcion_observaciones || ''}</textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha</label>
+                    <input type="date" id="fecha_edit" value="${riesgo.fecha ? new Date(riesgo.fecha).toISOString().split('T')[0] : ''}" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Folio</label>
+                    <input type="text" id="folio_edit" value="${riesgo.folio || ''}" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Archivo PDF</label>
+                    ${riesgo.ruta_archivo_pdf ? '<div class="mb-2"><a href="' + riesgo.ruta_archivo_pdf + '" target="_blank" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Ver archivo actual</a></div>' : ''}
+                    <input type="file" id="archivo_pdf_edit" accept=".pdf" class="w-full">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Archivo de Alta</label>
+                    ${riesgo.arch_alta ? '<div class="mb-2"><a href="' + riesgo.arch_alta + '" target="_blank" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Ver archivo actual</a></div>' : ''}
+                    <input type="file" id="arch_alta_edit" accept=".pdf,.jpg,.jpeg,.png" class="w-full">
+                </div>
+            </div>
+        `;
+
+        Swal.fire({
+            title: 'Editar Riesgo de Trabajo',
+            html: form,
+            showCancelButton: true,
+            confirmButtonText: 'Guardar Cambios',
+            cancelButtonText: 'Cancelar',
+            width: '60rem',
+            preConfirm: () => {
+                console.log('ID recibido en preConfirm:', riesgo.id); // ✅ Añade esta línea
+                const tipoRiesgo = document.getElementById('tipo_riesgo_edit').value;
+                const descripcion = document.getElementById('descripcion_observaciones_edit').value;
+                const fecha = document.getElementById('fecha_edit').value;
+                const folio = document.getElementById('folio_edit').value;
+                const archivoPdf = document.getElementById('archivo_pdf_edit').files[0];
+                const archAlta = document.getElementById('arch_alta_edit').files[0];
+
+                if (!tipoRiesgo) {
+                    Swal.showValidationMessage('El tipo de riesgo es obligatorio');
+                    return false;
+                }
+
+                const formData = new FormData();
+                formData.append('id', riesgo.id); // ✅ Asegúrate de que esta línea esté aquí
+                formData.append('tipo_riesgo', tipoRiesgo);
+                formData.append('descripcion_observaciones', descripcion);
+                formData.append('fecha', fecha);
+                formData.append('folio', folio);
+                if (archivoPdf) formData.append('archivo_pdf', archivoPdf);
+                if (archAlta) formData.append('arch_alta', archAlta);
+                formData.append('_token', '{{ csrf_token() }}');
+
+                return fetch('/riesgos-trabajo/actualizar', { // ✅ Corrige la ruta
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw new Error(err.message || 'Error al actualizar el riesgo') });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.message);
+                    }
+                    return data;
+                })
+                .catch(error => {
+                    Swal.showValidationMessage(`Error: ${error.message}`);
+                    return false;
+                });
+            }
+        }).then(result => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: '¡Éxito!',
+                    text: result.value.message,
+                    icon: 'success'
+                }).then(() => {
+                    window.location.reload();
+                });
+            }
+        });
+    });
+});
+</script>
+@endpush

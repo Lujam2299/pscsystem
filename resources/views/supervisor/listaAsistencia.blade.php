@@ -74,76 +74,79 @@
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 @foreach($elementos as $elemento)
-                                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 hover:shadow-md">
-                                        <div class="p-5">
-                                            <div class="flex items-center space-x-4 mb-4">
-                                                @if($elemento->solicitudAlta?->documentacion?->arch_foto)
-                                                    <img src="{{ asset('storage/' . str_replace('storage/', '', $elemento->solicitudAlta->documentacion->arch_foto)) }}"
-                                                         alt="Foto de {{ $elemento->name }}"
-                                                         class="w-16 h-16 rounded-full object-cover border-2 border-white dark:border-gray-600 shadow-sm">
-                                                @else
-                                                    <div class="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center">
-                                                        <span class="text-white font-medium text-lg">
-                                                            {{ substr($elemento->name ?? '', 0, 2) }}
+                                    @if($elemento->rol != 'GUARDIA')
+                                    @else
+                                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 hover:shadow-md">
+                                            <div class="p-5">
+                                                <div class="flex items-center space-x-4 mb-4">
+                                                    @if($elemento->solicitudAlta?->documentacion?->arch_foto)
+                                                        <img src="{{ asset('storage/' . str_replace('storage/', '', $elemento->solicitudAlta->documentacion->arch_foto)) }}"
+                                                            alt="Foto de {{ $elemento->name }}"
+                                                            class="w-16 h-16 rounded-full object-cover border-2 border-white dark:border-gray-600 shadow-sm">
+                                                    @else
+                                                        <div class="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center">
+                                                            <span class="text-white font-medium text-lg">
+                                                                {{ substr($elemento->name ?? '', 0, 2) }}
+                                                            </span>
+                                                        </div>
+                                                    @endif
+                                                    <div class="flex-1 min-w-0">
+                                                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                                                            {{ $elemento->name }}
+                                                        </h2>
+                                                        <p class="text-sm text-gray-600 dark:text-gray-400 truncate">
+                                                            {{ $elemento->empresa }}
+                                                        </p>
+                                                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                            {{ $elemento->punto }}
+                                                        </p>
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 mt-1">
+                                                            {{ $elemento->rol }}
                                                         </span>
                                                     </div>
-                                                @endif
-                                                <div class="flex-1 min-w-0">
-                                                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                                                        {{ $elemento->name }}
-                                                    </h2>
-                                                    <p class="text-sm text-gray-600 dark:text-gray-400 truncate">
-                                                        {{ $elemento->empresa }}
-                                                    </p>
-                                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                        {{ $elemento->punto }}
-                                                    </p>
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 mt-1">
-                                                        {{ $elemento->rol }}
-                                                    </span>
                                                 </div>
-                                            </div>
 
-                                            <div class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
-                                                <label for="asistencia_{{ $elemento->id }}" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    Asistió
-                                                </label>
-                                                <input type="checkbox"
-                                                       name="asistencias[]"
-                                                       value="{{ $elemento->id }}"
-                                                       id="asistencia_{{ $elemento->id }}"
-                                                       class="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
-                                                       onchange="toggleUploadButton(this, 'upload_container_{{ $elemento->id }}')">
-                                            </div>
+                                                <div class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
+                                                    <label for="asistencia_{{ $elemento->id }}" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                        Asistió
+                                                    </label>
+                                                    <input type="checkbox"
+                                                        name="asistencias[]"
+                                                        value="{{ $elemento->id }}"
+                                                        id="asistencia_{{ $elemento->id }}"
+                                                        class="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
+                                                        onchange="toggleUploadButton(this, 'upload_container_{{ $elemento->id }}')">
+                                                </div>
 
-                                            <div id="upload_container_{{ $elemento->id }}" class="mt-3 hidden">
-                                                <label class="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer text-sm">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                                    </svg>
-                                                    Adjuntar evidencia
-                                                    <input type="file"
-                                                           name="foto_evidencia[{{ $elemento->id }}]"
-                                                           class="hidden"
-                                                           accept="image/*"
-                                                           onchange="previewEvidence(this, '{{ $elemento->id }}')">
-                                                </label>
+                                                <div id="upload_container_{{ $elemento->id }}" class="mt-3 hidden">
+                                                    <label class="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer text-sm">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                        </svg>
+                                                        Adjuntar evidencia
+                                                        <input type="file"
+                                                            name="foto_evidencia[{{ $elemento->id }}]"
+                                                            class="hidden"
+                                                            accept="image/*"
+                                                            onchange="previewEvidence(this, '{{ $elemento->id }}')">
+                                                    </label>
 
-                                                <div id="evidence_preview_{{ $elemento->id }}" class="hidden mt-3">
-                                                    <div class="relative">
-                                                        <img id="evidence_img_{{ $elemento->id }}" class="h-24 w-full object-cover rounded-lg border border-gray-300 dark:border-gray-600">
-                                                        <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all duration-200 rounded-lg flex items-center justify-center">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white opacity-0 hover:opacity-100 transition-opacity duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                            </svg>
+                                                    <div id="evidence_preview_{{ $elemento->id }}" class="hidden mt-3">
+                                                        <div class="relative">
+                                                            <img id="evidence_img_{{ $elemento->id }}" class="h-24 w-full object-cover rounded-lg border border-gray-300 dark:border-gray-600">
+                                                            <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all duration-200 rounded-lg flex items-center justify-center">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white opacity-0 hover:opacity-100 transition-opacity duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                </svg>
+                                                            </div>
                                                         </div>
+                                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Vista previa</p>
                                                     </div>
-                                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Vista previa</p>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    @endif
                                 @endforeach
                             </div>
 

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class RiesgoTrabajo extends Model
 {
     use HasFactory;
-
+    protected $table = 'riesgo_trabajos';
     protected $fillable = [
         'user_id',
         'tipo_riesgo',

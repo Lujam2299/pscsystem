@@ -243,6 +243,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/historial_sipare', [AuxadminController::class, 'historialSipare'])->name('aux.historialSipare');
     Route::get('/historial_acuses_altas', [AuxadminController::class, 'historialAcusesAlta'])->name('aux.historialAcusesAlta');
 
+    Route::post('/riesgos-trabajo/actualizar', [RiesgoTrabajoController::class, 'actualizar'])->name('riesgos-trabajo.actualizar');
+
     //nuevass rutas
     Route::get('/riesgos-trabajo', [RiesgoTrabajoController::class, 'index'])->name('aux.riesgosTrabajo');
     Route::get('/riesgos-trabajo/generar/{user}', [RiesgoTrabajoController::class, 'create'])->name('aux.generarRiesgoForm');
