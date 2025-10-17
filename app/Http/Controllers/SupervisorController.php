@@ -577,6 +577,7 @@ class SupervisorController extends Controller
         $elementos = \App\Models\User::where('empresa', $user->empresa)
             ->where('estatus', 'Activo')
             ->where('rol', '!=', 'Supervisor')
+            ->where('rol', 'GUARDIA')
             ->where(function ($query) use ($user, $subpuntosZona) {
                 $query->where('punto', $user->punto);
                 if ($subpuntosZona->isNotEmpty()) {
