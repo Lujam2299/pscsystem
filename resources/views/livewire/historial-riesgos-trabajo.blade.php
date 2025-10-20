@@ -212,7 +212,7 @@
                         <button wire:click="gotoPage(1)" class="px-3 py-1 text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700">1</button>
                         @if ($currentPage > 3)
                             <span class="px-2 py-1 text-gray-400 dark:text-gray-500">...</span>
-                        @endif
+                        @endif>
                     @endif
 
                     @for ($i = max(1, $currentPage - 1); $i <= min($lastPage, $currentPage + 1); $i++)
@@ -226,19 +226,19 @@
                     @if ($currentPage < $lastPage - 1)
                         @if ($currentPage < $lastPage - 2)
                             <span class="px-2 py-1 text-gray-400 dark:text-gray-500">...</span>
-                        @endif
+                        @endif>
                         <button wire:click="gotoPage({{ $lastPage }})" class="px-3 py-1 text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700">{{ $lastPage }}</button>
-                    @endif
+                    @endif>
 
                     @if ($riesgos->hasMorePages())
                         <button wire:click="nextPage" class="px-3 py-1 text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700">&raquo;</button>
                     @else
                         <span class="px-3 py-1 text-gray-400 dark:text-gray-500 rounded">&raquo;</span>
-                    @endif
+                    @endif>
                 </div>
             </div>
-        @endif
-    @endif
+        @endif>
+    @endif>
 
     <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
         <div class="flex justify-center">
@@ -251,116 +251,76 @@
             </a>
         </div>
     </div>
-</div>
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-    Livewire.on('abrir-modal-riesgo', (data) => {
-        const riesgo = data;
-        console.log('Datos recibidos en modal:', riesgo); // ✅ Añade esta línea
 
-        const form = `
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Riesgo</label>
-                    <select id="tipo_riesgo_edit" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                        <option value="En el trabajo" ${riesgo.tipo_riesgo === 'En el trabajo' ? 'selected' : ''}>En el trabajo</option>
-                        <option value="En trayecto" ${riesgo.tipo_riesgo === 'En trayecto' ? 'selected' : ''}>En trayecto</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observaciones</label>
-                    <textarea id="descripcion_observaciones_edit" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">${riesgo.descripcion_observaciones || ''}</textarea>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha</label>
-                    <input type="date" id="fecha_edit" value="${riesgo.fecha ? new Date(riesgo.fecha).toISOString().split('T')[0] : ''}" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Folio</label>
-                    <input type="text" id="folio_edit" value="${riesgo.folio || ''}" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Archivo PDF</label>
-                    ${riesgo.ruta_archivo_pdf ? '<div class="mb-2"><a href="' + riesgo.ruta_archivo_pdf + '" target="_blank" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Ver archivo actual</a></div>' : ''}
-                    <input type="file" id="archivo_pdf_edit" accept=".pdf" class="w-full">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Archivo de Alta</label>
-                    ${riesgo.arch_alta ? '<div class="mb-2"><a href="' + riesgo.arch_alta + '" target="_blank" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Ver archivo actual</a></div>' : ''}
-                    <input type="file" id="arch_alta_edit" accept=".pdf,.jpg,.jpeg,.png" class="w-full">
+    <!-- ✅ Modal de edición -->
+    @if($mostrarModalEdicion)
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white dark:bg-gray-800">
+                <div class="mt-3">
+                    <div class="flex justify-between items-center pb-3 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Editar Riesgo de Trabajo</h3>
+                        <button wire:click="cerrarModalEdicion" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <form wire:submit.prevent="guardarEdicion" class="space-y-4 mt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Riesgo</label>
+                            <select wire:model="tipo_riesgo" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                <option value="En el trabajo">En el trabajo</option>
+                                <option value="En trayecto">En trayecto</option>
+                            </select>
+                            @error('tipo_riesgo') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observaciones</label>
+                            <textarea wire:model="descripcion_observaciones" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
+                            @error('descripcion_observaciones') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha</label>
+                            <input type="date" wire:model="fecha" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            @error('fecha') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Folio</label>
+                            <input type="text" wire:model="folio" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            @error('folio') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Archivo PDF</label>
+                            @if($ruta_archivo_pdf_actual)
+                                <div class="mb-2">
+                                    <a href="{{ asset($ruta_archivo_pdf_actual) }}" target="_blank" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Ver archivo actual</a>
+                                </div>
+                            @endif
+                            <input type="file" wire:model="archivo_pdf" accept=".pdf" class="w-full">
+                            @error('archivo_pdf') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Archivo de Alta</label>
+                            @if($arch_alta_actual)
+                                <div class="mb-2">
+                                    <a href="{{ asset($arch_alta_actual) }}" target="_blank" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Ver archivo actual</a>
+                                </div>
+                            @endif
+                            <input type="file" wire:model="arch_alta" accept=".pdf,.jpg,.jpeg,.png" class="w-full">
+                            @error('arch_alta') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="flex justify-end space-x-2 mt-6">
+                            <button type="button" wire:click="cerrarModalEdicion" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition duration-200">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition duration-200">
+                                Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
-        `;
-
-        Swal.fire({
-            title: 'Editar Riesgo de Trabajo',
-            html: form,
-            showCancelButton: true,
-            confirmButtonText: 'Guardar Cambios',
-            cancelButtonText: 'Cancelar',
-            width: '60rem',
-            preConfirm: () => {
-                console.log('ID recibido en preConfirm:', riesgo.id); // ✅ Añade esta línea
-                const tipoRiesgo = document.getElementById('tipo_riesgo_edit').value;
-                const descripcion = document.getElementById('descripcion_observaciones_edit').value;
-                const fecha = document.getElementById('fecha_edit').value;
-                const folio = document.getElementById('folio_edit').value;
-                const archivoPdf = document.getElementById('archivo_pdf_edit').files[0];
-                const archAlta = document.getElementById('arch_alta_edit').files[0];
-
-                if (!tipoRiesgo) {
-                    Swal.showValidationMessage('El tipo de riesgo es obligatorio');
-                    return false;
-                }
-
-                const formData = new FormData();
-                formData.append('id', riesgo.id); // ✅ Asegúrate de que esta línea esté aquí
-                formData.append('tipo_riesgo', tipoRiesgo);
-                formData.append('descripcion_observaciones', descripcion);
-                formData.append('fecha', fecha);
-                formData.append('folio', folio);
-                if (archivoPdf) formData.append('archivo_pdf', archivoPdf);
-                if (archAlta) formData.append('arch_alta', archAlta);
-                formData.append('_token', '{{ csrf_token() }}');
-
-                return fetch('/riesgos-trabajo/actualizar', { // ✅ Corrige la ruta
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => { throw new Error(err.message || 'Error al actualizar el riesgo') });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.message);
-                    }
-                    return data;
-                })
-                .catch(error => {
-                    Swal.showValidationMessage(`Error: ${error.message}`);
-                    return false;
-                });
-            }
-        }).then(result => {
-            if (result.isConfirmed) {
-                Swal.fire({
-                    title: '¡Éxito!',
-                    text: result.value.message,
-                    icon: 'success'
-                }).then(() => {
-                    window.location.reload();
-                });
-            }
-        });
-    });
-});
-</script>
-@endpush
+        </div>
+    @endif
+</div>
