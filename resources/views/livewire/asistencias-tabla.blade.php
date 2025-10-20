@@ -23,6 +23,8 @@
             box-shadow: inset -2px 0 0 #374151;
         }
     </style>
+
+    <!-- Formulario de filtros -->
     <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 mb-8">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
@@ -31,19 +33,15 @@
                 </label>
                 <select wire:model.live="punto" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-800 dark:text-white">
                     <option value="">Todos</option>
-                    <option value="DRONES">Drones</option>
-                    <option value="KANSAS">Kansas</option>
-                    <option value="MONTERREY">Monterrey</option>
-                    <option value="GUANAJUATO">Guanajuato</option>
-                    <option value="NUEVO LAREDO">Nvo Laredo</option>
-                    <option value="MEXICO">Mexico</option>
-                    <option value="SLP">SLP</option>
-                    <option value="XALAPA">Xalapa</option>
-                    <option value="MICHOACAN">Michoacán</option>
-                    <option value="PUEBLA">Puebla</option>
-                    <option value="TOLUCA">Toluca</option>
-                    <option value="QUERETARO">Querétaro</option>
-                    <option value="SALTILLO">Saltillo</option>
+
+                    @foreach($subpuntosMap as $puntoGeneral => $subpuntos)
+                        <optgroup label="{{ $puntoGeneral }}">
+                            <option value="{{ $puntoGeneral }}">(Todos) {{ $puntoGeneral }}</option>
+                            @foreach($subpuntos as $subpunto)
+                                <option value="{{ $subpunto }}">{{ $subpunto }}</option>
+                            @endforeach
+                        </optgroup>
+                    @endforeach
                 </select>
             </div>
 
@@ -65,7 +63,6 @@
                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-800 dark:text-white">
             </div>
 
-            <!-- Botón de exportar -->
             <form method="GET" action="{{ route('exportar.asistencias') }}" class="mb-4 mt-7">
                 <input type="hidden" name="punto" value="{{ $punto }}">
                 <input type="hidden" name="fecha_inicio" value="{{ $fecha_inicio }}">
@@ -77,7 +74,6 @@
         </div>
     </div>
 
-    <!-- Tabla -->
     @if($usuarios->isEmpty())
         <div class="text-center py-8 text-gray-500 dark:text-gray-400">
             No hay datos para mostrar con los filtros actuales.
