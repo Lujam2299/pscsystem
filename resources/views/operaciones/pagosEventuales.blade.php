@@ -62,7 +62,7 @@
                                                 @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                                @if($registro->tipo_pago === 'efectivo')
+                                                @if($registro->tipo_pago === 'efectivo' || $registro->tipo_pago === 'eventual')
                                                     <button type="button"
                                                             onclick="abrirModalSubirPago({{ $registro->id }})"
                                                             class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition duration-200 shadow-sm">

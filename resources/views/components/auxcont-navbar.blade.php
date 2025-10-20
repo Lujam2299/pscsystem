@@ -1,6 +1,21 @@
+@php
+    use App\Models\ValesComida;
+    use App\Models\SolicitudBajas;
+
+    $conteoSolicitudesVales = ValesComida::where('estatus', 'En Proceso')->count();
+    $conteoComprobantesPendientes = ValesComida::where('estatus', 'Comprobación En Revisión')
+        ->count();
+    $renuncias = SolicitudBajas::where('estatus', 'Aceptada')
+            ->where('observaciones', 'Finiquito enviado a RH.')
+            ->where('arch_cheque', NULL)
+            ->whereDate('fecha_baja', '>=', now()->subDays(30))
+            ->orderBy('fecha_baja', 'desc')
+            ->count();
+@endphp
 <div class="col-span-full">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         @php
+
         $tipoSeleccionado='oficina';
             $cards = [
                 [
@@ -8,12 +23,14 @@
                     'ruta' => route('auxcont.valesComida'),
                     'icono' => 'burger',
                     'color' => 'bg-blue-100 dark:bg-blue-700',
+                    'notificaciones' => $conteoSolicitudesVales,
                     'mostrar' => (Auth::user()->rol == 'CONTADORA' || Auth::user()->rol == 'admin' || Auth::user()->rol == 'ADMINISTRADOR')
                 ],
                 [
                     'titulo' => 'Comprobantes de Vales de Comida',
                     'ruta' => route('auxcont.comprobantesVales'),
                     'icono' => 'file-text',
+                    'notificaciones' => $conteoComprobantesPendientes,
                     'color' => 'bg-yellow-100 dark:bg-yellow-700',
                     'mostrar' => (Auth::user()->rol == 'CONTADORA' || Auth::user()->rol == 'admin' || Auth::user()->rol == 'ADMINISTRADOR')
                 ],
@@ -28,6 +45,7 @@
                     'titulo' => 'Finiquitos',
                     'ruta' => route('auxcont.finiquitos'),
                     'icono' => 'file-text',
+                    'notificaciones' => $renuncias,
                     'color' => 'bg-blue-100 dark:bg-blue-700',
                 ],
                 [

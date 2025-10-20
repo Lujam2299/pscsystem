@@ -63,7 +63,7 @@ class OperacionesController extends Controller
 
     public function pagosEventuales(){
         $registros = Eventuales::where('arch_pago', null)
-            ->where('fecha', '>=', now()->subDays(15))
+            ->where('tipo_pago', 'eventual')
             ->paginate(10);
         return view('operaciones.pagosEventuales', compact('registros'));
     }
