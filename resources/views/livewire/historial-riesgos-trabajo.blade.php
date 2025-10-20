@@ -237,8 +237,8 @@
                     @endif>
                 </div>
             </div>
-        @endif>
-    @endif>
+        @endif
+    @endif
 
     <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
         <div class="flex justify-center">

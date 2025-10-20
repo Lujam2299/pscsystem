@@ -200,6 +200,15 @@
                                             <label for="dias_solicitados" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Días Solicitados</label>
                                             <input type="number" name="dias_solicitados" id="dias_solicitados" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 cursor-not-allowed" readonly>
                                         </div>
+
+                                        @if (str_contains(strtoupper($user->punto), 'MARY KAY') || str_contains(strtoupper($user->punto), 'MARYKAY'))
+            <div class="md:col-span-2">
+                <label class="flex items-center">
+                    <input type="checkbox" name="turno_doble" id="turno_doble" value="1" class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600">
+                    <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Turno Doble (Sumar un día adicional)</span>
+                </label>
+            </div>
+        @endif
                                     </div>
 
                                     <input type="hidden" name="dias_disponibles" value="{{ $diasDisponibles }}">
@@ -254,6 +263,7 @@
         const diasInput = document.getElementById('dias_solicitados');
         const btnSubmit = document.getElementById('btn_solicitar');
         const periodoInput = document.getElementById('periodo');
+        const turnoDobleCheckbox = document.getElementById('turno_doble');
 
         // Elementos del resumen
         const periodoDisplay = document.getElementById('periodoDisplay');
@@ -276,10 +286,16 @@
                 const fechaFin = new Date(fin.value);
 
                 if (fechaFin >= fechaInicio) {
-                    const diffTime = fechaFin.getTime() - fechaInicio.getTime();
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                    let diffDays = Math.ceil((fechaFin.getTime() - fechaInicio.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+                    // ✅ Si turno doble está marcado, sumar 1 día a los solicitados
+                    if (turnoDobleCheckbox && turnoDobleCheckbox.checked) {
+                        diffDays += 1;
+                    }
+
                     diasInput.value = diffDays;
 
+                    // ✅ Validar contra los días disponibles (sin restar nada por turno doble)
                     if (diffDays > diasDisponiblesActuales) {
                         btnSubmit.disabled = true;
                         btnSubmit.classList.add('bg-red-400', 'cursor-not-allowed');
@@ -308,7 +324,6 @@
 
         function actualizarValores(periodo) {
             if (!periodo) {
-                // Si no hay periodo, usar valores iniciales
                 periodoDisplay.textContent = `${antiguedadInicial}`;
                 diasPorDerechoDisplay.textContent = `${diasPorDerechoInicial} días`;
                 diasUtilizadosDisplay.textContent = `${diasUtilizadosInicial} días`;
@@ -317,10 +332,8 @@
                 return;
             }
 
-            // Actualizar periodo en el display
             periodoDisplay.textContent = `${periodo}`;
 
-            // Calcular días por derecho según el periodo
             let diasPorDerecho;
             if (periodo < 2) {
                 diasPorDerecho = 12;
@@ -346,17 +359,26 @@
                 diasPorDerecho = 32;
             }
 
-            // Calcular días ya utilizados
             calcularDiasYaUtilizados(periodo).then(diasUtilizados => {
                 const diasDisponibles = Math.max(0, diasPorDerecho - diasUtilizados);
 
-                // Actualizar displays
                 diasPorDerechoDisplay.textContent = `${diasPorDerecho} días`;
                 diasUtilizadosDisplay.textContent = `${diasUtilizados} días`;
                 diasDisponiblesDisplay.textContent = `${diasDisponibles} días`;
 
-                // Actualizar valor actual para validación
                 diasDisponiblesActuales = diasDisponibles;
+            });
+        }
+
+        if (turnoDobleCheckbox) {
+            turnoDobleCheckbox.addEventListener('change', () => {
+                const periodo = periodoInput.value ? parseInt(periodoInput.value) : null;
+                if (periodo) {
+                    actualizarValores(periodo);
+                } else {
+                    actualizarValores(null);
+                }
+                calcularDias();
             });
         }
 

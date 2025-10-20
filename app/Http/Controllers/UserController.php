@@ -140,10 +140,18 @@ class UserController extends Controller
         return view('users.solicitarVacacionesForm', compact('user','solicitud', 'documentacion', 'antiguedad','dias', 'diasDisponibles', 'diasUtilizados', 'mesesLaborados'));
     }
 
-    public function solicitarVacaciones(Request $request, $id){
+public function solicitarVacaciones(Request $request, $id){
+    Log::info('Solicitud de vacaciones recibida', [
+        'dias_solicitados' => $request->dias_solicitados,
+        'turno_doble' => $request->turno_doble,
+        'fecha_inicio' => $request->fecha_inicio,
+        'fecha_fin' => $request->fecha_fin,
+    ]);
+
     $request->validate([
         'tipo' => 'required|string',
-        'periodo' => 'nullable|integer|min:0|max:9999', // Validación para periodo
+        'turno_doble' => 'nullable|boolean',
+        'periodo' => 'nullable|integer|min:0|max:9999',
         'fecha_inicio' => 'required|date',
         'fecha_fin' => 'required|date',
         'dias_solicitados' => 'required|integer|min:1|max:30',
@@ -160,29 +168,30 @@ class UserController extends Controller
 
     $periodo = $request->periodo;
     if ($periodo < 2) {
-                $diasPorDerecho = 12;
-            } else if ($periodo == 2) {
-                $diasPorDerecho = 14;
-            } else if ($periodo == 3) {
-                $diasPorDerecho = 16;
-            } else if ($periodo == 4) {
-                $diasPorDerecho = 18;
-            } else if ($periodo == 5) {
-                $diasPorDerecho = 20;
-            } else if ($periodo > 5 && $periodo <= 10) {
-                $diasPorDerecho = 22;
-            } else if ($periodo > 10 && $periodo <= 15) {
-                $diasPorDerecho = 24;
-            } else if ($periodo > 15 && $periodo <= 20) {
-                $diasPorDerecho = 26;
-            } else if ($periodo > 20 && $periodo <= 25) {
-                $diasPorDerecho = 28;
-            } else if ($periodo > 25 && $periodo <= 30) {
-                $diasPorDerecho = 30;
-            } else {
-                $diasPorDerecho = 32;
-            }
+        $diasPorDerecho = 12;
+    } else if ($periodo == 2) {
+        $diasPorDerecho = 14;
+    } else if ($periodo == 3) {
+        $diasPorDerecho = 16;
+    } else if ($periodo == 4) {
+        $diasPorDerecho = 18;
+    } else if ($periodo == 5) {
+        $diasPorDerecho = 20;
+    } else if ($periodo > 5 && $periodo <= 10) {
+        $diasPorDerecho = 22;
+    } else if ($periodo > 10 && $periodo <= 15) {
+        $diasPorDerecho = 24;
+    } else if ($periodo > 15 && $periodo <= 20) {
+        $diasPorDerecho = 26;
+    } else if ($periodo > 20 && $periodo <= 25) {
+        $diasPorDerecho = 28;
+    } else if ($periodo > 25 && $periodo <= 30) {
+        $diasPorDerecho = 30;
+    } else {
+        $diasPorDerecho = 32;
+    }
 
+    // ✅ Calcular días ya utilizados SIN sumar nada por turno doble
     $diasUtilizados = SolicitudVacaciones::where('user_id', $user->id)
         ->where('periodo', $request->periodo)
         ->whereIn('estatus', ['Aceptada', 'En Proceso'])
@@ -194,15 +203,21 @@ class UserController extends Controller
     $solicitud = new SolicitudVacaciones();
     $solicitud->user_id = $user->id;
     $solicitud->tipo = $request->tipo;
-    $solicitud->periodo = $request->periodo; // Nuevo campo
+    $solicitud->periodo = $request->periodo;
     $solicitud->fecha_inicio = $request->fecha_inicio;
     $solicitud->supervisores_ids = json_encode($supervisores);
     $solicitud->fecha_fin = $request->fecha_fin;
+
+    // ✅ Guardar dias_solicitados tal cual lo envió el frontend
     $solicitud->dias_solicitados = $request->dias_solicitados;
+
     $solicitud->dias_ya_utilizados = $diasUtilizados;
     $solicitud->dias_disponibles = $diasDisponibles;
     $solicitud->dias_por_derecho = $diasPorDerecho;
     $solicitud->monto = 0.0;
+
+    // ✅ Guardar turno_doble como string
+    $solicitud->turno_doble = $request->turno_doble ? 'true' : 'false';
 
     if(Auth::user()->rol == 'Supervisor' || Auth::user()->rol == 'admin' || Auth::user()->rol == 'SUPERVISOR' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->rol == 'Auxiliar recursos humanos')
         $solicitud->observaciones = 'Solicitud aceptada, falta subir archivo de solicitud.';
@@ -216,7 +231,7 @@ class UserController extends Controller
     }else{
         $solicitud->estatus = 'En Proceso';
     }
-        $solicitud->save();
+    $solicitud->save();
 
     if(Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->rol == 'Auxiliar recursos humanos')
         return redirect()->route('dashboard')->with('success', 'Solicitud de vacaciones enviada correctamente');
