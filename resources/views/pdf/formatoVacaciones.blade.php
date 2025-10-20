@@ -106,6 +106,9 @@
             @endif
             @if(Str::contains($antiguedad, ['MES', 'MESES']))
                 <strong>POR ADELANTADO </strong>
+            @elseif($solicitud->periodo > $antiguedad)
+                <strong>POR ADELANTADO </strong>
+            @else
             @endif
             DE VACACIONES DEL PERIODO Nº{{$solicitud->periodo}}.
             ({{ $solicitud->dias_solicitados }}
@@ -114,7 +117,7 @@
             @else
                 DÍAS
             @endif
-            ) (DEL {{ \Carbon\Carbon::parse($solicitud->fecha_inicio)->translatedFormat('d \\d\\e F') }} AL {{ \Carbon\Carbon::parse($solicitud->fecha_fin)->translatedFormat('d \\d\\e F \\d\\e\\l Y') }})
+            ) (DEL {{ \Carbon\Carbon::parse($solicitud->fecha_inicio)->translatedFormat('d \\d\\e F') }} AL {{ \Carbon\Carbon::parse($solicitud->fecha_fin)->translatedFormat('d \\d\\e F \\d\\e\\l Y') }}) @if($solicitud->turno_doble !== null) <strong>(Turno Doble)</strong> @endif,
             @if($solicitud->dias_disponibles - $solicitud->dias_solicitados >1)
                 QUEDANDO {{ $solicitud->dias_disponibles - $solicitud->dias_solicitados}} DÍAS DISPONIBLES DE LAS VACACIONES DEL MISMO PERIODO
             @elseif($solicitud -> dias_disponibles - $solicitud->dias_solicitados == 1)
