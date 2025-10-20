@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Asistencia;
 use App\Models\TiemposExtra;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth; // <-- Importamos Auth
 use Carbon\Carbon;
 
 class AsistenciasTabla extends Component
@@ -21,13 +22,25 @@ class AsistenciasTabla extends Component
     {
         $datos = $this->obtenerDatos();
 
+        // Filtrar subpuntos según el rol del usuario autenticado
+        $subpuntosMap = $this->getSubpuntosPorPunto();
+        $rol = Auth::user()?->rol; // Obtenemos el rol del usuario autenticado
+
+        if ($rol === 'AUXILIAR OPERACIONES') {
+            // Si es AUXILIAR OPERACIONES, solo mostramos Monterrey y sus subpuntos
+            $subpuntosMap = [
+                'MONTERREY' => $subpuntosMap['MONTERREY'] ?? []
+            ];
+        }
+        // Si no, se devuelve el mapa completo (comportamiento por defecto)
+
         return view('livewire.asistencias-tabla', [
             'usuarios' => $datos['usuarios'],
             'fechas' => $datos['fechas'],
             'vacacionesPorUsuario' => $datos['vacacionesPorUsuario'],
             'asistenciasIndexadas' => $datos['asistenciasIndexadas'],
             'horasExtrasPorUsuario' => $datos['horasExtrasPorUsuario'],
-            'subpuntosMap' => $this->getSubpuntosPorPunto(), // <-- Agregamos esta línea
+            'subpuntosMap' => $subpuntosMap, // <-- Pasamos el mapa filtrado
         ]);
     }
 
@@ -71,6 +84,14 @@ class AsistenciasTabla extends Component
         if (!$puntoGeneral) {
             $puntoGeneral = $filtro;
             $subpuntos = [$filtro];
+        }
+
+        // Aseguramos que solo se filtre por Monterrey si el rol es AUXILIAR OPERACIONES
+        $rol = Auth::user()?->rol;
+        if ($rol === 'AUXILIAR OPERACIONES') {
+            $puntoGeneral = 'MONTERREY';
+            // $subpuntos ya está restringido en el render, pero por si acaso...
+            $subpuntos = $this->getSubpuntosPorPunto()['MONTERREY'] ?? [];
         }
 
         $asistenciasIndexadas = Asistencia::where('punto', $puntoGeneral)
