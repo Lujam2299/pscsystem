@@ -4,10 +4,12 @@ namespace App\Livewire;
 
 use Livewire\Component;
 use App\Models\User;
+use App\Models\Punto;
+use App\Models\Subpunto;
 use App\Models\Asistencia;
 use App\Models\TiemposExtra;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth; // <-- Importamos Auth
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class AsistenciasTabla extends Component
@@ -53,68 +55,94 @@ class AsistenciasTabla extends Component
     public function obtenerDatos()
     {
         if (!$this->fecha_inicio || !$this->fecha_fin) {
-            return [
-                'usuarios' => collect(),
-                'fechas' => [],
-                'vacacionesPorUsuario' => [],
-                'asistenciasIndexadas' => collect(),
-                'horasExtrasPorUsuario' => [],
-            ];
+        return [
+            'usuarios' => collect(),
+            'fechas' => [],
+            'vacacionesPorUsuario' => [],
+            'asistenciasIndexadas' => collect(),
+            'horasExtrasPorUsuario' => [],
+        ];
+    }
+
+    $filtro = strtoupper($this->punto);
+    if (in_array($filtro, ['MARYKAY CORPORATIVO', 'MAR KAY CORPORATIVO'])) {
+        $filtro = 'MARY KAY CORPORATIVO';
+    }
+
+    // Determinar si es un subpunto o un punto general
+    $puntoGeneral = null;
+    $subpuntos = [];
+
+    foreach ($this->getSubpuntosPorPunto() as $p => $subs) {
+        if ($filtro === $p) {
+            $puntoGeneral = $p;
+            $subpuntos = $subs;
+            break;
+        } elseif (collect($subs)->pluck('nombre')->map('strtoupper')->contains($filtro)) {
+            $puntoGeneral = $p;
+            $subpuntos = [collect($subs)->firstWhere('nombre', 'LIKE', $filtro)];
+            break;
+        } elseif (collect($subs)->pluck('codigo')->map('strval')->contains($filtro)) {
+            $puntoGeneral = $p;
+            $subpuntos = [collect($subs)->firstWhere('codigo', $filtro)];
+            break;
         }
+    }
 
-        $filtro = strtoupper($this->punto);
+    if (!$puntoGeneral && in_array($filtro, ['MARYKAY CORPORATIVO', 'MAR KAY CORPORATIVO'])) {
+        $puntoGeneral = 'MONTERREY';
+        $subpuntos = [
+            collect($this->getSubpuntosPorPunto()['MONTERREY'])->firstWhere('nombre', 'LIKE', $filtro)
+        ];
+    }
 
-        // Determinar si es un subpunto o un punto general
-        $puntoGeneral = null;
-        $subpuntos = [];
+    if (!$puntoGeneral) {
+        $puntoGeneral = $filtro;
+        $subpuntos = [['nombre' => $filtro, 'codigo' => null]];
+    }
 
-        foreach ($this->getSubpuntosPorPunto() as $p => $subs) {
-            if ($filtro === $p) {
-                $puntoGeneral = $p;
-                $subpuntos = $subs;
-                break;
-            } elseif (in_array($filtro, $subs)) {
-                $puntoGeneral = $p;
-                $subpuntos = [$filtro]; // Filtrar solo por ese subpunto
-                break;
-            }
-        }
+    $rol = Auth::user()?->rol;
+    if ($rol === 'AUXILIAR OPERACIONES') {
+        $puntoGeneral = 'MONTERREY';
+        $subpuntos = $this->getSubpuntosPorPunto()['MONTERREY'];
+    }
 
-        // Si no coincide con ningún punto/subpunto, usar el filtro directamente como punto
-        if (!$puntoGeneral) {
-            $puntoGeneral = $filtro;
-            $subpuntos = [$filtro];
-        }
+    $asistenciasIndexadas = Asistencia::where('punto', $puntoGeneral)
+        ->whereBetween('fecha', [$this->fecha_inicio, $this->fecha_fin])
+        ->get()
+        ->keyBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
 
-        // Aseguramos que solo se filtre por Monterrey si el rol es AUXILIAR OPERACIONES
-        $rol = Auth::user()?->rol;
-        if ($rol === 'AUXILIAR OPERACIONES') {
-            $puntoGeneral = 'MONTERREY';
-            // $subpuntos ya está restringido en el render, pero por si acaso...
-            $subpuntos = $this->getSubpuntosPorPunto()['MONTERREY'] ?? [];
-        }
+    $usuarios = User::where('estatus', 'Activo')
+    ->where(function ($query) use ($subpuntos, $puntoGeneral) {
+        foreach ($subpuntos as $subpunto) {
+            $nombre = $subpunto['nombre'] ?? null;
+            $codigo = $subpunto['codigo'] ?? null;
 
-        $asistenciasIndexadas = Asistencia::where('punto', $puntoGeneral)
-            ->whereBetween('fecha', [$this->fecha_inicio, $this->fecha_fin])
-            ->get()
-            ->keyBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
-
-        $usuarios = User::where('estatus', 'Activo')
-            ->where(function ($query) use ($subpuntos) {
-                foreach ($subpuntos as $subpunto) {
-                    $query->orWhereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($subpunto) . '%']);
+            $query->orWhere(function ($q) use ($nombre, $codigo, $puntoGeneral) {
+                if ($nombre) {
+                    $q->whereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%']);
                 }
-            })
-            ->get()
-            ->filter(function ($user) {
-                $rol = $this->normalize($user->rol);
-                return in_array($rol, ['patrullero', 'guardia']);
-            })
-            // Añadimos el ordenamiento aquí
-            ->sortBy([
-                ['punto', 'asc'],
-                ['name', 'asc']
-            ]);
+                // ✅ Buscar también por variantes de Mary Kay
+                if ($nombre === 'MARY KAY CORPORATIVO') {
+                    $q->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
+                      ->orWhereRaw('LOWER(punto) LIKE ?', ['%mar kay corporativo%']);
+                }
+                // ✅ Solo buscar por código si es Monterrey
+                if ($codigo && $puntoGeneral === 'MONTERREY') {
+                    $q->orWhere('punto', $codigo);
+                }
+            });
+        }
+    })
+    ->get()
+    ->filter(function ($user) {
+        $rol = $this->normalize($user->rol);
+        return in_array($rol, ['patrullero', 'guardia']);
+    })
+    ->sortBy([
+        ['punto', 'asc'],
+        ['name', 'asc']
+    ]);
 
         $startDate = Carbon::parse($this->fecha_inicio);
         $endDate = Carbon::parse($this->fecha_fin);
@@ -173,32 +201,93 @@ class AsistenciasTabla extends Component
         ];
     }
 
-    protected function getSubpuntosPorPunto()
-    {
-        return [
-            'MONTERREY' => [
-                'MONTERREY','CUSTODIO', 'DAL TILE', 'TORRE NOVO', 'TRASLADOS',
-                'BONETERA', 'HOME DEPO', 'AMERICAN AIRLINES',
-                'MARY KAY CORPORATIVO', 'KANSAS', 'CIMARRON', 'OFICINA',
-                'ASSET', 'TORRE DELTA', 'SACMI DE MEXICO',
-                'THERMO ELÉCTRICA', 'KINDEER MORGAN', 'GOBAR',
-                'PEMCORP #2', 'ROCHE BOBOIS', 'OFF ON GREEN',
-                'COOPER LIGHT', 'MONTE PALATINO', 'OATEY', 'PLAZA DOMENA'
-            ],
-            'GUANAJUATO' => ['SILAO', 'CELAYA', 'SALAMANCA'],
-            'NUEVO LAREDO' => ['ZONA DE ABASTOS V'],
-            'MEXICO' => ['VALLE DE MEXICO'],
-            'SLP' => ['WATCO', 'BMW', 'ZONA DE ABASTOS I', 'INTERPUERTO Y TALLER'],
-            'XALAPA' => ['XALAPA'],
-            'MICHOACAN' => ['MICHOACÁN'],
-            'PUEBLA' => ['PUEBLA'],
-            'TOLUCA' => ['TOLUCA'],
-            'QUERETARO' => ['QUERÉTARO'],
-            'SALTILLO' => ['SALTILLO'],
-            'DRONES' => ['DRONES'],
-            'KANSAS' => ['KANSAS'],
-        ];
+protected function getSubpuntosPorPunto()
+{
+    // ✅ Obtenemos el ID de 'MONTERREY' en la tabla 'puntos'
+    $monterreyId = Punto::where('nombre', 'MONTERREY')->value('id');
+
+    // ✅ Obtenemos los códigos solo para subpuntos de Monterrey
+    $codigos = [];
+    if ($monterreyId) {
+        $codigos = Subpunto::where('punto_id', $monterreyId)->pluck('codigo', 'nombre')->toArray();
     }
+
+    // ✅ Unificar variantes de Mary Kay en una sola entrada
+    $codigoMaryKay = $codigos['MARY KAY CORPORATIVO'] ?? $codigos['MARYKAY CORPORATIVO'] ?? $codigos['MAR KAY CORPORATIVO'] ?? null;
+
+    $monterreySubpuntos = [
+        ['nombre' => 'MONTERREY', 'codigo' => $codigos['MONTERREY'] ?? null],
+        ['nombre' => 'CUSTODIO', 'codigo' => $codigos['CUSTODIO'] ?? null],
+        ['nombre' => 'DALTILE', 'codigo' => $codigos['DALTILE'] ?? null],
+        ['nombre' => 'TORRENOVO', 'codigo' => $codigos['TORRENOVO'] ?? null],
+        ['nombre' => 'TRASLADOS', 'codigo' => $codigos['TRASLADOS'] ?? null],
+        ['nombre' => 'BONETERA', 'codigo' => $codigos['BONETERA'] ?? null],
+        ['nombre' => 'HOMEDEPOT', 'codigo' => $codigos['HOMEDEPOT'] ?? null],
+        ['nombre' => 'AMERICAN AIRLINES', 'codigo' => $codigos['AMERICAN AIRLINES'] ?? null],
+        ['nombre' => 'MARY KAY CORPORATIVO', 'codigo' => $codigoMaryKay], // ✅ Unificado
+        ['nombre' => 'KANSAS', 'codigo' => $codigos['KANSAS'] ?? null],
+        ['nombre' => 'CIMARRON', 'codigo' => $codigos['CIMARRON'] ?? null],
+        ['nombre' => 'OFICINA', 'codigo' => $codigos['OFICINA'] ?? null],
+        ['nombre' => 'ASSET', 'codigo' => $codigos['ASSET'] ?? null],
+        ['nombre' => 'TORRE DELTA', 'codigo' => $codigos['TORRE DELTA'] ?? null],
+        ['nombre' => 'SACMI DE MEXICO', 'codigo' => $codigos['SACMI DE MEXICO'] ?? null],
+        ['nombre' => 'THERMO ELÉCTRICA', 'codigo' => $codigos['THERMO ELÉCTRICA'] ?? null],
+        ['nombre' => 'KINDER MORGAN', 'codigo' => $codigos['KINDER MORGAN'] ?? null],
+        ['nombre' => 'GOBAR', 'codigo' => $codigos['GOBAR'] ?? null],
+        ['nombre' => 'PEMCORP #2', 'codigo' => $codigos['PEMCORP #2'] ?? null],
+        ['nombre' => 'ROCHE BOBOIS', 'codigo' => $codigos['ROCHE BOBOIS'] ?? null],
+        ['nombre' => 'OFF ON GREEN', 'codigo' => $codigos['OFF ON GREEN'] ?? null],
+        ['nombre' => 'COOPER LIGHT', 'codigo' => $codigos['COOPER LIGHT'] ?? null],
+        ['nombre' => 'MONTE PALATINO', 'codigo' => $codigos['MONTE PALATINO'] ?? null],
+        ['nombre' => 'OATEY', 'codigo' => $codigos['OATEY'] ?? null],
+        ['nombre' => 'PLAZA DOMENA', 'codigo' => $codigos['PLAZA DOMENA'] ?? null],
+    ];
+
+    return [
+        'MONTERREY' => $monterreySubpuntos,
+        'GUANAJUATO' => [
+            ['nombre' => 'SILAO', 'codigo' => null],
+            ['nombre' => 'CELAYA', 'codigo' => null],
+            ['nombre' => 'SALAMANCA', 'codigo' => null],
+        ],
+        'NUEVO LAREDO' => [
+            ['nombre' => 'ZONA DE ABASTOS V', 'codigo' => null],
+        ],
+        'MEXICO' => [
+            ['nombre' => 'VALLE DE MEXICO', 'codigo' => null],
+        ],
+        'SLP' => [
+            ['nombre' => 'WATCO', 'codigo' => null],
+            ['nombre' => 'BMW', 'codigo' => null],
+            ['nombre' => 'ZONA DE ABASTOS I', 'codigo' => null],
+            ['nombre' => 'INTERPUERTO Y TALLER', 'codigo' => null],
+        ],
+        'XALAPA' => [
+            ['nombre' => 'XALAPA', 'codigo' => null],
+        ],
+        'MICHOACAN' => [
+            ['nombre' => 'MICHOACÁN', 'codigo' => null],
+        ],
+        'PUEBLA' => [
+            ['nombre' => 'PUEBLA', 'codigo' => null],
+        ],
+        'TOLUCA' => [
+            ['nombre' => 'TOLUCA', 'codigo' => null],
+        ],
+        'QUERETARO' => [
+            ['nombre' => 'QUERÉTARO', 'codigo' => null],
+        ],
+        'SALTILLO' => [
+            ['nombre' => 'SALTILLO', 'codigo' => null],
+        ],
+        'DRONES' => [
+            ['nombre' => 'DRONES', 'codigo' => null],
+        ],
+        'KANSAS' => [
+            ['nombre' => 'KANSAS', 'codigo' => null],
+        ],
+    ];
+}
 
     protected function normalize($string)
     {

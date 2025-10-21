@@ -3,17 +3,17 @@
         .sticky-first-col {
             position: sticky;
             left: 0;
-            background-color: #fff; /* Ajusta al color de fondo de la tabla */
+            background-color: #fff;
             z-index: 10;
-            box-shadow: inset -2px 0 0 #d1d5db; /* Línea delgada a la derecha */
+            box-shadow: inset -2px 0 0 #d1d5db;
         }
         .dark .sticky-first-col {
-            background-color: #1f2937; /* Color oscuro */
+            background-color: #1f2937;
             box-shadow: inset -2px 0 0 #374151;
         }
         .sticky-second-col {
             position: sticky;
-            left: 40px; /* Ajusta según el ancho de la primera columna */
+            left: 40px;
             background-color: #fff;
             z-index: 10;
             box-shadow: inset -2px 0 0 #d1d5db;
@@ -24,6 +24,7 @@
         }
     </style>
 
+    <!-- Formulario de filtros -->
     <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 mb-8">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
@@ -37,7 +38,11 @@
                         <optgroup label="{{ $puntoGeneral }}">
                             <option value="{{ $puntoGeneral }}">(Todos) {{ $puntoGeneral }}</option>
                             @foreach($subpuntos as $subpunto)
-                                <option value="{{ $subpunto }}">{{ $subpunto }}</option>
+                                <option value="{{ $subpunto['nombre'] }}">{{ $subpunto['nombre'] }}
+                                    @if($subpunto['codigo'])
+                                        ({{ str_pad($subpunto['codigo'], 3, '0', STR_PAD_LEFT) }})
+                                    @endif
+                                </option>
                             @endforeach
                         </optgroup>
                     @endforeach
@@ -61,7 +66,6 @@
                        wire:model.live="fecha_fin"
                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-800 dark:text-white">
             </div>
-
             <form method="GET" action="{{ route('exportar.asistencias') }}" class="mb-4 mt-7">
                 <input type="hidden" name="punto" value="{{ $punto }}">
                 <input type="hidden" name="fecha_inicio" value="{{ $fecha_inicio }}">
@@ -73,6 +77,7 @@
         </div>
     </div>
 
+    <!-- Tabla -->
     @if($usuarios->isEmpty())
         <div class="text-center py-8 text-gray-500 dark:text-gray-400">
             No hay datos para mostrar con los filtros actuales.
@@ -112,9 +117,7 @@
                         @endforeach
                     </tr>
                     <tr class="bg-gray-100 dark:bg-gray-700">
-                        <th class="sticky-first-col px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider"></th>
-                        <th class="sticky-second-col px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider"></th>
-                        @for($i = 0; $i < 8; $i++)
+                        @for($i = 0; $i < 10; $i++)
                             <th></th>
                         @endfor
                         @foreach($fechas as $fecha)
