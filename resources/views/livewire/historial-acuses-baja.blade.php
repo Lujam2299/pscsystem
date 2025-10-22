@@ -112,7 +112,7 @@
         </div>
 
         @if($acuses->hasPages())
-            <div class="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div class="mt-6 flex items-center justify-between">
                 <div class="text-sm text-gray-700 dark:text-gray-300">
                     Mostrando
                     <span class="font-medium">{{ $acuses->firstItem() }}</span>
@@ -124,39 +124,7 @@
                 </div>
 
                 <div class="flex items-center space-x-1">
-                    @if ($acuses->onFirstPage())
-                        <span class="px-3 py-1 text-gray-400 dark:text-gray-500 rounded">&laquo;</span>
-                    @else
-                        <button wire:click="previousPage" class="px-3 py-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700">&laquo;</button>
-                    @endif
-
-                    @if ($currentPage > 2)
-                        <button wire:click="gotoPage(1)" class="px-3 py-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700">1</button>
-                        @if ($currentPage > 3)
-                            <span class="px-2 py-1 text-gray-400 dark:text-gray-500">...</span>
-                        @endif
-                    @endif
-
-                    @for ($i = max(1, $currentPage - 1); $i <= min($lastPage, $currentPage + 1); $i++)
-                        @if ($i == $currentPage)
-                            <span class="px-3 py-1 bg-red-500 text-white rounded">{{ $i }}</span>
-                        @else
-                            <button wire:click="gotoPage({{ $i }})" class="px-3 py-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700">{{ $i }}</button>
-                        @endif
-                    @endfor
-
-                    @if ($currentPage < $lastPage - 1)
-                        @if ($currentPage < $lastPage - 2)
-                            <span class="px-2 py-1 text-gray-400 dark:text-gray-500">...</span>
-                        @endif
-                        <button wire:click="gotoPage({{ $lastPage }})" class="px-3 py-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700">{{ $lastPage }}</button>
-                    @endif
-
-                    @if ($acuses->hasMorePages())
-                        <button wire:click="nextPage" class="px-3 py-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700">&raquo;</button>
-                    @else
-                        <span class="px-3 py-1 text-gray-400 dark:text-gray-500 rounded">&raquo;</span>
-                    @endif
+                    {{ $acuses->links() }}
                 </div>
             </div>
         @endif

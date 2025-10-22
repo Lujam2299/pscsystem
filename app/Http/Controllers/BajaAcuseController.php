@@ -9,16 +9,26 @@ use Illuminate\Support\Facades\Storage;
 
 class BajaAcuseController extends Controller
 {
-      public function index()
-    {
-        $bajas = SolicitudBajas::with('usuario')
-        ->where('estatus', 'Aceptada')
+    public function index()
+{
+    // Primero obtenemos los IDs de las solicitudes aceptadas en los últimos 15 días
+    $bajasIds = SolicitudBajas::where('estatus', 'Aceptada')
         ->where('created_at', '>=', now()->subDays(15))
+        ->pluck('id');
+
+    // Luego excluimos aquellos que están en baja_acuses
+    $bajas = SolicitudBajas::with('usuario')
+        ->whereIn('id', $bajasIds)
+        ->whereNotIn('id', function ($query) {
+            $query->select('solicitud_baja_id')
+                  ->from('baja_acuses')
+                  ->whereNotNull('solicitud_baja_id');
+        })
         ->orderByDesc('created_at')
         ->paginate(10);
 
     return view('auxadmin.acusesBajas', compact('bajas'));
-    }
+}
 
     public function upload(Request $request, SolicitudBajas $solicitudBaja)
     {
