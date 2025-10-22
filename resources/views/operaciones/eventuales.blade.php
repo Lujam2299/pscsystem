@@ -109,8 +109,6 @@
         </div>
     </div>
 
-    <!-- Modal con SweetAlert2 -->
-<!-- Modal con SweetAlert2 -->
 <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     function abrirModalRegistro(userId, userName) {
@@ -166,6 +164,27 @@
                         <option value="eventual">Eventual</option>
                     </select>
                 </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Servicio</label>
+                    <select id="tipo-servicio" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                        <option value="">Seleccione una opción</option>
+                        <option value="12 Horas">12 Horas</option>
+                        <option value="24 horas">24 horas</option>
+                        <option value="36 Horas">36 Horas</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Motivo</label>
+                    <select id="motivo" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                        <option value="">Seleccione una opción</option>
+                        <option value="Falta de plantilla">Falta de plantilla</option>
+                        <option value="Faltas de elementos">Faltas de elementos</option>
+                        <option value="Vacaciones de elementos">Vacaciones de elementos</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
             `,
             showCancelButton: true,
             confirmButtonText: 'Guardar',
@@ -176,6 +195,8 @@
                 const subpuntoId = document.getElementById('subpunto-id').value;
                 const tipoPago = document.getElementById('tipo-pago').value;
                 const turnos = Array.from(document.querySelectorAll('.turno-checkbox:checked')).map(cb => cb.value);
+                const tipoServicio = document.getElementById('tipo-servicio').value;
+                const motivo = document.getElementById('motivo').value;
 
                 if (!fecha) {
                     Swal.showValidationMessage('La fecha es requerida');
@@ -193,6 +214,14 @@
                     Swal.showValidationMessage('Seleccione el tipo de pago');
                     return false;
                 }
+                if (!tipoServicio) {
+                    Swal.showValidationMessage('Seleccione el tipo de servicio');
+                    return false;
+                }
+                if (!motivo) {
+                    Swal.showValidationMessage('Seleccione el motivo');
+                    return false;
+                }
 
                 return fetch("{{ route('operaciones.registrar.eventual') }}", {
                     method: 'POST',
@@ -206,7 +235,9 @@
                         fecha: fecha,
                         subpunto_id: subpuntoId,
                         turnos: turnos,
-                        tipo_pago: tipoPago
+                        tipo_pago: tipoPago,
+                        tipo_servicio: tipoServicio,
+                        motivo: motivo
                     })
                 })
                 .then(response => response.json().then(data => {

@@ -16,6 +16,8 @@ class Eventuales extends Model
         'turnos',
         'tipo_pago',
         'arch_pago',
+        'tipo_servicio',
+        'motivo'
     ];
 
     protected $casts = [
