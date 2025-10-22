@@ -27,21 +27,50 @@
         </div>
     </div>
 
-    <!-- Filtros -->
-    <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
+    <div class="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4">
+        <div class="md:col-span-2">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nombre del usuario</label>
             <input type="text"
-                   wire:model.live.debounce.300ms="search"
-                   placeholder="Buscar por nombre..."
-                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white">
+                wire:model.live.debounce.300ms="search"
+                placeholder="Buscar por nombre..."
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white">
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Del</label>
             <input type="date"
-                   wire:model.live="fecha"
-                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white">
+                wire:model.live="fecha_desde"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Al</label>
+            <input type="date"
+                wire:model.live="fecha_hasta"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Servicio</label>
+            <select wire:model.live="tipo_servicio"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white">
+                <option value="todos">Todos</option>
+                <option value="12 Horas">12 Horas</option>
+                <option value="24 horas">24 horas</option>
+                <option value="36 Horas">36 Horas</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Motivo</label>
+            <select wire:model.live="motivo"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white">
+                <option value="todos">Todos</option>
+                <option value="Falta de plantilla">Falta de plantilla</option>
+                <option value="Faltas de elementos">Faltas de elementos</option>
+                <option value="Vacaciones de elementos">Vacaciones de elementos</option>
+                <option value="Otro">Otro</option>
+            </select>
         </div>
     </div>
 
@@ -70,6 +99,8 @@
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de Servicio</th> <!-- 👈 -->
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Motivo</th> <!-- 👈 -->
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de Pago</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comprobante</th>
                         </tr>
@@ -86,6 +117,12 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                                     {{ \Carbon\Carbon::parse($registro->fecha)->format('d/m/Y') }}
                                 </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                    {{ $registro->tipo_servicio ?? 'N/D' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                    {{ $registro->motivo ?? 'N/D' }}
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @if($registro->tipo_pago === 'nomina')
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
@@ -100,9 +137,9 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     @if($registro->arch_pago)
                                         <a href="{{ asset($registro->arch_pago) }}"
-                                           target="_blank"
-                                           class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition duration-200 shadow-sm"
-                                           title="Ver comprobante">
+                                        target="_blank"
+                                        class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition duration-200 shadow-sm"
+                                        title="Ver comprobante">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />

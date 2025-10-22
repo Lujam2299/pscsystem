@@ -11,12 +11,18 @@ class HistorialPagosEventuales extends Component
     use WithPagination;
 
     public $search = '';
-    public $fecha = '';
+    public $fecha_desde = '';
+    public $fecha_hasta = '';
+    public $tipo_servicio = 'todos';
+    public $motivo = 'todos';
 
     protected $paginationTheme = 'tailwind';
 
     public function updatingSearch() { $this->resetPage(); }
-    public function updatingFecha() { $this->resetPage(); }
+    public function updatingFechaDesde() { $this->resetPage(); }
+    public function updatingFechaHasta() { $this->resetPage(); }
+    public function updatingTipoServicio() { $this->resetPage(); }
+    public function updatingMotivo() { $this->resetPage(); }
 
     public function render()
     {
@@ -29,8 +35,19 @@ class HistorialPagosEventuales extends Component
             });
         }
 
-        if ($this->fecha) {
-            $query->whereDate('fecha', $this->fecha);
+        if ($this->fecha_desde) {
+            $query->whereDate('fecha', '>=', $this->fecha_desde);
+        }
+        if ($this->fecha_hasta) {
+            $query->whereDate('fecha', '<=', $this->fecha_hasta);
+        }
+
+        if ($this->tipo_servicio !== 'todos') {
+            $query->where('tipo_servicio', $this->tipo_servicio);
+        }
+
+        if ($this->motivo !== 'todos') {
+            $query->where('motivo', $this->motivo);
         }
 
         $registros = $query->orderBy('fecha', 'desc')->paginate(10);

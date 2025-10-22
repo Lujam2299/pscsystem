@@ -16,42 +16,51 @@ class RegistrosEventuales extends Component
     public $subpunto_id = '';
     public $fecha_desde = '';
     public $fecha_hasta = '';
+    public $tipo_servicio = 'todos'; // 👈 nuevo
+    public $motivo = 'todos';        // 👈 nuevo
 
     protected $paginationTheme = 'tailwind';
 
     public function updatingSearch() { $this->resetPage(); }
     public function updatingTipoPago() { $this->resetPage(); }
     public function updatingSubpuntoId() { $this->resetPage(); }
-    public function updatingFechaDesde() { $this->resetPage(); } // ✅ Nuevo
-    public function updatingFechaHasta() { $this->resetPage(); } // ✅ Nuevo
+    public function updatingFechaDesde() { $this->resetPage(); }
+    public function updatingFechaHasta() { $this->resetPage(); }
+    public function updatingTipoServicio() { $this->resetPage(); } // 👈
+    public function updatingMotivo() { $this->resetPage(); }       // 👈
 
     public function render()
     {
-        $query = Eventuales::with(['user', 'subpunto']); // ✅ Modelo singular
+        $query = Eventuales::with(['user', 'subpunto']);
 
-        // Filtro por nombre de usuario
         if ($this->search) {
             $query->whereHas('user', function ($q) {
                 $q->where('name', 'like', '%' . $this->search . '%');
             });
         }
 
-        // Filtro por tipo de pago
         if ($this->tipo_pago !== 'todos') {
             $query->where('tipo_pago', $this->tipo_pago);
         }
 
-        // Filtro por subpunto
         if ($this->subpunto_id) {
             $query->where('subpunto_id', $this->subpunto_id);
         }
 
-        // Filtro por rango de fechas
         if ($this->fecha_desde) {
             $query->whereDate('fecha', '>=', $this->fecha_desde);
         }
         if ($this->fecha_hasta) {
             $query->whereDate('fecha', '<=', $this->fecha_hasta);
+        }
+
+        // 👇 Filtros nuevos
+        if ($this->tipo_servicio !== 'todos') {
+            $query->where('tipo_servicio', $this->tipo_servicio);
+        }
+
+        if ($this->motivo !== 'todos') {
+            $query->where('motivo', $this->motivo);
         }
 
         $registros = $query->orderBy('fecha', 'desc')->paginate(10);

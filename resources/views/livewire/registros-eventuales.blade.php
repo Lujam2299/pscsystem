@@ -78,6 +78,29 @@
             wire:model.live="fecha_hasta"
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white">
     </div>
+
+    <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Servicio</label>
+        <select wire:model.live="tipo_servicio"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white">
+            <option value="todos">Todos</option>
+            <option value="12 Horas">12 Horas</option>
+            <option value="24 horas">24 horas</option>
+            <option value="36 Horas">36 Horas</option>
+        </select>
+    </div>
+
+    <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Motivo</label>
+        <select wire:model.live="motivo"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white">
+            <option value="todos">Todos</option>
+            <option value="Falta de plantilla">Falta de plantilla</option>
+            <option value="Faltas de elementos">Faltas de elementos</option>
+            <option value="Vacaciones de elementos">Vacaciones de elementos</option>
+            <option value="Otro">Otro</option>
+        </select>
+    </div>
 </div>
 
     <div wire:loading class="mb-4 flex items-center text-sm text-purple-600 dark:text-purple-400">
@@ -108,6 +131,8 @@
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Turnos</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de Pago</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de Servicio</th> <!-- 👈 -->
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Motivo</th> <!-- 👈 -->
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Archivo</th>
                         </tr>
                     </thead>
@@ -175,6 +200,13 @@
                                             Efectivo
                                         </span>
                                     @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                    {{ $registro->tipo_servicio ?? 'N/D' }}
+                                </td>
+
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                    {{ $registro->motivo ?? 'N/D' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     @if($registro->arch_pago)
