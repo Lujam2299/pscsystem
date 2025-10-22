@@ -67,7 +67,11 @@
                                                 {{ $vale->num_elementos }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                                {{ $vale->user?->name ?? 'N/D' }}
+                                                @if($vale->comprobantes->isNotEmpty() && $vale->comprobantes->first()->user)
+                                                    {{ $vale->comprobantes->first()->user->name }}
+                                                @else
+                                                    N/D
+                                                @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                                 ${{ number_format($vale->comprobantes->sum('monto'), 2) }}

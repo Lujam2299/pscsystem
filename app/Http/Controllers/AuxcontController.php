@@ -143,11 +143,11 @@ class AuxcontController extends Controller
     }
 
     public function verComprobantes(){
-        $vales = ValesComida::with('comprobantes', 'user')
-            ->where('estatus', 'Comprobación En Revisión')
-            ->paginate(10);
+        $vales = ValesComida::with(['comprobantes.user', 'user'])
+        ->where('estatus', 'Comprobación En Revisión')
+        ->paginate(10);
 
-        return view('auxcont.verComprobantes', compact('vales'));
+    return view('auxcont.verComprobantes', compact('vales'));
     }
 
     public function aprobarComprobacion(Request $request, $id)

@@ -13,4 +13,8 @@ class ComprobanteVale extends Model
     {
         return $this->belongsTo(ValesComida::class, 'vale_comida_id');
     }
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }
