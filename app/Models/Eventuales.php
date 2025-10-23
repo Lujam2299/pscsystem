@@ -17,6 +17,7 @@ class Eventuales extends Model
         'tipo_pago',
         'arch_pago',
         'tipo_servicio',
+        'elemento_relacionado_id',
         'motivo'
     ];
 
@@ -28,6 +29,11 @@ class Eventuales extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function elementoRelacionado()
+    {
+        return $this->belongsTo(User::class, 'elemento_relacionado_id');
     }
 
     public function subpunto()

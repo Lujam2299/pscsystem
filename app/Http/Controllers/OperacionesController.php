@@ -24,7 +24,8 @@ class OperacionesController extends Controller
     public function storeRegistroEventual(Request $request)
 {
     try {
-        $validator = Validator::make($request->all(), [
+        // Reglas base
+        $rules = [
             'user_id' => 'required|exists:users,id',
             'fecha' => 'required|date',
             'subpunto_id' => 'required|exists:subpuntos,id',
@@ -33,7 +34,16 @@ class OperacionesController extends Controller
             'tipo_pago' => 'required|in:nomina,eventual',
             'tipo_servicio' => 'required|in:12 Horas,24 horas,36 Horas',
             'motivo' => 'required|in:Falta de plantilla,Faltas de elementos,Vacaciones de elementos,Otro',
-        ]);
+        ];
+
+        // Regla condicional: si es motivo con elemento, debe existir y ser usuario activo
+        if (in_array($request->motivo, ['Faltas de elementos', 'Vacaciones de elementos'])) {
+            $rules['elemento_relacionado_id'] = 'required|exists:users,id,estatus,Activo';
+        } else {
+            $rules['elemento_relacionado_id'] = 'nullable'; // o simplemente no se envía
+        }
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json([
@@ -43,6 +53,12 @@ class OperacionesController extends Controller
         }
 
         $data = $validator->validated();
+
+        // Si no aplica el motivo, aseguramos que no se guarde nada
+        if (!in_array($data['motivo'], ['Faltas de elementos', 'Vacaciones de elementos'])) {
+            $data['elemento_relacionado_id'] = null;
+        }
+
         Eventuales::create($data);
 
         return response()->json([

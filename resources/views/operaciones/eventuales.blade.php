@@ -1,4 +1,12 @@
 <x-app-layout>
+    <style>
+        #sugerencias-elemento {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        #sugerencias-elemento div:hover {
+            background-color: #f3f4f6;
+        }
+    </style>
     <x-navbar></x-navbar>
 
     <div class="py-8">
@@ -185,10 +193,118 @@
                         <option value="Otro">Otro</option>
                     </select>
                 </div>
+
+                <div id="contenedor-elemento-relacionado" class="mb-4" style="display:none; position:relative;">
+                    <label class="block text-sm font-medium text-gray-700 mb-1" id="label-elemento-relacionado">
+                        Elemento relacionado
+                    </label>
+                    <input type="text"
+                        id="elemento-relacionado-input"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        placeholder="Escriba el nombre del elemento...">
+                    <input type="hidden" id="elemento-relacionado-id" value="">
+                    <input type="hidden" id="tipo-elemento" value=""> <!-- 'falta' o 'vacaciones' -->
+
+                    <!-- Lista de sugerencias -->
+                    <div id="sugerencias-elemento"
+                        class="absolute z-10 w-full bg-white border border-gray-300 rounded-b-lg shadow-lg max-h-40 overflow-y-auto"
+                        style="display:none; top:100%; left:0;">
+                    </div>
+                </div>
             `,
             showCancelButton: true,
             confirmButtonText: 'Guardar',
             cancelButtonText: 'Cancelar',
+            didOpen: () => {
+                const motivoSelect = document.getElementById('motivo');
+                const contenedor = document.getElementById('contenedor-elemento-relacionado');
+                const label = document.getElementById('label-elemento-relacionado');
+                const inputElemento = document.getElementById('elemento-relacionado-input');
+                const hiddenId = document.getElementById('elemento-relacionado-id');
+                const tipoElementoInput = document.getElementById('tipo-elemento');
+                const sugerenciasDiv = document.getElementById('sugerencias-elemento');
+
+                // Cerrar sugerencias al hacer clic fuera
+                document.addEventListener('click', (e) => {
+                    if (!contenedor.contains(e.target)) {
+                        sugerenciasDiv.style.display = 'none';
+                    }
+                });
+
+                // Función para mostrar sugerencias según el tipo
+                function mostrarSugerencias(termino, tipo) {
+                    if (!termino.trim()) {
+                        sugerenciasDiv.style.display = 'none';
+                        return;
+                    }
+
+                    let listaUsuarios = [];
+                    if (tipo === 'falta') {
+                        listaUsuarios = usuariosEventualesActivos;
+                    } else if (tipo === 'vacaciones') {
+                        listaUsuarios = todosUsuariosActivos;
+                    }
+
+                    const coincidencias = listaUsuarios.filter(usuario =>
+                        usuario.name.toLowerCase().includes(termino.toLowerCase())
+                    );
+
+                    if (coincidencias.length === 0) {
+                        sugerenciasDiv.style.display = 'none';
+                        return;
+                    }
+
+                    sugerenciasDiv.innerHTML = coincidencias.map(usuario =>
+                        `<div class="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-0"
+                            data-id="${usuario.id}"
+                            data-name="${usuario.name}">
+                            ${usuario.name}
+                        </div>`
+                    ).join('');
+
+                    sugerenciasDiv.style.display = 'block';
+
+                    // Añadir evento a cada sugerencia
+                    sugerenciasDiv.querySelectorAll('div').forEach(item => {
+                        item.addEventListener('click', () => {
+                            inputElemento.value = item.getAttribute('data-name');
+                            hiddenId.value = item.getAttribute('data-id');
+                            sugerenciasDiv.style.display = 'none';
+                        });
+                    });
+                }
+
+                // Escuchar cambios en el input
+                inputElemento.addEventListener('input', function() {
+                    const tipo = tipoElementoInput.value;
+                    if (tipo) {
+                        mostrarSugerencias(this.value, tipo);
+                    }
+                });
+
+                // Escuchar cambios en el motivo
+                motivoSelect.addEventListener('change', function() {
+                    const valor = this.value;
+                    if (valor === 'Faltas de elementos') {
+                        label.textContent = 'Elemento que faltó';
+                        inputElemento.placeholder = 'Escriba el nombre del elemento que faltó...';
+                        tipoElementoInput.value = 'falta';
+                        contenedor.style.display = 'block';
+                    } else if (valor === 'Vacaciones de elementos') {
+                        label.textContent = 'Elemento en vacaciones';
+                        inputElemento.placeholder = 'Escriba el nombre del elemento en vacaciones...';
+                        tipoElementoInput.value = 'vacaciones';
+                        contenedor.style.display = 'block';
+                    } else {
+                        // Ocultar y limpiar
+                        contenedor.style.display = 'none';
+                        inputElemento.value = '';
+                        hiddenId.value = '';
+                        tipoElementoInput.value = '';
+                        sugerenciasDiv.style.display = 'none';
+                    }
+                });
+            },
             preConfirm: () => {
                 const userId = document.getElementById('user-id').value;
                 const fecha = document.getElementById('fecha').value;
@@ -197,7 +313,9 @@
                 const turnos = Array.from(document.querySelectorAll('.turno-checkbox:checked')).map(cb => cb.value);
                 const tipoServicio = document.getElementById('tipo-servicio').value;
                 const motivo = document.getElementById('motivo').value;
+                const elementoRelacionadoId = document.getElementById('elemento-relacionado-id')?.value || null;
 
+                // Validaciones comunes
                 if (!fecha) {
                     Swal.showValidationMessage('La fecha es requerida');
                     return false;
@@ -223,6 +341,12 @@
                     return false;
                 }
 
+                // Validar elemento relacionado si aplica
+                if ((motivo === 'Faltas de elementos' || motivo === 'Vacaciones de elementos') && !elementoRelacionadoId) {
+                    Swal.showValidationMessage('Seleccione el elemento relacionado');
+                    return false;
+                }
+
                 return fetch("{{ route('operaciones.registrar.eventual') }}", {
                     method: 'POST',
                     headers: {
@@ -237,7 +361,8 @@
                         turnos: turnos,
                         tipo_pago: tipoPago,
                         tipo_servicio: tipoServicio,
-                        motivo: motivo
+                        motivo: motivo,
+                        elemento_relacionado_id: elementoRelacionadoId // ID del usuario seleccionado
                     })
                 })
                 .then(response => response.json().then(data => {
@@ -259,5 +384,23 @@
             }
         });
     }
+</script>
+@php
+    $usuariosEventualesActivos = \App\Models\User::where('estatus', 'Activo')
+        ->select('id', 'name')
+        ->get()
+        ->map(fn($u) => ['id' => $u->id, 'name' => $u->name])
+        ->values();
+
+    $todosUsuariosActivos = \App\Models\User::where('estatus', 'Activo')
+        ->select('id', 'name')
+        ->get()
+        ->map(fn($u) => ['id' => $u->id, 'name' => $u->name])
+        ->values();
+@endphp
+
+<script>
+    const usuariosEventualesActivos = @json($usuariosEventualesActivos);
+    const todosUsuariosActivos = @json($todosUsuariosActivos);
 </script>
 </x-app-layout>
