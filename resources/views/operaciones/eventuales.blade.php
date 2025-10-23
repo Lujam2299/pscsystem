@@ -194,22 +194,32 @@
                     </select>
                 </div>
 
+                <!-- Contenedor dinámico para el input con autocompletado -->
                 <div id="contenedor-elemento-relacionado" class="mb-4" style="display:none; position:relative;">
                     <label class="block text-sm font-medium text-gray-700 mb-1" id="label-elemento-relacionado">
                         Elemento relacionado
                     </label>
                     <input type="text"
-                        id="elemento-relacionado-input"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                        placeholder="Escriba el nombre del elemento...">
+                           id="elemento-relacionado-input"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                           placeholder="Escriba el nombre del elemento...">
                     <input type="hidden" id="elemento-relacionado-id" value="">
-                    <input type="hidden" id="tipo-elemento" value=""> <!-- 'falta' o 'vacaciones' -->
+                    <input type="hidden" id="tipo-elemento" value="">
 
                     <!-- Lista de sugerencias -->
                     <div id="sugerencias-elemento"
-                        class="absolute z-10 w-full bg-white border border-gray-300 rounded-b-lg shadow-lg max-h-40 overflow-y-auto"
-                        style="display:none; top:100%; left:0;">
+                         class="absolute z-10 w-full bg-white border border-gray-300 rounded-b-lg shadow-lg max-h-40 overflow-y-auto"
+                         style="display:none; top:100%; left:0;">
                     </div>
+                </div>
+
+                <!-- Contenedor para observaciones (motivo = Otro) -->
+                <div id="contenedor-observaciones" class="mb-4" style="display:none;">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Detalle del motivo</label>
+                    <textarea id="observaciones"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                              rows="3"
+                              placeholder="Escriba el motivo..."></textarea>
                 </div>
             `,
             showCancelButton: true,
@@ -223,6 +233,8 @@
                 const hiddenId = document.getElementById('elemento-relacionado-id');
                 const tipoElementoInput = document.getElementById('tipo-elemento');
                 const sugerenciasDiv = document.getElementById('sugerencias-elemento');
+                const contenedorObservaciones = document.getElementById('contenedor-observaciones');
+                const textareaObservaciones = document.getElementById('observaciones');
 
                 // Cerrar sugerencias al hacer clic fuera
                 document.addEventListener('click', (e) => {
@@ -256,8 +268,8 @@
 
                     sugerenciasDiv.innerHTML = coincidencias.map(usuario =>
                         `<div class="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-0"
-                            data-id="${usuario.id}"
-                            data-name="${usuario.name}">
+                             data-id="${usuario.id}"
+                             data-name="${usuario.name}">
                             ${usuario.name}
                         </div>`
                     ).join('');
@@ -274,7 +286,7 @@
                     });
                 }
 
-                // Escuchar cambios en el input
+                // Escuchar cambios en el input de autocompletado
                 inputElemento.addEventListener('input', function() {
                     const tipo = tipoElementoInput.value;
                     if (tipo) {
@@ -285,6 +297,16 @@
                 // Escuchar cambios en el motivo
                 motivoSelect.addEventListener('change', function() {
                     const valor = this.value;
+
+                    // Ocultar todo primero
+                    contenedor.style.display = 'none';
+                    contenedorObservaciones.style.display = 'none';
+                    inputElemento.value = '';
+                    hiddenId.value = '';
+                    tipoElementoInput.value = '';
+                    textareaObservaciones.value = '';
+                    sugerenciasDiv.style.display = 'none';
+
                     if (valor === 'Faltas de elementos') {
                         label.textContent = 'Elemento que faltó';
                         inputElemento.placeholder = 'Escriba el nombre del elemento que faltó...';
@@ -295,14 +317,10 @@
                         inputElemento.placeholder = 'Escriba el nombre del elemento en vacaciones...';
                         tipoElementoInput.value = 'vacaciones';
                         contenedor.style.display = 'block';
-                    } else {
-                        // Ocultar y limpiar
-                        contenedor.style.display = 'none';
-                        inputElemento.value = '';
-                        hiddenId.value = '';
-                        tipoElementoInput.value = '';
-                        sugerenciasDiv.style.display = 'none';
+                    } else if (valor === 'Otro') {
+                        contenedorObservaciones.style.display = 'block';
                     }
+                    // Para "Falta de plantilla", no se muestra nada adicional
                 });
             },
             preConfirm: () => {
@@ -314,8 +332,8 @@
                 const tipoServicio = document.getElementById('tipo-servicio').value;
                 const motivo = document.getElementById('motivo').value;
                 const elementoRelacionadoId = document.getElementById('elemento-relacionado-id')?.value || null;
+                const observaciones = document.getElementById('observaciones')?.value.trim() || null;
 
-                // Validaciones comunes
                 if (!fecha) {
                     Swal.showValidationMessage('La fecha es requerida');
                     return false;
@@ -347,6 +365,12 @@
                     return false;
                 }
 
+                // Validar observaciones si es "Otro"
+                if (motivo === 'Otro' && (!observaciones || observaciones.length < 3)) {
+                    Swal.showValidationMessage('El detalle del motivo es requerido (mínimo 3 caracteres)');
+                    return false;
+                }
+
                 return fetch("{{ route('operaciones.registrar.eventual') }}", {
                     method: 'POST',
                     headers: {
@@ -362,7 +386,8 @@
                         tipo_pago: tipoPago,
                         tipo_servicio: tipoServicio,
                         motivo: motivo,
-                        elemento_relacionado_id: elementoRelacionadoId // ID del usuario seleccionado
+                        elemento_relacionado_id: elementoRelacionadoId,
+                        observaciones: observaciones
                     })
                 })
                 .then(response => response.json().then(data => {

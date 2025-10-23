@@ -18,7 +18,8 @@ class Eventuales extends Model
         'arch_pago',
         'tipo_servicio',
         'elemento_relacionado_id',
-        'motivo'
+        'motivo',
+        'observaciones'
     ];
 
     protected $casts = [

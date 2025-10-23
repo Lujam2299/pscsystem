@@ -23,8 +23,7 @@ class OperacionesController extends Controller
 
     public function storeRegistroEventual(Request $request)
 {
-    try {
-        // Reglas base
+try {
         $rules = [
             'user_id' => 'required|exists:users,id',
             'fecha' => 'required|date',
@@ -36,11 +35,16 @@ class OperacionesController extends Controller
             'motivo' => 'required|in:Falta de plantilla,Faltas de elementos,Vacaciones de elementos,Otro',
         ];
 
-        // Regla condicional: si es motivo con elemento, debe existir y ser usuario activo
         if (in_array($request->motivo, ['Faltas de elementos', 'Vacaciones de elementos'])) {
             $rules['elemento_relacionado_id'] = 'required|exists:users,id,estatus,Activo';
         } else {
-            $rules['elemento_relacionado_id'] = 'nullable'; // o simplemente no se envía
+            $rules['elemento_relacionado_id'] = 'nullable';
+        }
+
+        if ($request->motivo === 'Otro') {
+            $rules['observaciones'] = 'required|string|min:3|max:500';
+        } else {
+            $rules['observaciones'] = 'nullable|string|max:500';
         }
 
         $validator = Validator::make($request->all(), $rules);
@@ -54,9 +58,12 @@ class OperacionesController extends Controller
 
         $data = $validator->validated();
 
-        // Si no aplica el motivo, aseguramos que no se guarde nada
         if (!in_array($data['motivo'], ['Faltas de elementos', 'Vacaciones de elementos'])) {
             $data['elemento_relacionado_id'] = null;
+        }
+
+        if ($data['motivo'] !== 'Otro') {
+            $data['observaciones'] = null;
         }
 
         Eventuales::create($data);
