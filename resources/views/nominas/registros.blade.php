@@ -10,7 +10,7 @@
                     </a>
                 </div>
 
-                @livewire('nominas-registros-table')
+                @livewire('registros-nominas-tabs')
             </div>
         </div>
     </div>

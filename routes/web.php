@@ -283,6 +283,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/nominas_subir_archivos', [NominasController::class, 'subirArchivosNominas'])->name('nominas.guardarArchivos');
     Route::get('/registros_nominas', [NominasController::class, 'registros'])->name('nominas.registros');
     Route::get('/calculo_destajos', [NominasController::class, 'calculoDestajos'])->name('nominas.calculoDestajos');
+    Route::get('/nominas/semanal', [NominasController::class, 'formularioSemanal'])->name('nominas.semanal');
+    Route::post('/nominas/semanal/guardar', [NominasController::class, 'guardarSemanal'])->name('nominas.guardarSemanal');
 
     Route::get('/exportar-altas-por-corte', function (Request $request) {
         $request->validate([

@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\Alerta;
 use App\Models\Archivonomina;
+use App\Models\ArchivoPagoSemanal;
 use App\Models\Asistencia;
 use App\Models\Nomina;
 use App\Models\SolicitudVacaciones;
@@ -916,4 +917,53 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
 
     return redirect()->back()->with('error', 'No se pudo guardar el archivo.');
 }
+
+    public function formularioSemanal(){
+        return view('nominas.semanal');
+    }
+
+    public function guardarSemanal(Request $request)
+    {
+        try {
+            $request->validate([
+                'mes' => 'required|integer|between:1,12',
+                'semana' => 'required|integer|between:1,5',
+                'archivo_semanal' => 'required|mimes:xlsx,xls,csv|max:10240',
+            ]);
+
+            $mes = $request->mes;
+            $semana = $request->semana;
+            $anio = now()->format('Y');
+
+            $rutaDirectorio = "archivos_pagos_semanales/{$anio}/mes_{$mes}_semana_{$semana}";
+            $rutaCompleta = storage_path("app/public/{$rutaDirectorio}");
+
+            if (!file_exists($rutaCompleta)) {
+                mkdir($rutaCompleta, 0755, true);
+            }
+
+            $archivo = $request->file('archivo_semanal');
+            $nombre = time() . '_pago_semanal.' . $archivo->getClientOriginalExtension();
+            $rutaGuardada = $archivo->storeAs($rutaDirectorio, $nombre, 'public');
+
+            $total = $this->calcularSubtotalNomina($rutaGuardada, 'nomina');
+
+            ArchivoPagoSemanal::create([
+                'mes' => $mes,
+                'semana' => $semana,
+                'anio' => $anio,
+                'archivo_semanal' => $rutaGuardada,
+                'total_semanal' => $total,
+            ]);
+
+            return redirect()->back()->with('success', 'Registro semanal subido y procesado correctamente.');
+
+        } catch (\Exception $e) {
+            \Log::error('Error al guardar pago semanal', [
+                'mensaje' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return redirect()->back()->with('error', 'Error al subir el archivo: ' . $e->getMessage());
+        }
+    }
 }

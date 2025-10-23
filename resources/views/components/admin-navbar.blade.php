@@ -370,13 +370,17 @@
                                             ? 'text-yellow-700'
                                             : (Str::contains($card['color'], 'red')
                                                 ? 'text-red-700'
+                                                : (Str::contains($card['color'], 'indigo')
+                                                ? 'text-indigo-700'
                                                 : (Str::contains($card['color'], 'green')
                                                     ? 'text-green-700'
+                                                    : (Str::contains($card['color'], 'pink')
+                                                    ? 'text-pink-700'
                                                     : (Str::contains($card['color'], 'purple')
                                                         ? 'text-purple-700'
                                                         : (Str::contains($card['color'], 'gray')
                                                             ? 'text-gray-700'
-                                                            : 'text-gray-800'))))) }}"></i>
+                                                            : 'text-gray-800'))))))) }}"></i>
                             </div>
                             <span class="font-medium">{{ $card['titulo'] }}</span>
                         </div>
