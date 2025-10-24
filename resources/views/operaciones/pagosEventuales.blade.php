@@ -62,6 +62,16 @@
                                                 @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                <button type="button"
+                                                        onclick="mostrarDetallesRegistro({{ $registro->id }})"
+                                                        class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition duration-200 shadow-sm"
+                                                        title="Ver detalles">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                    Detalles
+                                                </button>
                                                 @if($registro->tipo_pago === 'efectivo' || $registro->tipo_pago === 'eventual')
                                                     <button type="button"
                                                             onclick="abrirModalSubirPago({{ $registro->id }})"
@@ -160,4 +170,71 @@
             });
         }
     </script>
+    <script>
+    function mostrarDetallesRegistro(registroId) {
+        Swal.fire({
+            title: 'Cargando...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        fetch(`/eventuales/${registroId}/detalles`)
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.message || 'Error al cargar los detalles');
+                }
+
+                const r = data.data;
+
+                // Formatear turnos
+                const turnosTexto = r.turnos ? r.turnos.join(', ') : '—';
+
+                // Información adicional según motivo
+                let infoAdicional = '';
+                if (r.motivo === 'Faltas de elementos' || r.motivo === 'Vacaciones de elementos') {
+                    infoAdicional = `
+                        <div class="mt-2">
+                            <strong>Cubre a:</strong> ${r.elemento_relacionado_name || '—'}
+                        </div>
+                    `;
+                } else if (r.motivo === 'Otro' && r.observaciones) {
+                    infoAdicional = `
+                        <div class="mt-2">
+                            <strong>Detalle:</strong> ${r.observaciones}
+                        </div>
+                    `;
+                }
+
+                Swal.fire({
+                    title: `Detalles del Registro`,
+                    html: `
+                        <div class="text-left text-sm space-y-2">
+                            <div><strong>Usuario:</strong> ${r.user_name || 'N/A'}</div>
+                            <div><strong>Fecha:</strong> ${r.fecha_formateada}</div>
+                            <div><strong>Turnos:</strong> ${turnosTexto}</div>
+                            <div><strong>Tipo de Servicio:</strong> ${r.tipo_servicio || 'N/A'}</div>
+                            <div><strong>Motivo:</strong> ${r.motivo || 'N/A'}</div>
+                            <div><strong>Tipo de Pago:</strong>
+                                ${r.tipo_pago === 'nomina' ? 'Nómina' : 'Efectivo'}
+                            </div>
+                            <div><strong>Observaciones:</strong> ${r.observaciones ?? 'N/A'}</div>
+                            ${infoAdicional}
+                            <div class="mt-3 text-xs text-gray-500">
+                                <em>Este registro aún no tiene comprobante de pago.</em>
+                            </div>
+                        </div>
+                    `,
+                    icon: 'info',
+                    confirmButtonText: 'Cerrar'
+                });
+            })
+            .catch(error => {
+                Swal.fire('Error', 'No se pudieron cargar los detalles.', 'error');
+                console.error('Error:', error);
+            });
+    }
+</script>
 </x-app-layout>

@@ -180,4 +180,34 @@ public function subirComprobantes(Request $request, $id)
 
     return redirect()->route('operaciones.valesPendientes')->with('success', 'Comprobantes subidos correctamente');
 }
+
+    public function show($id)
+    {
+        try {
+            $registro = Eventuales::with(['user', 'elementoRelacionado'])
+                ->findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $registro->id,
+                    'user_name' => $registro->user?->name ?? 'Usuario eliminado',
+                    'fecha_formateada' => \Carbon\Carbon::parse($registro->fecha)->format('d/m/Y'),
+                    'turnos' => $registro->turnos,
+                    'tipo_servicio' => $registro->tipo_servicio,
+                    'motivo' => $registro->motivo,
+                    'tipo_pago' => $registro->tipo_pago,
+                    'elemento_relacionado_name' => $registro->elementoRelacionado?->name,
+                    'observaciones' => $registro->observaciones,
+                    'arch_pago' => $registro->arch_pago,
+                    'arch_pago_url' => $registro->arch_pago ? asset($registro->arch_pago) : null,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Registro no encontrado'
+            ], 404);
+        }
+    }
 }
