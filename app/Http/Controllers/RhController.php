@@ -539,6 +539,66 @@ public function guardarArchivosAlta(Request $request, $id)
     return redirect()->route('dashboard')->with('success', 'Baja de usuario realizada correctamente.');
 }
 
+    public function actualizar(Request $request, $id)
+    {
+        // Validación (igual que en el registro, pero con archivos opcionales)
+        $request->validate([
+            'fecha_baja' => 'required|date',
+            'incapacidad' => 'nullable|string|max:255',
+            'por' => 'required|in:Ausentismo,Separación Voluntaria,Renuncia,Otro',
+            'ultima_asistencia' => 'required|date',
+            'motivo' => 'nullable|string',
+            'descuento' => 'nullable|string',
+            'archivo_baja' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'arch_equipo_entregado' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'arch_renuncia' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $solicitud = SolicitudBajas::findOrFail($id);
+
+        // Actualizar campos básicos
+        $solicitud->fecha_baja = $request->fecha_baja;
+        $solicitud->ultima_asistencia = $request->ultima_asistencia;
+        $solicitud->incapacidad = $request->incapacidad;
+        $solicitud->por = $request->por;
+        $solicitud->motivo = $request->motivo;
+        $solicitud->descuento = $request->descuento;
+
+        // Guardar primero para asegurar el ID (por si es nuevo, aunque no debería serlo)
+        $solicitud->save();
+
+        // Ruta de la carpeta del registro
+        $carpeta = 'solicitudesBajas/' . $solicitud->id;
+        Storage::disk('public')->makeDirectory($carpeta);
+
+        // Archivos a manejar
+        $camposArchivos = [
+            'archivo_baja',
+            'arch_equipo_entregado',
+            'arch_renuncia'
+        ];
+
+        foreach ($camposArchivos as $campo) {
+            if ($request->hasFile($campo)) {
+                // 1. Eliminar archivo anterior si existe
+                if ($solicitud->$campo) {
+                    Storage::disk('public')->delete($solicitud->$campo);
+                }
+
+                // 2. Subir nuevo archivo
+                $archivo = $request->file($campo);
+                $nombre = $campo . '_' . time() . '.' . $archivo->getClientOriginalExtension();
+                $ruta = $archivo->storeAs($carpeta, $nombre, 'public');
+                $solicitud->$campo = $ruta;
+            }
+        }
+
+        // Guardar cambios finales
+        $solicitud->save();
+
+        return redirect()->back()->with('success', 'Solicitud de baja actualizada correctamente.');
+    }
+
 
     public function verArchivos(){
         return view('rh.archivos');

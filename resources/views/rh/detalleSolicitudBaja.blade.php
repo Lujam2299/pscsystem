@@ -466,6 +466,13 @@
                                 </svg>
                                 Aceptar
                             </a>
+                            <button type="button" onclick="abrirModalEdicion({{ $solicitud->id }})"
+                                    class="action-button" style="background-color: #bdbf56; color: white;">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Editar Solicitud
+                            </button>
                             <a href="{{ route('rh.rechazarBaja', $solicitud->id) }}"
                                class="action-button btn-danger">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -517,7 +524,161 @@
         </div>
     </div>
 </x-app-layout>
+<div id="modalEdicion" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-transparent dark:from-gray-700 dark:to-transparent">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Editar Solicitud de Baja</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Modifique los datos necesarios. Los archivos se reemplazarán si se suben nuevos.</p>
+        </div>
 
+        <form id="formEdicion" method="POST" action="{{ route('solicitudes.baja.actualizar', $solicitud->id) }}" enctype="multipart/form-data" class="p-6 space-y-8">
+            @csrf
+            @method('PUT')
+
+            <!-- Datos Generales -->
+            <div class="bg-gray-50 dark:bg-gray-750/50 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-5">Datos Generales</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label for="fecha_baja_edit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha Baja</label>
+                        <input type="date" name="fecha_baja" id="fecha_baja_edit"
+                               value="{{ \Carbon\Carbon::parse($solicitud->fecha_baja)->format('Y-m-d') }}"
+                               class="w-full px-3 py-2 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                               required>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">NSS</label>
+                        <p class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white">
+                            {{ $solicitudAlta->nss }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha de Ingreso</label>
+                        <p class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white">
+                            {{ \Carbon\Carbon::parse($user->fecha_ingreso)->format('d/m/Y') }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label for="incapacidad_edit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">¿Incapacidad?</label>
+                        <input type="text" name="incapacidad" id="incapacidad_edit"
+                               value="{{ old('incapacidad', $solicitud->incapacidad) }}"
+                               placeholder="Sí / No o Detalles"
+                               class="w-full px-3 py-2 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Datos de Baja -->
+            <div class="bg-gray-50 dark:bg-gray-750/50 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-5">Datos de Baja</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre</label>
+                        <p class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white">
+                            {{ $user->name }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Empresa</label>
+                        <p class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white">
+                            {{ $user->empresa }}
+                        </p>
+                    </div>
+
+                    <div class="px-3 py-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Punto</label>
+                        <p class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white">
+                            {{ $user->punto }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label for="por_edit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Por</label>
+                        <select name="por" id="por_edit"
+                                class="w-full px-3 py-2 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                required>
+                            <option value="">Seleccione</option>
+                            <option value="Ausentismo" {{ old('por', $solicitud->por) == 'Ausentismo' ? 'selected' : '' }}>Ausentismo</option>
+                            <option value="Separación Voluntaria" {{ old('por', $solicitud->por) == 'Separación Voluntaria' ? 'selected' : '' }}>Separación Voluntaria</option>
+                            <option value="Otro" {{ old('por', $solicitud->por) == 'Otro' ? 'selected' : '' }}>Otro</option>
+                            <option value="Renuncia" {{ old('por', $solicitud->por) == 'Renuncia' ? 'selected' : '' }}>Renuncia</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="ultima_asistencia_edit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Última Asistencia</label>
+                        <input type="date" name="ultima_asistencia" id="ultima_asistencia_edit"
+                               value="{{ \Carbon\Carbon::parse($solicitud->ultima_asistencia)->format('Y-m-d') }}"
+                               class="w-full px-3 py-2 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                               required>
+                    </div>
+
+                    <div>
+                        <label for="descuento_edit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descuento por equipo/material no devuelto</label>
+                        <input type="text" name="descuento" id="descuento_edit"
+                               value="{{ old('descuento', $solicitud->descuento) }}"
+                               class="w-full px-3 py-2 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+
+                    <!-- Archivos (solo reemplazo) -->
+                    <div class="md:col-span-2">
+                        <h4 class="font-medium text-gray-900 dark:text-white mb-3">Documentos (opcional: reemplazar)</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Archivo de Baja</label>
+                                <input type="file" name="archivo_baja" accept=".pdf,.jpg,.jpeg,.png"
+                                       class="w-full text-sm text-gray-900 border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-gray-400">
+                                @if($solicitud->archivo_baja)
+                                    <p class="text-xs text-green-600 mt-1">📄 {{ basename($solicitud->archivo_baja) }}</p>
+                                @endif
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Equipo Entregado</label>
+                                <input type="file" name="arch_equipo_entregado" accept=".pdf,.jpg,.jpeg,.png"
+                                       class="w-full text-sm text-gray-900 border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-gray-400">
+                                @if($solicitud->arch_equipo_entregado)
+                                    <p class="text-xs text-green-600 mt-1">📄 {{ basename($solicitud->arch_equipo_entregado) }}</p>
+                                @endif
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Renuncia Firmada</label>
+                                <input type="file" name="arch_renuncia" accept=".pdf,.jpg,.jpeg,.png"
+                                       class="w-full text-sm text-gray-900 border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-gray-400">
+                                @if($solicitud->arch_renuncia)
+                                    <p class="text-xs text-green-600 mt-1">📄 {{ basename($solicitud->arch_renuncia) }}</p>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label for="motivo_edit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Motivo (opcional)</label>
+                        <textarea name="motivo" id="motivo_edit" rows="4"
+                                  class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">{{ old('motivo', $solicitud->motivo) }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex flex-col sm:flex-row sm:justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" onclick="cerrarModalEdicion()"
+                        class="px-5 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                    Cancelar
+                </button>
+                <button type="submit"
+                        class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition focus:ring-2 focus:ring-purple-300">
+                    Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 <!-- Modal para añadir finiquito -->
 <div id="finiquitoModal_{{ $solicitud->id }}"
      class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -771,5 +932,20 @@
                 modal.classList.add('hidden');
             }
         });
+    });
+    function abrirModalEdicion(solicitudId) {
+        document.getElementById('modalEdicion').classList.remove('hidden');
+    }
+
+    function cerrarModalEdicion() {
+        document.getElementById('modalEdicion').classList.add('hidden');
+    }
+
+    // Cerrar al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        const modal = document.getElementById('modalEdicion');
+        if (e.target === modal) {
+            cerrarModalEdicion();
+        }
     });
 </script>
