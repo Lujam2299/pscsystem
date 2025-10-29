@@ -175,7 +175,24 @@
                             <td class="px-3 py-2 text-sm">{{ $faltas }}</td>
                             <td class="px-3 py-2 text-sm">0</td>
                             <td class="px-3 py-2 text-sm">{{ $vacaciones }}</td>
-                            <td class="px-3 py-2 text-sm">{{ $user->punto }}</td>
+                            @php
+                                // Verificar si en alguna de las asistencias de este usuario hay un punto asignado diferente
+                                $puntoMostrar = $user->punto;
+                                $puntoAsignado = null;
+
+                                foreach($fechas as $f) {
+                                    $asistencia = $asistenciasIndexadas->get($f);
+                                    if ($asistencia && isset($puntosAsignadosMap[$f][$user->id])) {
+                                        $puntoAsignado = $puntosAsignadosMap[$f][$user->id];
+                                        break; // Tomamos el primer punto asignado encontrado
+                                    }
+                                }
+
+                                if ($puntoAsignado) {
+                                    $puntoMostrar = $puntoAsignado;
+                                }
+                            @endphp
+                            <td class="px-3 py-2 text-sm">{{ $puntoMostrar }}</td>
 
                             @foreach($fechas as $f)
                                 @php

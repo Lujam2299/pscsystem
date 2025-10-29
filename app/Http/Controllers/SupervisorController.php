@@ -745,36 +745,47 @@ public function finalizarAsistencia(Request $request)
         return view('supervisor.verAsistencias', compact('asistencias', 'user'));
     }
 
-    public function detalleAsistencia($id){
-        $asistencia = Asistencia::find($id);
-        $idsAsistieron = json_decode($asistencia->elementos_enlistados, true) ?? [];
-        $idsFaltaron = json_decode($asistencia->faltas, true) ?? [];
-        $idsDescansaron = json_decode($asistencia->descansos, true) ?? [];
-        $coberturas = json_decode($asistencia->coberturas, true) ?? [];
-        $idsCoberturas = collect($coberturas)->pluck('id')->toArray();
+    public function detalleAsistencia($id)
+{
+    $asistencia = Asistencia::with('puntosAsignados')->find($id); // Cargamos la relación
 
-        $usuariosAsistieron = User::whereIn('id', $idsAsistieron)->with('solicitudAlta.documentacion')->get();
-        $usuariosFaltaron = User::whereIn('id', $idsFaltaron)->with('solicitudAlta.documentacion')->get();
-        $usuariosDescansaron = User::whereIn('id', $idsDescansaron)->with('solicitudAlta.documentacion')->get();
-        $usuariosCoberturas = User::whereIn('id', $idsCoberturas)
-            ->with('solicitudAlta.documentacion')
-            ->get();
+    $idsAsistieron = json_decode($asistencia->elementos_enlistados, true) ?? [];
+    $idsFaltaron = json_decode($asistencia->faltas, true) ?? [];
+    $idsDescansaron = json_decode($asistencia->descansos, true) ?? [];
+    $coberturas = json_decode($asistencia->coberturas, true) ?? [];
+    $idsCoberturas = collect($coberturas)->pluck('id')->toArray();
 
+    $usuariosAsistieron = User::whereIn('id', $idsAsistieron)->with('solicitudAlta.documentacion')->get();
+    $usuariosFaltaron = User::whereIn('id', $idsFaltaron)->with('solicitudAlta.documentacion')->get();
+    $usuariosDescansaron = User::whereIn('id', $idsDescansaron)->with('solicitudAlta.documentacion')->get();
+    $usuariosCoberturas = User::whereIn('id', $idsCoberturas)
+        ->with('solicitudAlta.documentacion')
+        ->get();
 
-        $fotos = json_decode($asistencia->fotos_asistentes, true) ?? [];
-        if (is_array($fotos)) {
-            foreach ($fotos as $id => $path) {
-                $fotos[$id] = asset('storage/' . $path);
-            }
+    $fotos = json_decode($asistencia->fotos_asistentes, true) ?? [];
+    if (is_array($fotos)) {
+        foreach ($fotos as $id => $path) {
+            $fotos[$id] = asset('storage/' . $path);
         }
-        $asistencia->usuarios_coberturas = $usuariosCoberturas;
-        $asistencia->usuarios_enlistados = $usuariosAsistieron;
-        $asistencia->usuarios_faltantes = $usuariosFaltaron;
-        $asistencia->usuarios_descansos = $usuariosDescansaron;
-        $asistencia->fotos_asistentes = $fotos;
-
-        return view('supervisor.detalleAsistencia', compact('asistencia'));
     }
+
+    // ✅ NUEVO: Agregar el mapa de puntos asignados al objeto $asistencia
+    $puntosAsignadosMap = [];
+    if (in_array($asistencia->usuario->punto, ['KANSAS', 'MTY'])) {
+        $puntosAsignadosMap = $asistencia->puntosAsignados->pluck('punto', 'user_id')->toArray();
+    }
+
+    $asistencia->puntos_asignados_map = $puntosAsignadosMap;
+
+    // Asignar usuarios a $asistencia como antes
+    $asistencia->usuarios_coberturas = $usuariosCoberturas;
+    $asistencia->usuarios_enlistados = $usuariosAsistieron;
+    $asistencia->usuarios_faltantes = $usuariosFaltaron;
+    $asistencia->usuarios_descansos = $usuariosDescansaron;
+    $asistencia->fotos_asistentes = $fotos;
+
+    return view('supervisor.detalleAsistencia', compact('asistencia'));
+}
 
     public function verFechaAsistencias(Request $request)
     {

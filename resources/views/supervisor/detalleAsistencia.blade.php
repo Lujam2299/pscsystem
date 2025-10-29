@@ -139,7 +139,19 @@
                                                 </div>
                                             @endif
                                             <p class="text-gray-900 dark:text-white font-medium text-sm truncate">{{ $usuario->name }}</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">{{ $usuario->punto }}</p>
+                                            @php
+                                                $puntoMostrar = $usuario->punto;
+                                                // Solo si el supervisor es de KANSAS/MTY y hay asignación específica
+                                                if (in_array($asistencia->usuario->punto, ['KANSAS', 'MTY']) && !empty($asistencia->puntos_asignados_map)) {
+                                                    $puntoMostrar = $asistencia->puntos_asignados_map[$usuario->id] ?? $usuario->punto;
+                                                }
+                                            @endphp
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
+                                                {{ $puntoMostrar }}
+                                                @if($puntoMostrar !== $usuario->punto)
+                                                    <span class="text-xs text-blue-600 dark:text-blue-400">(asignado)</span>
+                                                @endif
+                                            </p>
 
                                             @if (isset($asistencia->fotos_asistentes[$usuario->id]))
                                                 <div class="mt-3">
@@ -195,7 +207,19 @@
                                                     </div>
                                                 @endif
                                                 <p class="text-gray-900 dark:text-white font-medium text-sm truncate">{{ $usuario->name }}</p>
-                                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">{{ $usuario->punto }}</p>
+                                                @php
+                                                    $puntoMostrar = $usuario->punto;
+                                                    // Solo si el supervisor es de KANSAS/MTY y hay asignación específica
+                                                    if (in_array($asistencia->usuario->punto, ['KANSAS', 'MTY']) && !empty($asistencia->puntos_asignados_map)) {
+                                                        $puntoMostrar = $asistencia->puntos_asignados_map[$usuario->id] ?? $usuario->punto;
+                                                    }
+                                                @endphp
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
+                                                    {{ $puntoMostrar }}
+                                                    @if($puntoMostrar !== $usuario->punto)
+                                                        <span class="text-xs text-blue-600 dark:text-blue-400">(asignado)</span>
+                                                    @endif
+                                                </p>
                                             </div>
                                         @endforeach
                                     </div>
@@ -233,7 +257,19 @@
                                                     </div>
                                                 @endif
                                                 <p class="text-gray-900 dark:text-white font-medium text-sm truncate">{{ $usuario->name }}</p>
-                                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">{{ $usuario->punto }}</p>
+                                                @php
+                                                    $puntoMostrar = $usuario->punto;
+                                                    // Solo si el supervisor es de KANSAS/MTY y hay asignación específica
+                                                    if (in_array($asistencia->usuario->punto, ['KANSAS', 'MTY']) && !empty($asistencia->puntos_asignados_map)) {
+                                                        $puntoMostrar = $asistencia->puntos_asignados_map[$usuario->id] ?? $usuario->punto;
+                                                    }
+                                                @endphp
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
+                                                    {{ $puntoMostrar }}
+                                                    @if($puntoMostrar !== $usuario->punto)
+                                                        <span class="text-xs text-blue-600 dark:text-blue-400">(asignado)</span>
+                                                    @endif
+                                                </p>
                                             </div>
                                         @endforeach
                                     </div>

@@ -25,4 +25,9 @@ class Asistencia extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function puntosAsignados()
+    {
+        return $this->hasMany(\App\Models\AsistenciaPunto::class);
+    }
+
 }

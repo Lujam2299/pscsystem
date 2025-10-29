@@ -17,6 +17,7 @@ class AsistenciasTabla extends Component
     public $punto = '';
     public $fecha_inicio = '';
     public $fecha_fin = '';
+    protected $puntosAsignadosMap = [];
 
     protected $queryString = ['punto', 'fecha_inicio', 'fecha_fin'];
 
@@ -52,9 +53,9 @@ class AsistenciasTabla extends Component
         // $this->render();
     }
 
-    public function obtenerDatos()
-    {
-        if (!$this->fecha_inicio || !$this->fecha_fin) {
+public function obtenerDatos()
+{
+    if (!$this->fecha_inicio || !$this->fecha_fin) {
         return [
             'usuarios' => collect(),
             'fechas' => [],
@@ -107,99 +108,129 @@ class AsistenciasTabla extends Component
         $subpuntos = $this->getSubpuntosPorPunto()['MONTERREY'];
     }
 
-    $asistenciasIndexadas = Asistencia::where('punto', $puntoGeneral)
+    // ✅ MODIFICACIÓN: Si el punto general es MONTERREY, también incluir asistencias de KANSAS/MTY
+    $puntosAsistencias = [$puntoGeneral];
+    if ($puntoGeneral === 'MONTERREY') {
+        $puntosAsistencias = ['MONTERREY', 'KANSAS', 'MTY'];
+    }
+
+    // ✅ Cargar asistencias con puntos asignados, para los puntos correctos
+    $asistenciasIndexadas = Asistencia::with('puntosAsignados', 'usuario') // Cargar usuario también
+        ->whereIn('punto', $puntosAsistencias)
         ->whereBetween('fecha', [$this->fecha_inicio, $this->fecha_fin])
         ->get()
         ->keyBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
 
-    $usuarios = User::where('estatus', 'Activo')
-    ->where(function ($query) use ($subpuntos, $puntoGeneral) {
-        foreach ($subpuntos as $subpunto) {
-            $nombre = $subpunto['nombre'] ?? null;
-            $codigo = $subpunto['codigo'] ?? null;
-
-            $query->orWhere(function ($q) use ($nombre, $codigo, $puntoGeneral) {
-                if ($nombre) {
-                    $q->whereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%']);
-                }
-                // ✅ Buscar también por variantes de Mary Kay
-                if ($nombre === 'MARY KAY CORPORATIVO') {
-                    $q->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
-                      ->orWhereRaw('LOWER(punto) LIKE ?', ['%mar kay corporativo%']);
-                }
-                // ✅ Solo buscar por código si es Monterrey
-                if ($codigo && $puntoGeneral === 'MONTERREY') {
-                    $q->orWhere('punto', $codigo);
-                }
-            });
+    // ✅ Generar el mapa de puntos asignados: fecha => [user_id => punto]
+    $puntosAsignadosMap = [];
+    foreach ($asistenciasIndexadas as $fecha => $asistencia) {
+        // Solo si el supervisor es de KANSAS o MTY
+        if (in_array($asistencia->usuario->punto, ['KANSAS', 'MTY'])) {
+            $puntosAsignadosMap[$fecha] = $asistencia->puntosAsignados->pluck('punto', 'user_id')->toArray();
         }
-    })
-    ->get()
-    ->filter(function ($user) {
-        $rol = $this->normalize($user->rol);
-        return in_array($rol, ['patrullero', 'guardia']);
-    })
-    ->sortBy([
-        ['punto', 'asc'],
-        ['name', 'asc']
-    ]);
-
-        $startDate = Carbon::parse($this->fecha_inicio);
-        $endDate = Carbon::parse($this->fecha_fin);
-        $fechas = [];
-        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
-            $fechas[] = $date->format('Y-m-d');
-        }
-
-        $vacacionesPorUsuario = [];
-        foreach ($usuarios as $user) {
-            $vacaciones = DB::table('solicitud_vacaciones')
-                ->where('user_id', $user->id)
-                ->where('estatus', 'Aceptada')
-                ->where(function ($query) {
-                    $query->whereBetween('fecha_inicio', [$this->fecha_inicio, $this->fecha_fin])
-                        ->orWhereBetween('fecha_fin', [$this->fecha_inicio, $this->fecha_fin])
-                        ->orWhere(function ($q) {
-                            $q->where('fecha_inicio', '<', $this->fecha_inicio)
-                                ->where('fecha_fin', '>', $this->fecha_fin);
-                        });
-                })
-                ->get();
-
-            $dias = collect();
-            foreach ($vacaciones as $vac) {
-                $inicio = Carbon::parse($vac->fecha_inicio);
-                $fin = Carbon::parse($vac->fecha_fin);
-                for ($d = $inicio->copy(); $d->lte($fin); $d->addDay()) {
-                    $dias->push($d->format('Y-m-d'));
-                }
-            }
-            $vacacionesPorUsuario[$user->id] = $dias->toArray();
-        }
-
-        $horasExtrasPorUsuario = [];
-        foreach ($usuarios as $user) {
-            $registros = TiemposExtra::where('user_id', $user->id)
-                ->whereBetween('fecha', [$this->fecha_inicio, $this->fecha_fin])
-                ->get();
-
-            $porDia = [];
-            foreach ($registros as $r) {
-                $dia = Carbon::parse($r->fecha)->format('Y-m-d');
-                $horas = (int) Carbon::parse($r->total_horas)->format('H');
-                $porDia[$dia] = ($porDia[$dia] ?? 0) + $horas;
-            }
-            $horasExtrasPorUsuario[$user->id] = $porDia;
-        }
-
-        return [
-            'usuarios' => $usuarios,
-            'fechas' => $fechas,
-            'vacacionesPorUsuario' => $vacacionesPorUsuario,
-            'asistenciasIndexadas' => $asistenciasIndexadas,
-            'horasExtrasPorUsuario' => $horasExtrasPorUsuario,
-        ];
     }
+
+    // ✅ Guardar el mapa en la propiedad
+    $this->puntosAsignadosMap = $puntosAsignadosMap;
+
+    // ✅ Ahora, filtrar usuarios: incluir también los de KANSAS/MTY si hay asistencias de ellos
+    $usuarios = User::where('estatus', 'Activo')
+        ->where(function ($query) use ($subpuntos, $puntoGeneral) {
+            foreach ($subpuntos as $subpunto) {
+                $nombre = $subpunto['nombre'] ?? null;
+                $codigo = $subpunto['codigo'] ?? null;
+
+                $query->orWhere(function ($q) use ($nombre, $codigo, $puntoGeneral) {
+                    if ($nombre) {
+                        $q->whereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%']);
+                    }
+                    // ✅ Buscar también por variantes de Mary Kay
+                    if ($nombre === 'MARY KAY CORPORATIVO') {
+                        $q->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
+                          ->orWhereRaw('LOWER(punto) LIKE ?', ['%mar kay corporativo%']);
+                    }
+                    // ✅ Solo buscar por código si es Monterrey
+                    if ($codigo && $puntoGeneral === 'MONTERREY') {
+                        $q->orWhere('punto', $codigo);
+                    }
+                });
+            }
+        });
+
+    // ✅ Si es MONTERREY, también incluir usuarios de KANSAS o MTY
+    if ($puntoGeneral === 'MONTERREY') {
+        $usuarios->orWhere(function ($q) {
+            $q->where('punto', 'KANSAS')
+              ->orWhere('punto', 'MTY');
+        });
+    }
+
+    $usuarios = $usuarios->get()
+        ->filter(function ($user) {
+            $rol = $this->normalize($user->rol);
+            return in_array($rol, ['patrullero', 'guardia']);
+        })
+        ->sortBy([
+            ['punto', 'asc'],
+            ['name', 'asc']
+        ]);
+
+    $startDate = Carbon::parse($this->fecha_inicio);
+    $endDate = Carbon::parse($this->fecha_fin);
+    $fechas = [];
+    for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+        $fechas[] = $date->format('Y-m-d');
+    }
+
+    $vacacionesPorUsuario = [];
+    foreach ($usuarios as $user) {
+        $vacaciones = DB::table('solicitud_vacaciones')
+            ->where('user_id', $user->id)
+            ->where('estatus', 'Aceptada')
+            ->where(function ($query) {
+                $query->whereBetween('fecha_inicio', [$this->fecha_inicio, $this->fecha_fin])
+                    ->orWhereBetween('fecha_fin', [$this->fecha_inicio, $this->fecha_fin])
+                    ->orWhere(function ($q) {
+                        $q->where('fecha_inicio', '<', $this->fecha_inicio)
+                            ->where('fecha_fin', '>', $this->fecha_fin);
+                    });
+            })
+            ->get();
+
+        $dias = collect();
+        foreach ($vacaciones as $vac) {
+            $inicio = Carbon::parse($vac->fecha_inicio);
+            $fin = Carbon::parse($vac->fecha_fin);
+            for ($d = $inicio->copy(); $d->lte($fin); $d->addDay()) {
+                $dias->push($d->format('Y-m-d'));
+            }
+        }
+        $vacacionesPorUsuario[$user->id] = $dias->toArray();
+    }
+
+    $horasExtrasPorUsuario = [];
+    foreach ($usuarios as $user) {
+        $registros = TiemposExtra::where('user_id', $user->id)
+            ->whereBetween('fecha', [$this->fecha_inicio, $this->fecha_fin])
+            ->get();
+
+        $porDia = [];
+        foreach ($registros as $r) {
+            $dia = Carbon::parse($r->fecha)->format('Y-m-d');
+            $horas = (int) Carbon::parse($r->total_horas)->format('H');
+            $porDia[$dia] = ($porDia[$dia] ?? 0) + $horas;
+        }
+        $horasExtrasPorUsuario[$user->id] = $porDia;
+    }
+
+    return [
+        'usuarios' => $usuarios,
+        'fechas' => $fechas,
+        'vacacionesPorUsuario' => $vacacionesPorUsuario,
+        'asistenciasIndexadas' => $asistenciasIndexadas,
+        'horasExtrasPorUsuario' => $horasExtrasPorUsuario,
+    ];
+}
 
 protected function getSubpuntosPorPunto()
 {
@@ -283,9 +314,9 @@ protected function getSubpuntosPorPunto()
         'DRONES' => [
             ['nombre' => 'DRONES', 'codigo' => null],
         ],
-        'KANSAS' => [
-            ['nombre' => 'KANSAS', 'codigo' => null],
-        ],
+        //'KANSAS' => [
+            //['nombre' => 'KANSAS', 'codigo' => null],
+        //],
     ];
 }
 
