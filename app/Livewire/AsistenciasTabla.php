@@ -108,32 +108,26 @@ public function obtenerDatos()
         $subpuntos = $this->getSubpuntosPorPunto()['MONTERREY'];
     }
 
-    // ✅ MODIFICACIÓN: Si el punto general es MONTERREY, también incluir asistencias de KANSAS/MTY
     $puntosAsistencias = [$puntoGeneral];
     if ($puntoGeneral === 'MONTERREY') {
         $puntosAsistencias = ['MONTERREY', 'KANSAS', 'MTY'];
     }
 
-    // ✅ Cargar asistencias con puntos asignados, para los puntos correctos
-    $asistenciasIndexadas = Asistencia::with('puntosAsignados', 'usuario') // Cargar usuario también
+    $asistenciasIndexadas = Asistencia::with('puntosAsignados', 'usuario')
         ->whereIn('punto', $puntosAsistencias)
         ->whereBetween('fecha', [$this->fecha_inicio, $this->fecha_fin])
         ->get()
         ->keyBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
 
-    // ✅ Generar el mapa de puntos asignados: fecha => [user_id => punto]
     $puntosAsignadosMap = [];
     foreach ($asistenciasIndexadas as $fecha => $asistencia) {
-        // Solo si el supervisor es de KANSAS o MTY
         if (in_array($asistencia->usuario->punto, ['KANSAS', 'MTY'])) {
             $puntosAsignadosMap[$fecha] = $asistencia->puntosAsignados->pluck('punto', 'user_id')->toArray();
         }
     }
 
-    // ✅ Guardar el mapa en la propiedad
     $this->puntosAsignadosMap = $puntosAsignadosMap;
 
-    // ✅ Ahora, filtrar usuarios: incluir también los de KANSAS/MTY si hay asistencias de ellos
     $usuarios = User::where('estatus', 'Activo')
         ->where(function ($query) use ($subpuntos, $puntoGeneral) {
             foreach ($subpuntos as $subpunto) {
@@ -144,12 +138,10 @@ public function obtenerDatos()
                     if ($nombre) {
                         $q->whereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%']);
                     }
-                    // ✅ Buscar también por variantes de Mary Kay
                     if ($nombre === 'MARY KAY CORPORATIVO') {
                         $q->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
                           ->orWhereRaw('LOWER(punto) LIKE ?', ['%mar kay corporativo%']);
                     }
-                    // ✅ Solo buscar por código si es Monterrey
                     if ($codigo && $puntoGeneral === 'MONTERREY') {
                         $q->orWhere('punto', $codigo);
                     }
@@ -157,7 +149,6 @@ public function obtenerDatos()
             }
         });
 
-    // ✅ Si es MONTERREY, también incluir usuarios de KANSAS o MTY
     if ($puntoGeneral === 'MONTERREY') {
         $usuarios->orWhere(function ($q) {
             $q->where('punto', 'KANSAS')
@@ -234,16 +225,13 @@ public function obtenerDatos()
 
 protected function getSubpuntosPorPunto()
 {
-    // ✅ Obtenemos el ID de 'MONTERREY' en la tabla 'puntos'
     $monterreyId = Punto::where('nombre', 'MONTERREY')->value('id');
 
-    // ✅ Obtenemos los códigos solo para subpuntos de Monterrey
     $codigos = [];
     if ($monterreyId) {
         $codigos = Subpunto::where('punto_id', $monterreyId)->pluck('codigo', 'nombre')->toArray();
     }
 
-    // ✅ Unificar variantes de Mary Kay en una sola entrada
     $codigoMaryKay = $codigos['MARY KAY CORPORATIVO'] ?? $codigos['MARYKAY CORPORATIVO'] ?? $codigos['MAR KAY CORPORATIVO'] ?? null;
 
     $monterreySubpuntos = [
@@ -255,7 +243,7 @@ protected function getSubpuntosPorPunto()
         ['nombre' => 'BONETERA', 'codigo' => $codigos['BONETERA'] ?? null],
         ['nombre' => 'HOMEDEPOT', 'codigo' => $codigos['HOMEDEPOT'] ?? null],
         ['nombre' => 'AMERICAN AIRLINES', 'codigo' => $codigos['AMERICAN AIRLINES'] ?? null],
-        ['nombre' => 'MARY KAY CORPORATIVO', 'codigo' => $codigoMaryKay], // ✅ Unificado
+        ['nombre' => 'MARY KAY CORPORATIVO', 'codigo' => $codigoMaryKay],
         ['nombre' => 'KANSAS', 'codigo' => $codigos['KANSAS'] ?? null],
         ['nombre' => 'CIMARRON', 'codigo' => $codigos['CIMARRON'] ?? null],
         ['nombre' => 'OFICINA', 'codigo' => $codigos['OFICINA'] ?? null],

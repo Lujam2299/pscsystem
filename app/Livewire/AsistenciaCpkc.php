@@ -163,11 +163,26 @@ try {
         foreach ($usuarios as $userId => $data) {
             $dia = $data['turno_dia'];
             $noche = $data['turno_noche'];
-            if ($dia !== null || $noche !== null) {
+
+            // Si tiene turno día, insertar un registro
+            if ($dia !== null) {
                 $asignaciones[] = [
                     'asistencia_id' => $asistencia->id,
                     'user_id' => $userId,
                     'punto' => $punto,
+                    'turno' => 'dia',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            // Si tiene turno noche, insertar otro registro
+            if ($noche !== null) {
+                $asignaciones[] = [
+                    'asistencia_id' => $asistencia->id,
+                    'user_id' => $userId,
+                    'punto' => $punto,
+                    'turno' => 'noche',
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];

@@ -1,8 +1,8 @@
-<div class="container mx-auto px-4 py-6">
+<div class="container mx-auto px-4">
     <h2 class="text-xl font-bold mb-5 text-center">Registro de Asistencia CPKC</h2>
-    <div class="bg-white shadow rounded-lg overflow-hidden">
+    <div class="bg-white shadow rounded-lg overflow-hidden space-y-6 p-4">
         @foreach($puntos as $punto)
-            <div class="border-b border-gray-200 p-4 last:border-0">
+            <div class="border-b border-gray-200 p-4 last:border-0 mb-6">
                 <h3 class="font-semibold text-lg mb-2">{{ $punto }}</h3>
 
                 <div x-data="{ open: false }" class="mb-3 relative">
@@ -80,6 +80,7 @@
                 @endif
             </div>
         @endforeach
+
     </div>
 
     <div class="mt-6 flex justify-end">

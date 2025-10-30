@@ -6,5 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class AsistenciaPunto extends Model
 {
-    protected $fillable = ['asistencia_id', 'user_id', 'punto'];
+    protected $fillable = [
+        'asistencia_id',
+        'user_id',
+        'punto',
+        'turno'
+    ];
 }
