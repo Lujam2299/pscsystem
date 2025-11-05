@@ -90,7 +90,7 @@ public function obtenerDatos()
         }
     }
 
-    if (!$puntoGeneral && in_array($filtro, ['MARYKAY CORPORATIVO', 'MAR KAY CORPORATIVO'])) {
+    if (!$puntoGeneral && in_array($filtro, ['MARYKAY CORPORATIVO', 'MARY KAY CORPORATIVO'])) {
         $puntoGeneral = 'MONTERREY';
         $subpuntos = [
             collect($this->getSubpuntosPorPunto()['MONTERREY'])->firstWhere('nombre', 'LIKE', $filtro)
@@ -108,9 +108,13 @@ public function obtenerDatos()
         $subpuntos = $this->getSubpuntosPorPunto()['MONTERREY'];
     }
 
-    $puntosAsistencias = [$puntoGeneral];
-    if ($puntoGeneral === 'MONTERREY') {
-        $puntosAsistencias = ['MONTERREY', 'KANSAS', 'MTY'];
+    if ($filtro === 'MONTERREY') {
+        // Obtener todos los subpuntos de Monterrey
+        $monterreySubpuntos = collect($this->getSubpuntosPorPunto()['MONTERREY'])->pluck('nombre')->toArray();
+        $puntosAsistencias = array_merge(['MONTERREY'], $monterreySubpuntos, ['KANSAS', 'MTY']);
+    } else {
+        // Si no, solo el punto seleccionado
+        $puntosAsistencias = [$filtro];
     }
 
     $asistenciasIndexadas = Asistencia::with('puntosAsignados', 'usuario')
@@ -149,7 +153,7 @@ public function obtenerDatos()
             }
         });
 
-    if ($puntoGeneral === 'MONTERREY') {
+    if ($filtro === 'MONTERREY') {
         $usuarios->orWhere(function ($q) {
             $q->where('punto', 'KANSAS')
               ->orWhere('punto', 'MTY');
