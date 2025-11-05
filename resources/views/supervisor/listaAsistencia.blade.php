@@ -23,9 +23,7 @@
                     @if(!$asistencia_hoy->isEmpty())
                         <!--Este if siguiente es el que le dará un formato específico a cada lista dependiendo la zona/puno que cubra el supervisor-->
                         <!--ESTE IF VA EN EL ELSE DE LA LINEA 54, EN EL CASO DONDE NO HAYA REGISTRO DE ASISTENCIA AUN-->
-                        @if(Auth::user()->punto == 'KANSAS' || Auth::user()->punto == 'MTY')
-                            <livewire:asistencia-cpkc />
-                        @else
+
                             <div class="text-center py-12">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-gray-400 dark:text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -50,8 +48,10 @@
                                     </a>
                                 </div>
                             </div>
-                        @endif
                     @else
+                        @if(Auth::user()->punto == 'KANSAS' || Auth::user()->punto == 'MTY')
+                            <livewire:asistencia-cpkc />
+                        @else
                         <div class="border-b border-gray-200 dark:border-gray-700 pb-6 mb-6">
                             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                 <div>
@@ -77,7 +77,17 @@
 
                         <form action="{{ route('sup.guardarAsistencias') }}" method="POST" enctype="multipart/form-data" id="form-asistencias">
                             @csrf
-
+                            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6">
+                                <label for="fecha_registro" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 px-3 py-2">
+                                    Fecha de Registro
+                                </label>
+                                <input type="date"
+                                    name="fecha_registro"
+                                    id="fecha_registro"
+                                    value="{{ now()->toDateString() }}"
+                                    class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2"
+                                    required>
+                            </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 @foreach($elementos as $elemento)
                                     @if($elemento->rol != 'GUARDIA')
@@ -197,6 +207,7 @@
                                 </div>
                             </div>
                         </form>
+                        @endif
                     @endif
                 @else
                     <div class="border-b border-gray-200 dark:border-gray-700 pb-6 mb-6">

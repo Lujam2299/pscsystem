@@ -594,6 +594,7 @@ class SupervisorController extends Controller
     $validated = $request->validate([
         'asistencias' => 'required|array',
         'asistencias.*' => 'integer',
+        'fecha_registro' => 'required|date|date_format:Y-m-d',
         'foto_evidencia' => 'nullable|array',
         'foto_evidencia.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         'observaciones' => 'nullable|string|max:255',
@@ -602,7 +603,9 @@ class SupervisorController extends Controller
     ]);
 
     $user = Auth::user();
-    $now = now('America/Mexico_City');
+    //$now = now('America/Mexico_City');
+    $fechaRegistro = $request->input('fecha_registro');
+    $horaRegistro = now('America/Mexico_City')->toTimeString();
 
     $puntoUsuarioRaw = $user->punto;
     $subpuntosZona = collect();
@@ -651,8 +654,8 @@ class SupervisorController extends Controller
             'observaciones' => $request->input('observaciones'),
             'coberturas' => $coberturas,
             'faltas' => $faltas,
-            'fecha' => $now->toDateString(),
-            'hora' => $now->toTimeString(),
+            'fecha' => $fechaRegistro,
+            'hora' => $horaRegistro,
         ]
     ]);
 
@@ -686,7 +689,17 @@ public function finalizarAsistencia(Request $request)
         $user = Auth::user();
         $descansan = $request->input('descansan', []);
         Log::info('Descansan recibidos:', $descansan);
-        $faltasFinales = array_values(array_diff($data['faltas'], $descansan));
+        $faltasOriginales = collect($data['faltas'])
+            ->map(function ($userId) {
+                return \App\Models\User::find($userId);
+            })
+            ->filter(function ($user) {
+                return $user && $user->rol === 'GUARDIA';
+            })
+            ->pluck('id')
+            ->values()
+            ->toArray();
+        $faltasFinales = array_values(array_diff($faltasOriginales, $descansan));
 
         $rutaBase = "asistencias/" . Str::slug($user->name) . "/" . $data['fecha'];
         Storage::disk('public')->makeDirectory($rutaBase, 0755, true);
