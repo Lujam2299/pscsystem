@@ -20,7 +20,7 @@
                 @endif
 
                 @if(Auth::user()->rol == 'Supervisor' || Auth::user()->rol == 'SUPERVISOR OPERATIVO')
-                    @if($asistencia_hoy !== 0)
+                    @if(!$asistencia_hoy->isEmpty())
                         <!--Este if siguiente es el que le dará un formato específico a cada lista dependiendo la zona/puno que cubra el supervisor-->
                         @if(Auth::user()->punto == 'KANSAS' || Auth::user()->punto == 'MTY')
                             <livewire:asistencia-cpkc />
