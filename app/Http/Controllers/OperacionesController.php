@@ -210,4 +210,8 @@ public function subirComprobantes(Request $request, $id)
             ], 404);
         }
     }
+
+    public function asistenciaDiaria(){
+        return view('operaciones.asistenciaDiaria');
+    }
 }

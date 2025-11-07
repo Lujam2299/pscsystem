@@ -585,6 +585,7 @@ class SupervisorController extends Controller
                 }
             })
             ->with('solicitudAlta.documentacion')
+            ->orderBy('punto')
             ->get();
         return view('supervisor.listaAsistencia', compact('elementos', 'asistencia_hoy', 'supervisores'));
     }

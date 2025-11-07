@@ -33,8 +33,8 @@
                     'color' => 'bg-blue-100 dark:bg-blue-700',
                 ],
                 [
-                    'titulo' => 'Listas de Asistencia',
-                    'ruta' => route('sup.listaAsistencia'),
+                    'titulo' => 'Listas de Asistencia Diaria',
+                    'ruta' => route('operaciones.asistenciaDiaria'),
                     'icono' => 'users',
                     'color' => 'bg-green-100 dark:bg-green-700'
                 ],

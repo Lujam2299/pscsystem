@@ -348,6 +348,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/vales-comida/{id}/comprobantes', [OperacionesController::class, 'mostrarFormularioComprobantes'])->name('vales.comprobantes.formulario');
     Route::post('/vales-comida/{id}/comprobantes', [OperacionesController::class, 'subirComprobantes'])->name('vales.comprobantes.subir');
     Route::get('/eventuales/{id}/detalles', [OperacionesController::class, 'show'])->name('eventuales.detalles');
+    Route::get('/asistencia_diaria', [OperacionesController::class, 'asistenciaDiaria'])->name('operaciones.asistenciaDiaria');
+
     //Mensajería
     Route::get('/mensajes/nuevo', [ChatWebController::class, 'crear'])->name('mensajes.crearChat');
     Route::post('/mensajes/nuevo', [ChatWebController::class, 'storeConversacion'])->name('mensajes.nueva');
