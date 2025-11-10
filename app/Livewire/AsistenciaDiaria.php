@@ -12,10 +12,13 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Livewire\WithFileUploads; // ✅ Importar el trait
 use Carbon\Carbon;
 
 class AsistenciaDiaria extends Component
 {
+    use WithFileUploads; // ✅ Usar el trait
+
     public $punto = '';
     public $fecha = '';
     public $usuarios = [];
@@ -24,6 +27,7 @@ class AsistenciaDiaria extends Component
     public $faltas = [];
     public $descansos = [];
     public $puntosConAsistencia = [];
+    public $fotosEvidencia = []; // ✅ Propiedad añadida
 
     protected $listeners = ['refresh' => '$refresh'];
 
@@ -49,13 +53,14 @@ class AsistenciaDiaria extends Component
 
     public function updatedPunto()
     {
-        $this->reset(['usuarios', 'asistenciaExiste', 'elementosEnlistados', 'faltas', 'descansos']);
+        $this->reset(['usuarios', 'asistenciaExiste', 'elementosEnlistados', 'faltas', 'descansos', 'fotosEvidencia']);
         $this->cargarUsuarios();
         $this->verificarAsistenciaExistente();
     }
 
     public function updatedFecha()
     {
+        $this->reset(['fotosEvidencia']);
         $this->verificarAsistenciaExistente();
         $this->actualizarPuntosConAsistencia();
     }
@@ -107,6 +112,14 @@ class AsistenciaDiaria extends Component
         }
     }
 
+    public function updatedFotosEvidencia($value, $key)
+{
+    if ($value && is_string($key)) {
+        // Esto mantiene el archivo en memoria aunque el checkbox se desmarque accidentalmente
+        $this->fotosEvidencia[$key] = $value;
+    }
+}
+
     public function guardarAsistencia()
 {
     \Log::info('guardarAsistencia: Función llamada');
@@ -114,11 +127,11 @@ class AsistenciaDiaria extends Component
     $this->validate([
         'punto' => 'required|string',
         'fecha' => 'required|date',
+        'fotosEvidencia.*' => 'nullable|image|max:2048', // valida imágenes hasta 2MB
     ]);
 
     \Log::info('guardarAsistencia: Validación pasada');
 
-    // Validar que haya al menos una asistencia, falta o descanso marcado
     if (empty($this->elementosEnlistados) && empty($this->faltas) && empty($this->descansos)) {
         \Log::warning('guardarAsistencia: No hay usuarios marcados');
         session()->flash('error', 'Debes marcar al menos un usuario como asistió, faltó o descansó.');
@@ -131,11 +144,12 @@ class AsistenciaDiaria extends Component
         'descansos' => $this->descansos
     ]);
 
+    \Log::info('guardarAsistencia: Contenido de fotosEvidencia', ['fotos' => $this->fotosEvidencia]);
+
     DB::beginTransaction();
     try {
         $user = Auth::user();
 
-        // Obtener todos los usuarios activos de rol GUARDIA en el punto seleccionado
         $todosUsuarios = User::where('estatus', 'Activo')
             ->where('rol', 'GUARDIA')
             ->where('punto', $this->punto)
@@ -144,7 +158,6 @@ class AsistenciaDiaria extends Component
 
         \Log::info('guardarAsistencia: Usuarios del punto obtenidos', ['usuarios' => $todosUsuarios]);
 
-        // Calcular faltas: todos los usuarios del punto que no estén en asistencias ni descansos
         $faltasFinales = array_values(array_diff($todosUsuarios, array_merge($this->elementosEnlistados, $this->descansos)));
 
         \Log::info('guardarAsistencia: Faltas calculadas', ['faltasFinales' => $faltasFinales]);
@@ -153,8 +166,26 @@ class AsistenciaDiaria extends Component
         Storage::disk('public')->makeDirectory($rutaBase, 0755, true);
 
         $fotosAsistentes = [];
+        $this->resetErrorBag('fotosEvidencia');
 
-        \App\Models\Asistencia::create([
+        foreach ($this->fotosEvidencia as $elementoId => $foto) {
+            \Log::info("guardarAsistencia: Procesando foto para usuario {$elementoId}", [
+                'valid' => $foto && method_exists($foto, 'isValid') ? $foto->isValid() : false,
+                'extension' => $foto ? $foto->extension() : null,
+                'size' => $foto ? $foto->getSize() : null
+            ]);
+
+            if ($foto && method_exists($foto, 'isValid') && $foto->isValid()) {
+                $extension = $foto->extension();
+                $nombreArchivo = "{$elementoId}_" . time() . ".{$extension}";
+                $rutaCompleta = Storage::disk('public')->putFileAs($rutaBase, $foto, $nombreArchivo);
+                $fotosAsistentes[$elementoId] = $rutaCompleta;
+            }
+        }
+
+        \Log::info('guardarAsistencia: Fotos subidas', ['fotos' => $fotosAsistentes]);
+
+        Asistencia::create([
             'user_id' => $user->id,
             'fecha' => $this->fecha,
             'hora_asistencia' => now('America/Mexico_City')->toTimeString(),
@@ -168,15 +199,10 @@ class AsistenciaDiaria extends Component
             'fotos_asistentes' => json_encode($fotosAsistentes),
         ]);
 
-        \Log::info('guardarAsistencia: Registro creado en la base de datos');
-
         DB::commit();
 
         session()->flash('success', 'Asistencia registrada correctamente.');
-
-        // Recargar el estado
         $this->verificarAsistenciaExistente();
-
         \Log::info('guardarAsistencia: Todo OK');
     } catch (\Exception $e) {
         DB::rollBack();
@@ -184,6 +210,7 @@ class AsistenciaDiaria extends Component
         session()->flash('error', 'Error al guardar la asistencia: ' . $e->getMessage());
     }
 }
+
 
     protected function getSubpuntosPorPunto()
     {
@@ -265,9 +292,9 @@ class AsistenciaDiaria extends Component
             'DRONES' => [
                 ['nombre' => 'DRONES', 'codigo' => null],
             ],
-            /*'KANSAS' => [
+            'KANSAS' => [
                 ['nombre' => 'KANSAS', 'codigo' => null],
-            ],*/
+            ],
         ];
     }
 }
