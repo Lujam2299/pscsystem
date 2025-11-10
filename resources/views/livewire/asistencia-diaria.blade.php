@@ -150,56 +150,56 @@
                                         </div>
 
                                         <div class="space-y-3">
-<!-- Asistió -->
-<div class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
-    <label for="asistencia_{{ $usuario->id }}" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-        Asistió
-    </label>
-    <input type="checkbox"
-           wire:model="elementosEnlistados"
-           value="{{ $usuario->id }}"
-           id="asistencia_{{ $usuario->id }}"
-           class="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
-           @if($asistenciaExiste) disabled @endif
-           onchange="toggleExclusiveCheckboxes(this, 'falta_{{ $usuario->id }}', 'descanso_{{ $usuario->id }}')">
-</div>
+                                            <div class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
+                                                <label for="asistencia_{{ $usuario->id }}" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                    Asistió
+                                                </label>
+                                                <input type="checkbox"
+                                                    wire:model="elementosEnlistados"
 
-@if(!$asistenciaExiste)
-    <div id="upload_container_{{ $usuario->id }}"
-         class="mt-3 {{ in_array($usuario->id, $elementosEnlistados) ? '' : 'hidden' }}"
-         x-data="{ preview: null }"
-         wire:ignore>
+                                                    value="{{ $usuario->id }}"
+                                                    id="asistencia_{{ $usuario->id }}"
+                                                    class="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
+                                                    @if($asistenciaExiste) disabled @endif
+                                                    onchange="toggleExclusiveCheckboxes(this, 'falta_{{ $usuario->id }}', 'descanso_{{ $usuario->id }}')">
+                                            </div>
 
-        <label class="flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer text-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            Adjuntar evidencia
-            <input type="file"
-                   class="hidden"
-                   accept="image/*"
-                   x-on:change="
-                       const file = $event.target.files[0];
-                       if (file) {
-                           const reader = new FileReader();
-                           reader.onload = e => preview = e.target.result;
-                           reader.readAsDataURL(file);
-                           Livewire.dispatch('subirEvidencia', { userId: '{{ $usuario->id }}', file: file });
-                           document.getElementById('asistencia_{{ $usuario->id }}').checked = true;
-                       }
-                   ">
-        </label>
+                                            @if(!$asistenciaExiste)
+                                                <div id="upload_container_{{ $usuario->id }}"
+                                                    class="mt-3 {{ in_array($usuario->id, $elementosEnlistados) ? '' : 'hidden' }}"
+                                                    x-data="{ preview: null }"
+                                                    wire:ignore>
 
-        <!-- Vista previa -->
-        <template x-if="preview">
-            <div class="mt-3">
-                <img :src="preview" class="h-24 w-full object-cover rounded-lg border border-gray-300 dark:border-gray-600">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Vista previa</p>
-            </div>
-        </template>
-    </div>
-@endif
+                                                    <label class="flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer text-sm">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                        </svg>
+                                                        Adjuntar evidencia
+                                                        <input type="file"
+                                                            class="hidden"
+                                                            accept="image/*"
+                                                            x-on:change="
+                                                                const file = $event.target.files[0];
+                                                                if (file) {
+                                                                    const reader = new FileReader();
+                                                                    reader.onload = e => preview = e.target.result;
+                                                                    reader.readAsDataURL(file);
+                                                                    Livewire.dispatch('subirEvidencia', { userId: '{{ $usuario->id }}', file: file });
+                                                                    document.getElementById('asistencia_{{ $usuario->id }}').checked = true;
+                                                                }
+                                                            ">
+                                                    </label>
+
+                                                    <!-- Vista previa -->
+                                                    <template x-if="preview">
+                                                        <div class="mt-3">
+                                                            <img :src="preview" class="h-24 w-full object-cover rounded-lg border border-gray-300 dark:border-gray-600">
+                                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Vista previa</p>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            @endif
 
 
 
@@ -284,18 +284,15 @@ document.addEventListener('livewire:init', () => {
         const other2 = document.getElementById(otherId2);
 
         if (currentCheckbox.checked) {
-            // Si se marca este, desmarcar los otros
             if (other1) other1.checked = false;
             if (other2) other2.checked = false;
 
-            // Mostrar contenedor de evidencia si es "asistencia"
             if (currentCheckbox.id.startsWith('asistencia_')) {
                 const userId = currentCheckbox.id.split('_')[1];
                 const container = document.getElementById('upload_container_' + userId);
                 if (container) container.classList.remove('hidden');
             }
         } else {
-            // Si se desmarca este, ocultar contenedor de evidencia
             if (currentCheckbox.id.startsWith('asistencia_')) {
                 const userId = currentCheckbox.id.split('_')[1];
                 const container = document.getElementById('upload_container_' + userId);

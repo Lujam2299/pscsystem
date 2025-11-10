@@ -18,8 +18,37 @@ class AsistenciasTabla extends Component
     public $fecha_inicio = '';
     public $fecha_fin = '';
     protected $puntosAsignadosMap = [];
+    public $tipoFiltro = '';
+    public $usuariosConAlerta = [];
 
     protected $queryString = ['punto', 'fecha_inicio', 'fecha_fin'];
+
+    private function calcularAlertas($usuarios)
+{
+    $this->usuariosConAlerta = [];
+
+    foreach ($usuarios as $usuario) {
+        // Obtener las últimas 2 asistencias del usuario (ordenadas por fecha descendente)
+        $ultimasAsistencias = Asistencia::whereJsonContains('faltas', $usuario->id)
+            ->where('fecha', '<=', $this->fecha_fin)
+            ->orderBy('fecha', 'desc')
+            ->limit(2)
+            ->get();
+
+        // Si tiene exactamente 2 asistencias y ambas contienen al usuario en faltas
+        if ($ultimasAsistencias->count() === 2) {
+            $primera = $ultimasAsistencias[0];
+            $segunda = $ultimasAsistencias[1];
+
+            $faltasPrimera = json_decode($primera->faltas, true) ?? [];
+            $faltasSegunda = json_decode($segunda->faltas, true) ?? [];
+
+            if (in_array($usuario->id, $faltasPrimera) && in_array($usuario->id, $faltasSegunda)) {
+                $this->usuariosConAlerta[] = $usuario->id;
+            }
+        }
+    }
+}
 
     public function render()
     {
@@ -169,6 +198,42 @@ public function obtenerDatos()
             ['punto', 'asc'],
             ['name', 'asc']
         ]);
+
+    // Filtrar usuarios según el tipo seleccionado
+if ($this->tipoFiltro === 'asistencias') {
+    // Mostrar solo usuarios que asistieron al menos un día
+    $usuarios = $usuarios->filter(function ($user) use ($asistenciasIndexadas) {
+        foreach ($asistenciasIndexadas as $asistencia) {
+            $enlistados = json_decode($asistencia->elementos_enlistados, true) ?? [];
+            if (in_array($user->id, $enlistados)) {
+                return true;
+            }
+        }
+        return false;
+    });
+} elseif ($this->tipoFiltro === 'faltas') {
+    // Mostrar solo usuarios que faltaron al menos un día
+    $usuarios = $usuarios->filter(function ($user) use ($asistenciasIndexadas) {
+        foreach ($asistenciasIndexadas as $asistencia) {
+            $faltantes = json_decode($asistencia->faltas, true) ?? [];
+            if (in_array($user->id, $faltantes)) {
+                return true;
+            }
+        }
+        return false;
+    });
+} elseif ($this->tipoFiltro === 'descansos') {
+    $usuarios = $usuarios->filter(function ($user) use ($asistenciasIndexadas) {
+        foreach ($asistenciasIndexadas as $asistencia) {
+            $descansantes = json_decode($asistencia->descansos, true) ?? [];
+            if (in_array($user->id, $descansantes)) {
+                return true;
+            }
+        }
+        return false;
+    });
+}
+$this->calcularAlertas($usuarios);
 
     $startDate = Carbon::parse($this->fecha_inicio);
     $endDate = Carbon::parse($this->fecha_fin);

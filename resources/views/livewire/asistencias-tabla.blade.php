@@ -25,7 +25,7 @@
     </style>
 
     <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 mb-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
             <div>
                 <label for="punto" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Punto
@@ -64,6 +64,18 @@
                 <input type="date"
                        wire:model.live="fecha_fin"
                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-800 dark:text-white">
+            </div>
+            <div>
+                <label for="tipo_filtro" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Tipo de Registro
+                </label>
+                <select wire:model.live="tipoFiltro"
+                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-800 dark:text-white">
+                    <option value="">Todos</option>
+                    <option value="asistencias">Asistencias</option>
+                    <option value="faltas">Faltas</option>
+                    <option value="descansos">Descansos</option>
+                </select>
             </div>
             <form method="GET" action="{{ route('exportar.asistencias') }}" class="mb-4 mt-7">
                 <input type="hidden" name="punto" value="{{ $punto }}">
@@ -172,9 +184,19 @@
                             $totalHorasExtra = array_sum($horasExtrasPorUsuario[$user->id] ?? []);
                             $pagoHorasExtra = $totalHorasExtra > 0 ? (940 / 24) * $totalHorasExtra : 0;
                         @endphp
-                        <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50
+    @if(in_array($user->id, $usuariosConAlerta))
+        bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500
+    @endif">
                             <td class="sticky-first-col px-3 py-2 text-sm">{{ $user->id }}</td>
-                            <td class="sticky-second-col px-3 py-2 text-sm">{{ $user->name }}</td>
+                            <td class="sticky-second-col px-3 py-2 text-sm @if(in_array($user->id, $usuariosConAlerta)) bg-red-200 dark:bg-red-900/40 @endif ">
+                                {{ $user->name }}
+                                @if(in_array($user->id, $usuariosConAlerta))
+                                    <span class="ml-1 text-red-600 dark:text-red-400" title="Últimas 2 asistencias fueron faltas">
+                                        ⚠️
+                                    </span>
+                                @endif
+                            </td>
                             <td class="px-3 py-2 text-sm bg-yellow-100 dark:bg-yellow-900/30">${{ number_format($sueldoBase, 2) }}</td>
                             <td class="px-3 py-2 text-sm bg-green-100 dark:bg-red-green/40 text-green-800 dark:text-green-200 font-medium rounded">{{ $totalHorasExtra }}</td>
                             <td class="px-3 py-2 text-sm {{ $totalHorasExtra > 0 ? 'bg-yellow-100 dark:bg-yellow-900/30' : '' }}">
