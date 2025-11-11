@@ -260,6 +260,10 @@ public function guardarAsistencias(Request $request)
         'turnos' => 'nullable|array',
         'turnos.*' => 'array',
         'turnos.*.*' => 'string|in:dia,tarde,noche',
+        'tiempo_extra_horas' => 'nullable|array',
+        'tiempo_extra_horas.*' => 'nullable|numeric|min:0.01|max:24',
+        'tiempo_extra_obs' => 'nullable|array',
+        'tiempo_extra_obs.*' => 'nullable|string|max:255',
         'punto_seleccionado' => 'required|string',
     ]);
 
@@ -284,6 +288,21 @@ public function guardarAsistencias(Request $request)
 
     $turnos = $request->input('turnos', []);
 
+    // Capturar tiempos extras
+    $tiemposExtraHoras = $request->input('tiempo_extra_horas', []);
+    $tiemposExtraObs = $request->input('tiempo_extra_obs', []);
+
+    $tiemposExtra = [];
+    foreach ($tiemposExtraHoras as $userId => $horas) {
+        if ($horas) {
+            $obs = $tiemposExtraObs[$userId] ?? 'Ninguna';
+            $tiemposExtra[$userId] = [
+                'horas' => $horas,
+                'obs' => $obs,
+            ];
+        }
+    }
+
     // Subir archivos a carpeta temporal
     $rutasTemporales = [];
     if ($request->hasFile('foto_evidencia')) {
@@ -300,6 +319,7 @@ public function guardarAsistencias(Request $request)
         'asistencias_data' => [
             'asistencias' => $asistencias,
             'turnos' => $turnos,
+            'tiempos_extra' => $tiemposExtra,
             'fotos_temporales' => $rutasTemporales,
             'observaciones' => $request->input('observaciones'),
             'coberturas' => $coberturas,
@@ -382,10 +402,22 @@ public function finalizarAsistencia(Request $request)
             'fotos_asistentes' => json_encode($fotosAsistentes),
         ]);
 
+        // Guardar tiempos extras
+        foreach ($data['tiempos_extra'] ?? [] as $userId => $te) {
+            \App\Models\TiemposExtra::create([
+                'user_id' => $userId,
+                'fecha' => $data['fecha'],
+                'total_horas' => gmdate('H:i:s', $te['horas'] * 3600), // Convertir horas decimales a H:i:s
+                'observaciones' => $te['obs'],
+                'registrado_por' => $userRegistrador->id,
+                'autorizado_por' => $userRegistrador->name,
+            ]);
+        }
+
         \DB::commit();
         session()->forget('asistencias_data');
 
-        return redirect()->route('operaciones.asistenciaDiaria')
+        return redirect()->route('dashboard')
             ->with('success', "Asistencia registrada exitosamente para el punto {$punto}.");
 
     } catch (\Exception $e) {

@@ -165,9 +165,9 @@
                             <th class="border-r border-gray-300 dark:border-gray-600"></th>
                         @endfor
                         @foreach($fechas as $fecha)
-                            <th class="px-1 py-1 text-center text-xs border-r border-gray-300 dark:border-gray-600">Día</th>
-                            <th class="px-1 py-1 text-center text-xs border-r border-gray-300 dark:border-gray-600">Tarde</th>
-                            <th class="px-1 py-1 text-center text-xs border-r border-gray-300 dark:border-gray-600">Noche</th>
+                            <th class="px-1 py-1 text-center text-xs border-r border-gray-300 dark:border-gray-600">D</th>
+                            <th class="px-1 py-1 text-center text-xs border-r border-gray-300 dark:border-gray-600">T</th>
+                            <th class="px-1 py-1 text-center text-xs border-r border-gray-300 dark:border-gray-600">N</th>
                             <th class="px-1 py-1 text-center text-xs">TE</th>
                         @endforeach
                     </tr>
