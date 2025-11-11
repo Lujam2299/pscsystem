@@ -14,6 +14,7 @@ class Asistencia extends Model
         'elementos_enlistados',
         'descansos',
         'faltas',
+        'turnos',
         'fotos_asistentes',
         'observaciones',
         'coberturas',

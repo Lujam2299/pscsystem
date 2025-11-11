@@ -112,35 +112,52 @@
                                                 value="{{ $elemento->id }}"
                                                 id="asistencia_{{ $elemento->id }}"
                                                 class="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
-                                                onchange="toggleUploadButton(this, 'upload_container_{{ $elemento->id }}')">
+                                                onchange="toggleAsistenciaPanel(this, {{ $elemento->id }})">
                                         </div>
 
-                                        <div id="upload_container_{{ $elemento->id }}" class="mt-3 hidden">
-                                            <label class="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer text-sm">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                                </svg>
-                                                Adjuntar evidencia
-                                                <input type="file"
-                                                    name="foto_evidencia[{{ $elemento->id }}]"
-                                                    class="hidden"
-                                                    accept="image/*"
-                                                    onchange="previewEvidence(this, '{{ $elemento->id }}')">
-                                            </label>
+                                        {{-- Panel condicional: evidencia + turnos --}}
+                                        <div id="panel_{{ $elemento->id }}" class="mt-3 hidden space-y-3">
+    <!-- Subida de evidencia -->
+    <label class="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer text-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+        Adjuntar evidencia
+        <input type="file"
+            name="foto_evidencia[{{ $elemento->id }}]"
+            class="hidden"
+            accept="image/*"
+            onchange="previewEvidence(this, '{{ $elemento->id }}')">
+    </label>
 
-                                            <div id="evidence_preview_{{ $elemento->id }}" class="hidden mt-3">
-                                                <div class="relative">
-                                                    <img id="evidence_img_{{ $elemento->id }}" class="h-24 w-full object-cover rounded-lg border border-gray-300 dark:border-gray-600">
-                                                    <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all duration-200 rounded-lg flex items-center justify-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white opacity-0 hover:opacity-100 transition-opacity duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                        </svg>
-                                                    </div>
-                                                </div>
-                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Vista previa</p>
-                                            </div>
-                                        </div>
+    <div id="evidence_preview_{{ $elemento->id }}" class="hidden mt-2">
+        <div class="relative">
+            <img id="evidence_img_{{ $elemento->id }}" class="h-20 w-full object-cover rounded-lg border border-gray-300 dark:border-gray-600">
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Vista previa</p>
+    </div>
+
+    <!-- Selección de turnos (checkboxes múltiples) -->
+    <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
+        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Turno(s) de asistencia
+        </label>
+        <div class="flex flex-wrap gap-2">
+            <label class="inline-flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs">
+                <input type="checkbox" name="turnos[{{ $elemento->id }}][]" value="dia" class="h-3 w-3 text-blue-600 rounded">
+                <span class="ml-1 text-gray-700 dark:text-gray-300">Día</span>
+            </label>
+            <label class="inline-flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs">
+                <input type="checkbox" name="turnos[{{ $elemento->id }}][]" value="tarde" class="h-3 w-3 text-blue-600 rounded">
+                <span class="ml-1 text-gray-700 dark:text-gray-300">Tarde</span>
+            </label>
+            <label class="inline-flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs">
+                <input type="checkbox" name="turnos[{{ $elemento->id }}][]" value="noche" class="h-3 w-3 text-blue-600 rounded">
+                <span class="ml-1 text-gray-700 dark:text-gray-300">Noche</span>
+            </label>
+        </div>
+    </div>
+</div>
                                     </div>
                                 </div>
                             @endforeach
@@ -194,14 +211,19 @@
 </x-app-layout>
 
 <script>
-    function toggleUploadButton(checkbox, containerId) {
-        const container = document.getElementById(containerId);
+    function toggleAsistenciaPanel(checkbox, userId) {
+        const panel = document.getElementById('panel_' + userId);
         if (checkbox.checked) {
-            container.classList.remove('hidden');
+            panel.classList.remove('hidden');
         } else {
-            container.classList.add('hidden');
-            const previewDiv = document.getElementById('evidence_preview_' + checkbox.value);
-            if (previewDiv) previewDiv.classList.add('hidden');
+            panel.classList.add('hidden');
+            // Resetear evidencia y turnos
+            const preview = document.getElementById('evidence_preview_' + userId);
+            if (preview) preview.classList.add('hidden');
+
+            // Desmarcar todos los checkboxes de turno
+            const turnoCheckboxes = panel.querySelectorAll('input[type="checkbox"][name="turnos[' + userId + '][]"]');
+            turnoCheckboxes.forEach(cb => cb.checked = false);
         }
     }
 

@@ -257,6 +257,9 @@ public function guardarAsistencias(Request $request)
         'observaciones' => 'nullable|string|max:255',
         'coberturas' => 'nullable|array',
         'coberturas.*' => 'required|string',
+        'turnos' => 'nullable|array',
+        'turnos.*' => 'array',
+        'turnos.*.*' => 'string|in:dia,tarde,noche',
         'punto_seleccionado' => 'required|string',
     ]);
 
@@ -279,7 +282,9 @@ public function guardarAsistencias(Request $request)
         return json_decode($item, true);
     }, $coberturasRaw);
 
-    // 📁 Subir archivos a carpeta temporal y guardar rutas (no objetos)
+    $turnos = $request->input('turnos', []);
+
+    // Subir archivos a carpeta temporal
     $rutasTemporales = [];
     if ($request->hasFile('foto_evidencia')) {
         foreach ($request->file('foto_evidencia') as $userId => $file) {
@@ -294,6 +299,7 @@ public function guardarAsistencias(Request $request)
     session([
         'asistencias_data' => [
             'asistencias' => $asistencias,
+            'turnos' => $turnos,
             'fotos_temporales' => $rutasTemporales,
             'observaciones' => $request->input('observaciones'),
             'coberturas' => $coberturas,
@@ -333,13 +339,12 @@ public function finalizarAsistencia(Request $request)
             ->with('error', 'No hay datos de asistencia pendientes.');
     }
 
-    DB::beginTransaction();
+    \DB::beginTransaction();
     try {
         $userRegistrador = \App\Models\User::find($data['user_id_registrador']);
         $punto = $data['punto'];
         $descansan = $request->input('descansan', []);
 
-        // Recalcular faltas finales (solo guardias)
         $faltasOriginales = collect($data['faltas'])
             ->map(fn($id) => \App\Models\User::find($id))
             ->filter(fn($u) => $u && $u->rol === 'GUARDIA')
@@ -348,26 +353,26 @@ public function finalizarAsistencia(Request $request)
 
         $faltasFinales = array_values(array_diff($faltasOriginales, $descansan));
 
-        // 📁 Mover archivos temporales a carpeta definitiva
-        $rutaDefinitiva = "asistencias/" . Str::slug($userRegistrador->name) . "/" . $data['fecha'];
-        Storage::disk('public')->makeDirectory($rutaDefinitiva, 0755, true);
+        // Mover archivos temporales a carpeta definitiva
+        $rutaDefinitiva = "asistencias/" . \Str::slug($userRegistrador->name) . "/" . $data['fecha'];
+        \Storage::disk('public')->makeDirectory($rutaDefinitiva, 0755, true);
 
         $fotosAsistentes = [];
         foreach ($data['fotos_temporales'] ?? [] as $userId => $rutaTemp) {
-            if (Storage::disk('public')->exists($rutaTemp)) {
+            if (\Storage::disk('public')->exists($rutaTemp)) {
                 $nombreArchivo = basename($rutaTemp);
                 $nuevaRuta = "{$rutaDefinitiva}/{$nombreArchivo}";
-                Storage::disk('public')->move($rutaTemp, $nuevaRuta);
+                \Storage::disk('public')->move($rutaTemp, $nuevaRuta);
                 $fotosAsistentes[$userId] = $nuevaRuta;
             }
         }
 
-        // Guardar registro definitivo
         \App\Models\Asistencia::create([
             'user_id' => $userRegistrador->id,
             'fecha' => $data['fecha'],
             'hora_asistencia' => $data['hora'],
             'elementos_enlistados' => json_encode($data['asistencias']),
+            'turnos' => json_encode($data['turnos'] ?? []), // 👈 Campo nuevo
             'faltas' => json_encode($faltasFinales),
             'descansos' => json_encode($descansan),
             'coberturas' => json_encode($data['coberturas']),
@@ -377,21 +382,21 @@ public function finalizarAsistencia(Request $request)
             'fotos_asistentes' => json_encode($fotosAsistentes),
         ]);
 
-        DB::commit();
+        \DB::commit();
         session()->forget('asistencias_data');
 
         return redirect()->route('operaciones.asistenciaDiaria')
             ->with('success', "Asistencia registrada exitosamente para el punto {$punto}.");
 
     } catch (\Exception $e) {
-        DB::rollBack();
-        // Opcional: limpiar archivos temporales en caso de error
+        \DB::rollBack();
+        // Limpiar archivos temporales en caso de error
         foreach ($data['fotos_temporales'] ?? [] as $rutaTemp) {
-            if (Storage::disk('public')->exists($rutaTemp)) {
-                Storage::disk('public')->delete($rutaTemp);
+            if (\Storage::disk('public')->exists($rutaTemp)) {
+                \Storage::disk('public')->delete($rutaTemp);
             }
         }
-        Log::error('Error al finalizar asistencia (Operaciones): ' . $e->getMessage());
+        \Log::error('Error al finalizar asistencia (Operaciones): ' . $e->getMessage());
         return back()->with('error', 'Error al guardar la asistencia. Por favor, inténtalo de nuevo.');
     }
 }
