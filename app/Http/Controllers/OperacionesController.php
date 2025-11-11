@@ -4,13 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Eventuales;
 use App\Models\Punto;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 use App\Models\ValesComida;
 use App\Models\ComprobanteVale;
 use App\Models\User;
+use App\Models\Subpunto;
+use App\Models\Asistencia;
 
 class OperacionesController extends Controller
 {
@@ -211,7 +216,269 @@ public function subirComprobantes(Request $request, $id)
         }
     }
 
-    public function asistenciaDiaria(){
-        return view('operaciones.asistenciaDiaria');
+    public function asistenciaDiaria()
+    {
+        $subpuntosMap = $this->getSubpuntosPorPunto();
+        $puntosConAsistenciaHoy = Asistencia::whereDate('fecha', now()->toDateString())
+            ->pluck('punto')
+            ->map(fn($p) => trim($p))
+            ->toArray();
+
+        return view('operaciones.asistenciaDiaria', compact('subpuntosMap', 'puntosConAsistenciaHoy'));
+    }
+
+    public function listaAsistencia(string $punto)
+{
+    $punto = urldecode($punto);
+
+
+    $yaRegistrado = \App\Models\Asistencia::where('punto', $punto)
+        ->whereDate('fecha', now()->toDateString())
+        ->exists();
+
+    $elementos = \App\Models\User::where('estatus', 'Activo')
+        ->where('rol', 'GUARDIA')
+        ->where('punto', $punto)
+        ->with('solicitudAlta.documentacion')
+        ->orderBy('name')
+        ->get();
+
+    return view('operaciones.lista-asistencia', compact('elementos', 'punto', 'yaRegistrado'));
+}
+
+public function guardarAsistencias(Request $request)
+{
+    $validated = $request->validate([
+        'asistencias' => 'required|array',
+        'asistencias.*' => 'integer',
+        'fecha_registro' => 'required|date|date_format:Y-m-d',
+        'foto_evidencia' => 'nullable|array',
+        'foto_evidencia.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+        'observaciones' => 'nullable|string|max:255',
+        'coberturas' => 'nullable|array',
+        'coberturas.*' => 'required|string',
+        'punto_seleccionado' => 'required|string',
+    ]);
+
+    $user = Auth::user();
+    $puntoSeleccionado = $request->input('punto_seleccionado');
+    $fechaRegistro = $request->input('fecha_registro');
+    $horaRegistro = now('America/Mexico_City')->toTimeString();
+
+    $todosUsuarios = \App\Models\User::where('estatus', 'Activo')
+        ->where('rol', 'GUARDIA')
+        ->where('punto', $puntoSeleccionado)
+        ->pluck('id')
+        ->toArray();
+
+    $asistencias = $request->input('asistencias', []);
+    $faltas = array_values(array_diff($todosUsuarios, $asistencias));
+
+    $coberturasRaw = $request->input('coberturas', []);
+    $coberturas = array_map(function ($item) {
+        return json_decode($item, true);
+    }, $coberturasRaw);
+
+    // 📁 Subir archivos a carpeta temporal y guardar rutas (no objetos)
+    $rutasTemporales = [];
+    if ($request->hasFile('foto_evidencia')) {
+        foreach ($request->file('foto_evidencia') as $userId => $file) {
+            if ($file && $file->isValid()) {
+                $nombre = 'temp_' . $userId . '_' . time() . '.' . $file->extension();
+                $ruta = $file->storeAs('asistencias/temp', $nombre, 'public');
+                $rutasTemporales[$userId] = $ruta;
+            }
+        }
+    }
+
+    session([
+        'asistencias_data' => [
+            'asistencias' => $asistencias,
+            'fotos_temporales' => $rutasTemporales,
+            'observaciones' => $request->input('observaciones'),
+            'coberturas' => $coberturas,
+            'faltas' => $faltas,
+            'fecha' => $fechaRegistro,
+            'hora' => $horaRegistro,
+            'punto' => $puntoSeleccionado,
+            'user_id_registrador' => $user->id,
+        ]
+    ]);
+
+    return redirect()->route('operaciones.confirmarFaltas');
+}
+
+public function confirmarFaltas()
+{
+    $data = session('asistencias_data');
+
+    if (!$data) {
+        return redirect()->route('operaciones.asistenciaDiaria')
+            ->with('error', 'No hay datos de asistencia pendientes.');
+    }
+
+    $faltantes = \App\Models\User::whereIn('id', $data['faltas'])
+        ->with('solicitudAlta.documentacion')
+        ->get();
+
+    return view('operaciones.confirmar-faltas', compact('faltantes'));
+}
+
+public function finalizarAsistencia(Request $request)
+{
+    $data = session('asistencias_data');
+
+    if (!$data) {
+        return redirect()->route('operaciones.asistenciaDiaria')
+            ->with('error', 'No hay datos de asistencia pendientes.');
+    }
+
+    DB::beginTransaction();
+    try {
+        $userRegistrador = \App\Models\User::find($data['user_id_registrador']);
+        $punto = $data['punto'];
+        $descansan = $request->input('descansan', []);
+
+        // Recalcular faltas finales (solo guardias)
+        $faltasOriginales = collect($data['faltas'])
+            ->map(fn($id) => \App\Models\User::find($id))
+            ->filter(fn($u) => $u && $u->rol === 'GUARDIA')
+            ->pluck('id')
+            ->toArray();
+
+        $faltasFinales = array_values(array_diff($faltasOriginales, $descansan));
+
+        // 📁 Mover archivos temporales a carpeta definitiva
+        $rutaDefinitiva = "asistencias/" . Str::slug($userRegistrador->name) . "/" . $data['fecha'];
+        Storage::disk('public')->makeDirectory($rutaDefinitiva, 0755, true);
+
+        $fotosAsistentes = [];
+        foreach ($data['fotos_temporales'] ?? [] as $userId => $rutaTemp) {
+            if (Storage::disk('public')->exists($rutaTemp)) {
+                $nombreArchivo = basename($rutaTemp);
+                $nuevaRuta = "{$rutaDefinitiva}/{$nombreArchivo}";
+                Storage::disk('public')->move($rutaTemp, $nuevaRuta);
+                $fotosAsistentes[$userId] = $nuevaRuta;
+            }
+        }
+
+        // Guardar registro definitivo
+        \App\Models\Asistencia::create([
+            'user_id' => $userRegistrador->id,
+            'fecha' => $data['fecha'],
+            'hora_asistencia' => $data['hora'],
+            'elementos_enlistados' => json_encode($data['asistencias']),
+            'faltas' => json_encode($faltasFinales),
+            'descansos' => json_encode($descansan),
+            'coberturas' => json_encode($data['coberturas']),
+            'observaciones' => $data['observaciones'] ?: 'Ninguna',
+            'punto' => $punto,
+            'empresa' => $userRegistrador->empresa ?? 'PSC',
+            'fotos_asistentes' => json_encode($fotosAsistentes),
+        ]);
+
+        DB::commit();
+        session()->forget('asistencias_data');
+
+        return redirect()->route('operaciones.asistenciaDiaria')
+            ->with('success', "Asistencia registrada exitosamente para el punto {$punto}.");
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        // Opcional: limpiar archivos temporales en caso de error
+        foreach ($data['fotos_temporales'] ?? [] as $rutaTemp) {
+            if (Storage::disk('public')->exists($rutaTemp)) {
+                Storage::disk('public')->delete($rutaTemp);
+            }
+        }
+        Log::error('Error al finalizar asistencia (Operaciones): ' . $e->getMessage());
+        return back()->with('error', 'Error al guardar la asistencia. Por favor, inténtalo de nuevo.');
     }
 }
+
+    private function getSubpuntosPorPunto()
+{
+    // Copiado directamente del Livewire, sin cambios
+    $monterreyId = \App\Models\Punto::where('nombre', 'MONTERREY')->value('id');
+
+    $codigos = [];
+    if ($monterreyId) {
+        $codigos = \App\Models\Subpunto::where('punto_id', $monterreyId)->pluck('codigo', 'nombre')->toArray();
+    }
+
+    $codigoMaryKay = $codigos['MARY KAY CORPORATIVO'] ?? $codigos['MARYKAY CORPORATIVO'] ?? $codigos['MAR KAY CORPORATIVO'] ?? null;
+
+    $monterreySubpuntos = [
+        ['nombre' => 'MONTERREY', 'codigo' => $codigos['MONTERREY'] ?? null],
+        ['nombre' => 'CUSTODIO', 'codigo' => $codigos['CUSTODIO'] ?? null],
+        ['nombre' => 'DALTILE', 'codigo' => $codigos['DALTILE'] ?? null],
+        ['nombre' => 'TORRENOVO', 'codigo' => $codigos['TORRENOVO'] ?? null],
+        ['nombre' => 'TRASLADOS', 'codigo' => $codigos['TRASLADOS'] ?? null],
+        ['nombre' => 'BONETERA', 'codigo' => $codigos['BONETERA'] ?? null],
+        ['nombre' => 'HOMEDEPOT', 'codigo' => $codigos['HOMEDEPOT'] ?? null],
+        ['nombre' => 'AMERICAN AIRLINES', 'codigo' => $codigos['AMERICAN AIRLINES'] ?? null],
+        ['nombre' => 'MARY KAY CORPORATIVO', 'codigo' => $codigoMaryKay],
+        ['nombre' => 'KANSAS', 'codigo' => $codigos['KANSAS'] ?? null],
+        ['nombre' => 'CIMARRON', 'codigo' => $codigos['CIMARRON'] ?? null],
+        ['nombre' => 'OFICINA', 'codigo' => $codigos['OFICINA'] ?? null],
+        ['nombre' => 'ASSET', 'codigo' => $codigos['ASSET'] ?? null],
+        ['nombre' => 'TORRE DELTA', 'codigo' => $codigos['TORRE DELTA'] ?? null],
+        ['nombre' => 'SACMI DE MEXICO', 'codigo' => $codigos['SACMI DE MEXICO'] ?? null],
+        ['nombre' => 'THERMO ELÉCTRICA', 'codigo' => $codigos['THERMO ELÉCTRICA'] ?? null],
+        ['nombre' => 'KINDER MORGAN', 'codigo' => $codigos['KINDER MORGAN'] ?? null],
+        ['nombre' => 'GOBAR', 'codigo' => $codigos['GOBAR'] ?? null],
+        ['nombre' => 'PEMCORP #2', 'codigo' => $codigos['PEMCORP #2'] ?? null],
+        ['nombre' => 'ROCHE BOBOIS', 'codigo' => $codigos['ROCHE BOBOIS'] ?? null],
+        ['nombre' => 'OFF ON GREEN', 'codigo' => $codigos['OFF ON GREEN'] ?? null],
+        ['nombre' => 'COOPER LIGHT', 'codigo' => $codigos['COOPER LIGHT'] ?? null],
+        ['nombre' => 'MONTE PALATINO', 'codigo' => $codigos['MONTE PALATINO'] ?? null],
+        ['nombre' => 'OATEY', 'codigo' => $codigos['OATEY'] ?? null],
+        ['nombre' => 'PLAZA DOMENA', 'codigo' => $codigos['PLAZA DOMENA'] ?? null],
+    ];
+
+    return [
+        'MONTERREY' => $monterreySubpuntos,
+        'GUANAJUATO' => [
+            ['nombre' => 'SILAO', 'codigo' => null],
+            ['nombre' => 'CELAYA', 'codigo' => null],
+            ['nombre' => 'SALAMANCA', 'codigo' => null],
+        ],
+        'NUEVO LAREDO' => [
+            ['nombre' => 'ZONA DE ABASTOS V', 'codigo' => null],
+        ],
+        'MEXICO' => [
+            ['nombre' => 'VALLE DE MEXICO', 'codigo' => null],
+        ],
+        'SLP' => [
+            ['nombre' => 'WATCO', 'codigo' => null],
+            ['nombre' => 'BMW', 'codigo' => null],
+            ['nombre' => 'ZONA DE ABASTOS I', 'codigo' => null],
+            ['nombre' => 'INTERPUERTO Y TALLER', 'codigo' => null],
+        ],
+        'XALAPA' => [
+            ['nombre' => 'XALAPA', 'codigo' => null],
+        ],
+        'MICHOACAN' => [
+            ['nombre' => 'MICHOACÁN', 'codigo' => null],
+        ],
+        'PUEBLA' => [
+            ['nombre' => 'PUEBLA', 'codigo' => null],
+        ],
+        'TOLUCA' => [
+            ['nombre' => 'TOLUCA', 'codigo' => null],
+        ],
+        'QUERETARO' => [
+            ['nombre' => 'QUERÉTARO', 'codigo' => null],
+        ],
+        'SALTILLO' => [
+            ['nombre' => 'SALTILLO', 'codigo' => null],
+        ],
+        'DRONES' => [
+            ['nombre' => 'DRONES', 'codigo' => null],
+        ],
+        'KANSAS' => [
+            ['nombre' => 'KANSAS', 'codigo' => null],
+        ],
+    ];
+}
+    }

@@ -150,86 +150,68 @@
                                         </div>
 
                                         <div class="space-y-3">
+                                            <!-- Estatus -->
                                             <div class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
-                                                <label for="asistencia_{{ $usuario->id }}" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    Asistió
+                                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                    Estatus
                                                 </label>
-                                                <input type="checkbox"
-                                                    wire:model="elementosEnlistados"
-
-                                                    value="{{ $usuario->id }}"
-                                                    id="asistencia_{{ $usuario->id }}"
-                                                    class="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
-                                                    @if($asistenciaExiste) disabled @endif
-                                                    onchange="toggleExclusiveCheckboxes(this, 'falta_{{ $usuario->id }}', 'descanso_{{ $usuario->id }}')">
+                                                <div class="flex space-x-2">
+                                                    <label class="flex items-center">
+                                                        <input type="radio"
+                                                               wire:model.live="estatusPorUsuario.{{ $usuario->id }}"
+                                                               value="asistio"
+                                                               class="h-4 w-4 text-green-600 focus:ring-green-500"
+                                                               @if($asistenciaExiste) disabled @endif>
+                                                        <span class="ml-1 text-sm text-green-700 dark:text-green-300">Asistió</span>
+                                                    </label>
+                                                    <label class="flex items-center">
+                                                        <input type="radio"
+                                                               wire:model.live="estatusPorUsuario.{{ $usuario->id }}"
+                                                               value="falto"
+                                                               class="h-4 w-4 text-red-600 focus:ring-red-500"
+                                                               @if($asistenciaExiste) disabled @endif>
+                                                        <span class="ml-1 text-sm text-red-700 dark:text-red-300">Faltó</span>
+                                                    </label>
+                                                    <label class="flex items-center">
+                                                        <input type="radio"
+                                                               wire:model.live="estatusPorUsuario.{{ $usuario->id }}"
+                                                               value="descanso"
+                                                               class="h-4 w-4 text-yellow-600 focus:ring-yellow-500"
+                                                               @if($asistenciaExiste) disabled @endif>
+                                                        <span class="ml-1 text-sm text-yellow-700 dark:text-yellow-300">Descansó</span>
+                                                    </label>
+                                                </div>
                                             </div>
 
-                                            @if(!$asistenciaExiste)
-                                                <div id="upload_container_{{ $usuario->id }}"
-                                                    class="mt-3 {{ in_array($usuario->id, $elementosEnlistados) ? '' : 'hidden' }}"
-                                                    x-data="{ preview: null }"
-                                                    wire:ignore>
-
-                                                    <label class="flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer text-sm">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                                        </svg>
-                                                        Adjuntar evidencia
-                                                        <input type="file"
-                                                            class="hidden"
-                                                            accept="image/*"
-                                                            x-on:change="
-                                                                const file = $event.target.files[0];
-                                                                if (file) {
-                                                                    const reader = new FileReader();
-                                                                    reader.onload = e => preview = e.target.result;
-                                                                    reader.readAsDataURL(file);
-                                                                    Livewire.dispatch('subirEvidencia', { userId: '{{ $usuario->id }}', file: file });
-                                                                    document.getElementById('asistencia_{{ $usuario->id }}').checked = true;
-                                                                }
-                                                            ">
-                                                    </label>
-
-                                                    <!-- Vista previa -->
-                                                    <template x-if="preview">
-                                                        <div class="mt-3">
-                                                            <img :src="preview" class="h-24 w-full object-cover rounded-lg border border-gray-300 dark:border-gray-600">
-                                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Vista previa</p>
-                                                        </div>
-                                                    </template>
+                                            <!-- Turnos (solo si asistió) -->
+                                            @if(!$asistenciaExiste && ($estatusPorUsuario[$usuario->id] ?? '') === 'asistio')
+                                                <div class="mt-3">
+                                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Selecciona turno(s):</p>
+                                                    <div class="flex space-x-4">
+                                                        <label class="flex items-center">
+                                                            <input type="checkbox"
+                                                                   wire:model.live="turnosPorUsuario.{{ $usuario->id }}"
+                                                                   value="dia"
+                                                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500">
+                                                            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Día</span>
+                                                        </label>
+                                                        <label class="flex items-center">
+                                                            <input type="checkbox"
+                                                                   wire:model.live="turnosPorUsuario.{{ $usuario->id }}"
+                                                                   value="tarde"
+                                                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500">
+                                                            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Tarde</span>
+                                                        </label>
+                                                        <label class="flex items-center">
+                                                            <input type="checkbox"
+                                                                   wire:model.live="turnosPorUsuario.{{ $usuario->id }}"
+                                                                   value="noche"
+                                                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500">
+                                                            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Noche</span>
+                                                        </label>
+                                                    </div>
                                                 </div>
                                             @endif
-
-
-
-                                            <!-- Faltó -->
-                                            <div class="flex items-center justify-between">
-                                                <label for="falta_{{ $usuario->id }}" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    Faltó
-                                                </label>
-                                                <input type="checkbox"
-                                                       wire:model="faltas"
-                                                       value="{{ $usuario->id }}"
-                                                       id="falta_{{ $usuario->id }}"
-                                                       class="h-5 w-5 text-red-600 focus:ring-red-500 border-gray-300 rounded cursor-pointer"
-                                                       @if($asistenciaExiste) disabled @endif
-                                                       onchange="toggleExclusiveCheckboxes(this, 'asistencia_{{ $usuario->id }}', 'descanso_{{ $usuario->id }}')">
-                                            </div>
-
-                                            <!-- Descansó -->
-                                            <div class="flex items-center justify-between">
-                                                <label for="descanso_{{ $usuario->id }}" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    Descansó
-                                                </label>
-                                                <input type="checkbox"
-                                                       wire:model="descansos"
-                                                       value="{{ $usuario->id }}"
-                                                       id="descanso_{{ $usuario->id }}"
-                                                       class="h-5 w-5 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded cursor-pointer"
-                                                       @if($asistenciaExiste) disabled @endif
-                                                       onchange="toggleExclusiveCheckboxes(this, 'asistencia_{{ $usuario->id }}', 'falta_{{ $usuario->id }}')">
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -257,47 +239,3 @@
         </div>
     </div>
 </div>
-<script>
-document.addEventListener('livewire:init', () => {
-    Livewire.on('subirEvidencia', async ({ userId, file }) => {
-        const component = Livewire.first(); // obtiene el primer (y normalmente único) componente activo
-
-        if (component) {
-            component.upload(`fotosEvidencia.${userId}`, file,
-                () => {
-                    console.log('✅ Evidencia subida correctamente para usuario', userId);
-                },
-                (error) => {
-                    console.error('❌ Error al subir evidencia:', error);
-                }
-            );
-        } else {
-            console.error('No se encontró el componente Livewire activo.');
-        }
-    });
-});
-</script>
-
-<script>
-    function toggleExclusiveCheckboxes(currentCheckbox, otherId1, otherId2) {
-        const other1 = document.getElementById(otherId1);
-        const other2 = document.getElementById(otherId2);
-
-        if (currentCheckbox.checked) {
-            if (other1) other1.checked = false;
-            if (other2) other2.checked = false;
-
-            if (currentCheckbox.id.startsWith('asistencia_')) {
-                const userId = currentCheckbox.id.split('_')[1];
-                const container = document.getElementById('upload_container_' + userId);
-                if (container) container.classList.remove('hidden');
-            }
-        } else {
-            if (currentCheckbox.id.startsWith('asistencia_')) {
-                const userId = currentCheckbox.id.split('_')[1];
-                const container = document.getElementById('upload_container_' + userId);
-                if (container) container.classList.add('hidden');
-            }
-        }
-    }
-</script>

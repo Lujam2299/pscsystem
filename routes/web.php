@@ -350,6 +350,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/eventuales/{id}/detalles', [OperacionesController::class, 'show'])->name('eventuales.detalles');
     Route::get('/asistencia_diaria', [OperacionesController::class, 'asistenciaDiaria'])->name('operaciones.asistenciaDiaria');
 
+    // Operaciones: selección de punto
+//Route::get('/operaciones/asistencia', [OperacionesController::class, 'seleccionarPunto'])->name('operaciones.seleccionarPunto');
+// Operaciones: lista de asistencia para un punto específico
+Route::get('/operaciones/asistencia/punto/{punto}', [OperacionesController::class, 'listaAsistencia'])->name('operaciones.listaAsistencia');
+Route::post('/operaciones/asistencia/guardar', [OperacionesController::class, 'guardarAsistencias'])
+    ->name('operaciones.guardarAsistencias');
+
+Route::get('/operaciones/asistencia/confirmar-faltas', [OperacionesController::class, 'confirmarFaltas'])
+    ->name('operaciones.confirmarFaltas');
+
+    Route::post('/operaciones/asistencia/finalizar', [OperacionesController::class, 'finalizarAsistencia'])
+    ->name('operaciones.finalizarAsistencia');
+
     //Mensajería
     Route::get('/mensajes/nuevo', [ChatWebController::class, 'crear'])->name('mensajes.crearChat');
     Route::post('/mensajes/nuevo', [ChatWebController::class, 'storeConversacion'])->name('mensajes.nueva');

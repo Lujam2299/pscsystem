@@ -537,7 +537,8 @@ class SupervisorController extends Controller
 
     public function listaAsistencia(){
         $user = Auth::user();
-
+        $puntos = Punto::all();
+        $subpuntos = Subpunto::all();
         $asistenciasHoy = 0;
         $supervisores = User::where('estatus', 'Activo')
             ->whereRaw("LOWER(rol) LIKE ?", ['%supervisor%'])
@@ -587,7 +588,7 @@ class SupervisorController extends Controller
             ->with('solicitudAlta.documentacion')
             ->orderBy('punto')
             ->get();
-        return view('supervisor.listaAsistencia', compact('elementos', 'asistencia_hoy', 'supervisores'));
+        return view('supervisor.listaAsistencia', compact('elementos', 'asistencia_hoy', 'supervisores', 'puntos','subpuntos'));
     }
 
     public function guardarAsistencias(Request $request)
