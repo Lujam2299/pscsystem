@@ -372,7 +372,7 @@ public function finalizarAsistencia(Request $request)
             'fecha' => $data['fecha'],
             'hora_asistencia' => $data['hora'],
             'elementos_enlistados' => json_encode($data['asistencias']),
-            'turnos' => json_encode($data['turnos'] ?? []), // 👈 Campo nuevo
+            'turnos' => json_encode($data['turnos'] ?? []),
             'faltas' => json_encode($faltasFinales),
             'descansos' => json_encode($descansan),
             'coberturas' => json_encode($data['coberturas']),

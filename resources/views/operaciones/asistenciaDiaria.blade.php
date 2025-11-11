@@ -2,8 +2,30 @@
     <x-navbar />
 
     <div class="py-4 px-2 sm:py-6 sm:px-4">
-        <div class="container mx-auto max-w-4xl">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div class="container mx-auto max-w-7xl">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                @if (session('success'))
+                        <div class="px-4 py-3 text-green-900 bg-green-100 border-t-4 border-green-500 rounded-b shadow-md"
+                            role="alert">
+                            <div class="flex">
+                                <div>
+                                    <p class="text-sm">{{ session('success') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    @else
+                        @if(session('error'))
+                            <div class="px-4 py-3 text-red-900 bg-red-100 border-t-4 border-red-500 rounded-b shadow-md"
+                                role="alert">
+                                <div class="flex">
+                                    <div>
+                                        <p class="text-sm">{{ session('error') }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @else
+                        @endif
+                    @endif
                 <div class="text-center mb-8">
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-3">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

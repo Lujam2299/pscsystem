@@ -33,15 +33,26 @@
             <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800">
                 <div x-data="{ menu: 'admin' }" x-on:cambiar-menu.window="menu = $event.detail.menu" class="space-y-4">
                     @if (session('success'))
-                    <div class="px-4 py-3 text-green-900 bg-green-100 border-t-4 border-green-500 rounded-b shadow-md"
-                        role="alert">
-                        <div class="flex">
-                            <div>
-                                <p class="text-sm">{{ session('success') }}</p>
+                        <div class="px-4 py-3 text-green-900 bg-green-100 border-t-4 border-green-500 rounded-b shadow-md"
+                            role="alert">
+                            <div class="flex">
+                                <div>
+                                    <p class="text-sm">{{ session('success') }}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
                     @else
+                        @if(session('error'))
+                            <div class="px-4 py-3 text-red-900 bg-red-100 border-t-4 border-red-500 rounded-b shadow-md"
+                                role="alert">
+                                <div class="flex">
+                                    <div>
+                                        <p class="text-sm">{{ session('error') }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @else
+                        @endif
                     @endif
                     @if (Auth::user()->rol != 'admin')
                     <p class="text-2xl text-gray-900 dark:text-gray-100">
