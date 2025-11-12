@@ -518,4 +518,81 @@ public function finalizarAsistencia(Request $request)
         ],
     ];
 }
+
+    public function permisosIndex()
+    {
+        $permisos = \App\Models\PermisoEspecial::with(['usuario'])
+            ->whereHas('usuario', function ($q) {
+                $q->where('empresa', 'PSC');
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('operaciones.permisos', compact('permisos'));
     }
+
+    public function crearPermiso()
+    {
+        $empleados = \App\Models\User::where('empresa', 'PSC')
+            ->where('estatus', 'Activo')
+            ->get();
+
+        return view('operaciones.crear-permiso', compact('empleados'));
+    }
+
+    public function guardarPermiso(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'tipo' => 'required|in:paternidad,maternidad,defuncion',
+            'fecha_inicio' => 'required|date|before_or_equal:fecha_fin',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            'con_goce' => 'required|boolean',
+            'motivo' => 'nullable|string|max:500',
+            'archivo_justificante' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+        ]);
+
+        $user = Auth::user();
+
+        $archivo = null;
+        if ($request->hasFile('archivo_justificante')) {
+            $archivo = $request->file('archivo_justificante')->store('permisos', 'public');
+        }
+
+        \App\Models\PermisoEspecial::create([
+            'user_id' => $request->user_id,
+            'tipo' => $request->tipo,
+            'fecha_inicio' => $request->fecha_inicio,
+            'fecha_fin' => $request->fecha_fin,
+            'con_goce' => $request->con_goce,
+            'motivo' => $request->motivo,
+            'archivo_justificante' => $archivo,
+            'registrado_por' => $user->id,
+            'estatus' => 'Aprobado', // Puedes cambiar a Pendiente si requieres aprobación
+        ]);
+
+        return redirect()->route('operaciones.permisosIndex')
+            ->with('success', 'Permiso registrado exitosamente.');
+    }
+
+    public function buscarEmpleados(Request $request)
+    {
+        $query = $request->input('q');
+
+        $empleados = \App\Models\User::where('estatus', 'Activo')
+            ->where('empresa', 'PSC')
+            ->where(function ($q) {
+                $q->where('rol', 'GUARDIA')
+                ->orWhere('rol', 'Guardia');
+            })
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'LIKE', "%{$query}%")
+                ->orWhere('id', 'LIKE', "%{$query}%");
+            })
+            ->select('id', 'name', 'empresa', 'punto')
+            ->limit(10)
+            ->get();
+
+        return response()->json($empleados);
+    }
+}

@@ -64,6 +64,12 @@
                     'color' => 'bg-yellow-100 dark:bg-yellow-700'
                 ],
                 [
+                    'titulo' => 'Permisos de Personal',
+                    'ruta' => route('operaciones.permisosIndex'),
+                    'icono' => 'calendar',
+                    'color' => 'bg-blue-100 dark:bg-blue-700'
+                ],
+                [
                     'titulo' => 'Solicitar Vacaciones',
                     'ruta' => route('user.solicitarVacacionesForm'),
                     'icono' => 'confetti',
