@@ -71,6 +71,7 @@ class AsistenciasTabla extends Component
             'vacacionesPorUsuario' => $datos['vacacionesPorUsuario'],
             'asistenciasIndexadas' => $datos['asistenciasIndexadas'],
             'horasExtrasPorUsuario' => $datos['horasExtrasPorUsuario'],
+            'permisosPorUsuario' => $datos['permisosPorUsuario'],
             'subpuntosMap' => $subpuntosMap,
         ]);
     }
@@ -90,6 +91,7 @@ class AsistenciasTabla extends Component
                 'vacacionesPorUsuario' => [],
                 'asistenciasIndexadas' => collect(),
                 'horasExtrasPorUsuario' => [],
+                'permisosPorUsuario' => [],
             ];
         }
 
@@ -283,12 +285,35 @@ class AsistenciasTabla extends Component
             $horasExtrasPorUsuario[$user->id] = $porDia;
         }
 
+        // Cargar permisos especiales
+        $permisosPorUsuario = [];
+        $permisos = \App\Models\PermisoEspecial::whereBetween('fecha_inicio', [$this->fecha_inicio, $this->fecha_fin])
+            ->orWhereBetween('fecha_fin', [$this->fecha_inicio, $this->fecha_fin])
+            ->orWhere(function ($q) {
+                $q->where('fecha_inicio', '<', $this->fecha_inicio)
+                  ->where('fecha_fin', '>', $this->fecha_fin);
+            })
+            ->get();
+
+        foreach ($permisos as $permiso) {
+            $inicio = Carbon::parse($permiso->fecha_inicio);
+            $fin = Carbon::parse($permiso->fecha_fin);
+            for ($d = $inicio->copy(); $d->lte($fin); $d->addDay()) {
+                $fecha = $d->format('Y-m-d');
+                $permisosPorUsuario[$permiso->user_id][$fecha] = [
+                    'tipo' => $permiso->tipo,
+                    'con_goce' => $permiso->con_goce,
+                ];
+            }
+        }
+
         return [
             'usuarios' => $usuarios,
             'fechas' => $fechas,
             'vacacionesPorUsuario' => $vacacionesPorUsuario,
             'asistenciasIndexadas' => $asistenciasIndexadas,
             'horasExtrasPorUsuario' => $horasExtrasPorUsuario,
+            'permisosPorUsuario' => $permisosPorUsuario,
         ];
     }
 

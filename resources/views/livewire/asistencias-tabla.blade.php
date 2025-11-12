@@ -121,6 +121,14 @@
                     <span class="inline-block w-3 h-3 rounded-sm bg-gray-200 dark:bg-gray-700 mr-2"></span>
                     <span class="text-gray-700 dark:text-gray-300">TE: Tiempo Extra</span>
                 </div>
+                <div class="flex items-center">
+                    <span class="inline-block w-3 h-3 rounded-sm bg-purple-200 dark:bg-purple-900/40 mr-2"></span>
+                    <span class="text-gray-700 dark:text-gray-300">PE-CG: Permiso Especial con Goce</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="inline-block w-3 h-3 rounded-sm bg-gray-200 dark:bg-gray-700 mr-2"></span>
+                    <span class="text-gray-700 dark:text-gray-300">PE-SG: Permiso Especial sin Goce</span>
+                </div>
             </div>
             <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">
                 <strong>Turnos:</strong> Día (D), Tarde (T), Noche (N). Ej: D/T = Asistió en Día y Tarde.
@@ -199,7 +207,14 @@
                                 $tarde = '';
                                 $noche = '';
 
-                                if (in_array($f, $vacacionesPorUsuario[$user->id] ?? [])) {
+                                $permiso = $permisosPorUsuario[$user->id][$f] ?? null;
+
+                                if ($permiso) {
+                                    $codigo = $permiso['con_goce'] ? 'PE-CG' : 'PE-SG';
+                                    $dia = '-';
+                                    $tarde = $codigo;
+                                    $noche = '-';
+                                } elseif (in_array($f, $vacacionesPorUsuario[$user->id] ?? [])) {
                                     $dia = 'V';
                                     $vacaciones++;
                                 } elseif ($descanso) {
@@ -284,18 +299,24 @@
                                     @elseif($dia === 'V') bg-blue-200 dark:bg-blue-900/40
                                     @elseif($dia === 'D') bg-yellow-200 dark:bg-yellow-900/40
                                     @elseif($dia === 'A') bg-green-200 dark:bg-green-900/40
+                                    @elseif($tarde === 'PE-CG') bg-purple-200 dark:bg-purple-900/40
+                                    @elseif($tarde === 'PE-SG') bg-gray-200 dark:bg-gray-700ple-900/40
                                     @else bg-orange-100 dark:bg-orange-900/30 @endif">
                                     {{ $dia }}
                                 </td>
                                 <!-- Tarde -->
                                 <td class="px-1 py-1 text-center text-sm font-medium border-r border-gray-300 dark:border-gray-600
                                     @if($tarde === 'A') bg-green-200 dark:bg-green-900/40
+                                    @elseif($tarde === 'PE-CG') bg-purple-200 dark:bg-purple-900/40
+                                    @elseif($tarde === 'PE-SG') bg-gray-200 dark:bg-gray-700
                                     @else bg-orange-100 dark:bg-orange-900/30 @endif">
                                     {{ $tarde }}
                                 </td>
                                 <!-- Noche -->
                                 <td class="px-1 py-1 text-center text-sm font-medium border-r border-gray-300 dark:border-gray-600
                                     @if($noche === 'A') bg-green-200 dark:bg-green-900/40
+                                    @elseif($tarde === 'PE-CG') bg-purple-200 dark:bg-purple-900/40
+                                    @elseif($tarde === 'PE-SG') bg-gray-200 dark:bg-gray-700
                                     @else bg-orange-100 dark:bg-orange-900/30 @endif">
                                     {{ $noche }}
                                 </td>
