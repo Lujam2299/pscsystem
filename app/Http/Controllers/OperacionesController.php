@@ -595,4 +595,87 @@ public function finalizarAsistencia(Request $request)
 
         return response()->json($empleados);
     }
+
+    public function faltasJustificar()
+{
+    // Obtener puntos para el select
+    $subpuntosMap = $this->getSubpuntosPorPunto();
+    $rol = Auth::user()?->rol;
+
+    if ($rol === 'AUXILIAR OPERACIONES') {
+        $subpuntosMap = [
+            'MONTERREY' => $subpuntosMap['MONTERREY'] ?? []
+        ];
+    }
+
+    return view('operaciones.faltas-justificar', compact('subpuntosMap'));
+}
+
+public function guardarFaltaJustificada(Request $request)
+{
+    Log::info('Guardar Falta Justificada - Request:', $request->all());
+
+    $request->validate([
+        'punto' => 'required|string',
+        'fecha' => 'required|date',
+        'usuarios_justificar' => 'required|array',
+        'usuarios_justificar.*' => 'exists:users,id',
+        'motivo' => 'required|array',
+        'motivo.*' => 'required|string|max:500',
+        'archivo_justificante' => 'nullable|array',
+        'archivo_justificante.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+    ]);
+
+    Log::info('Validación pasada');
+
+    $usuariosAJustificar = $request->input('usuarios_justificar', []);
+    $motivos = $request->input('motivo', []);
+    $archivos = $request->file('archivo_justificante', []);
+
+    Log::info('Usuarios a justificar:', ['ids' => $usuariosAJustificar]);
+
+    foreach ($usuariosAJustificar as $userId) {
+        Log::info('Procesando usuario:', ['user_id' => $userId]);
+
+        $archivo = null;
+        if (isset($archivos[$userId]) && $archivos[$userId]->isValid()) {
+            $archivo = $archivos[$userId]->store("faltas/{$userId}", 'public');
+            Log::info('Archivo subido para usuario:', ['user_id' => $userId, 'ruta' => $archivo]);
+        }
+
+        // Buscar el registro de asistencia para esa fecha y punto
+        $asistencia = \App\Models\Asistencia::where('punto', $request->punto)
+            ->where('fecha', $request->fecha)
+            ->first();
+
+        Log::info('Asistencia encontrada para usuario:', ['user_id' => $userId, 'asistencia_id' => $asistencia?->id]);
+
+        try {
+            $registro = \App\Models\FaltaJustificada::create([
+                'asistencia_id' => $asistencia?->id,
+                'user_id' => $userId,
+                'fecha' => $request->fecha,
+                'tipo' => 'justificada',
+                'motivo' => $motivos[$userId] ?? 'Sin motivo',
+                'archivo_justificante' => $archivo,
+                'registrado_por' => Auth::id(),
+            ]);
+
+            Log::info('Falta justificada creada:', ['id' => $registro->id, 'user_id' => $userId]);
+
+        } catch (\Exception $e) {
+            Log::error('Error al crear falta justificada:', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    return redirect()->back()->with('success', 'Faltas justificadas registradas correctamente.');
+}
+
+    public function historialFaltasJustificadas(){
+        return view('operaciones.historialFaltas');
+    }
 }

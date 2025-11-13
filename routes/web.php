@@ -359,6 +359,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/operaciones/faltas-justificar', [OperacionesController::class, 'faltasJustificar'])->name('operaciones.faltasJustificar');
     Route::post('/operaciones/faltas-justificar', [OperacionesController::class, 'guardarFaltaJustificada'])->name('operaciones.guardarFaltaJustificada');
+    Route::get('/historial-faltas-justificadas', [OperacionesController::class, 'historialFaltasJustificadas'])->name('operaciones.historialFaltasJustificadas');
 
     Route::get('/operaciones/permisos', [OperacionesController::class, 'permisosIndex'])->name('operaciones.permisosIndex');
     Route::get('/operaciones/permisos/crear', [OperacionesController::class, 'crearPermiso'])->name('operaciones.crearPermiso');
