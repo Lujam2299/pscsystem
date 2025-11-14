@@ -8,6 +8,7 @@ use App\Models\Punto;
 use App\Models\Subpunto;
 use App\Models\Asistencia;
 use App\Models\TiemposExtra;
+use App\Models\FaltaJustificada;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -72,6 +73,7 @@ class AsistenciasTabla extends Component
             'asistenciasIndexadas' => $datos['asistenciasIndexadas'],
             'horasExtrasPorUsuario' => $datos['horasExtrasPorUsuario'],
             'permisosPorUsuario' => $datos['permisosPorUsuario'],
+            'faltasJustificadas' => $datos['faltasJustificadas'],
             'subpuntosMap' => $subpuntosMap,
         ]);
     }
@@ -92,6 +94,7 @@ class AsistenciasTabla extends Component
                 'asistenciasIndexadas' => collect(),
                 'horasExtrasPorUsuario' => [],
                 'permisosPorUsuario' => [],
+                'faltasJustificadas' => [],
             ];
         }
 
@@ -307,6 +310,18 @@ class AsistenciasTabla extends Component
             }
         }
 
+        // Cargar faltas justificadas
+        $faltasJustificadas = [];
+        $faltasJustificadasQuery = \App\Models\FaltaJustificada::whereIn('fecha', $fechas)
+            ->where('tipo', 'justificada')
+            ->get();
+
+        foreach ($faltasJustificadasQuery as $falta) {
+            $userId = $falta->user_id;
+            $fecha = $falta->fecha->format('Y-m-d');
+            $faltasJustificadas[$userId][$fecha] = true;
+        }
+
         return [
             'usuarios' => $usuarios,
             'fechas' => $fechas,
@@ -314,6 +329,7 @@ class AsistenciasTabla extends Component
             'asistenciasIndexadas' => $asistenciasIndexadas,
             'horasExtrasPorUsuario' => $horasExtrasPorUsuario,
             'permisosPorUsuario' => $permisosPorUsuario,
+            'faltasJustificadas' => $faltasJustificadas,
         ];
     }
 

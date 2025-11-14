@@ -106,6 +106,10 @@
                     <span class="text-gray-700 dark:text-gray-300">F: Falta</span>
                 </div>
                 <div class="flex items-center">
+                    <span class="inline-block w-3 h-3 rounded-sm bg-green-200 dark:bg-green-900/40 mr-2"></span>
+                    <span class="text-gray-700 dark:text-gray-300">FJ: Falta Justificada</span>
+                </div>
+                <div class="flex items-center">
                     <span class="inline-block w-3 h-3 rounded-sm bg-yellow-200 dark:bg-yellow-900/40 mr-2"></span>
                     <span class="text-gray-700 dark:text-gray-300">D: Descanso</span>
                 </div>
@@ -144,6 +148,11 @@
                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">Sueldo Qna</th>
                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">T.Extra</th>
                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">Sueldo Qna</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">ASISTENCIAS</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">DESCANSOS</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">PERM.CG</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">PERM.SG</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">TE.HRS</th>
                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">FJ</th>
                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">FALTAS</th>
                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">INC</th>
@@ -169,7 +178,7 @@
                         @endforeach
                     </tr>
                     <tr class="bg-gray-100 dark:bg-gray-700">
-                        @for($i = 0; $i < 10; $i++)
+                        @for($i = 0; $i < 15; $i++)
                             <th class="border-r border-gray-300 dark:border-gray-600"></th>
                         @endfor
                         @foreach($fechas as $fecha)
@@ -184,8 +193,13 @@
                     @foreach($usuarios as $user)
                         @php
                             $faltas = 0;
+                            $faltasJustificadasCount = 0;
                             $vacaciones = 0;
                             $descansos = 0;
+                            $asistenciasCount = 0;
+                            $permisosConGoce = 0;
+                            $permisosSinGoce = 0;
+                            $totalHorasExtra = 0;
                             $incidencias = [];
                             foreach($fechas as $f) {
                                 $asistio = false;
@@ -211,9 +225,14 @@
 
                                 if ($permiso) {
                                     $codigo = $permiso['con_goce'] ? 'PE-CG' : 'PE-SG';
-                                    $dia = '-';
-                                    $tarde = $codigo;
-                                    $noche = '-';
+                                    $dia = $codigo;
+                                    $tarde = '';
+                                    $noche = '';
+                                    if ($permiso['con_goce']) {
+                                        $permisosConGoce++;
+                                    } else {
+                                        $permisosSinGoce++;
+                                    }
                                 } elseif (in_array($f, $vacacionesPorUsuario[$user->id] ?? [])) {
                                     $dia = 'V';
                                     $vacaciones++;
@@ -221,8 +240,14 @@
                                     $dia = 'D';
                                     $descansos++;
                                 } elseif ($falto) {
-                                    $dia = 'F';
-                                    $faltas++;
+                                    $esJustificada = $faltasJustificadas[$user->id][$f] ?? false;
+                                    if ($esJustificada) {
+                                        $dia = 'FJ';
+                                        $faltasJustificadasCount++;
+                                    } else {
+                                        $dia = 'F';
+                                        $faltas++;
+                                    }
                                 } elseif ($asistio) {
                                     $turnosRegistro = json_decode($asistencia->turnos, true) ?? [];
                                     $turnosUsuario = $turnosRegistro[$user->id] ?? [];
@@ -230,13 +255,14 @@
                                     if (in_array('dia', $turnosUsuario)) $dia = 'A';
                                     if (in_array('tarde', $turnosUsuario)) $tarde = 'A';
                                     if (in_array('noche', $turnosUsuario)) $noche = 'A';
+                                    $asistenciasCount++;
                                 }
 
                                 $incidencias[$f] = [$dia, $tarde, $noche];
+                                $totalHorasExtra += $horasExtrasPorUsuario[$user->id][$f] ?? 0;
                             }
 
                             $sueldoBase = $this->normalize($user->rol) === 'guardia' ? 5500 : 5500;
-                            $totalHorasExtra = array_sum($horasExtrasPorUsuario[$user->id] ?? []);
                             $pagoHorasExtra = $totalHorasExtra > 0 ? (940 / 24) * $totalHorasExtra : 0;
                         @endphp
                         <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50
@@ -257,7 +283,24 @@
                             <td class="px-3 py-2 text-sm {{ $totalHorasExtra > 0 ? 'bg-yellow-100 dark:bg-yellow-900/30' : '' }} border-r border-gray-300 dark:border-gray-600">
                                 {{ $totalHorasExtra > 0 ? '$' . number_format($pagoHorasExtra, 2) : '0' }}
                             </td>
-                            <td class="px-3 py-2 text-sm border-r border-gray-300 dark:border-gray-600">0</td>
+                            <td class="px-3 py-2 text-sm bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium rounded border-r border-gray-300 dark:border-gray-600">
+                                {{ $asistenciasCount }}
+                            </td>
+                            <td class="px-3 py-2 text-sm bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 font-medium rounded border-r border-gray-300 dark:border-gray-600">
+                                {{ $descansos }}
+                            </td>
+                            <td class="px-3 py-2 text-sm bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 font-medium rounded border-r border-gray-300 dark:border-gray-600">
+                                {{ $permisosConGoce }}
+                            </td>
+                            <td class="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-medium rounded border-r border-gray-300 dark:border-gray-600">
+                                {{ $permisosSinGoce }}
+                            </td>
+                            <td class="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-medium rounded border-r border-gray-300 dark:border-gray-600">
+                                {{ $totalHorasExtra }}
+                            </td>
+                            <td class="px-3 py-2 text-sm bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium rounded border-r border-gray-300 dark:border-gray-600">
+                                {{ $faltasJustificadasCount }}
+                            </td>
                             <td class="px-3 py-2 text-sm bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 font-medium rounded border-r border-gray-300 dark:border-gray-600">
                                 {{ $faltas }}
                             </td>
@@ -296,11 +339,12 @@
                                 <!-- Día -->
                                 <td class="px-1 py-1 text-center text-sm font-medium border-r border-gray-300 dark:border-gray-600
                                     @if($dia === 'F') bg-red-200 dark:bg-red-900/40
+                                    @elseif($dia === 'FJ') bg-green-200 dark:bg-green-900/40
                                     @elseif($dia === 'V') bg-blue-200 dark:bg-blue-900/40
                                     @elseif($dia === 'D') bg-yellow-200 dark:bg-yellow-900/40
                                     @elseif($dia === 'A') bg-green-200 dark:bg-green-900/40
-                                    @elseif($tarde === 'PE-CG') bg-purple-200 dark:bg-purple-900/40
-                                    @elseif($tarde === 'PE-SG') bg-gray-200 dark:bg-gray-700ple-900/40
+                                    @elseif($dia === 'PE-CG') bg-purple-200 dark:bg-purple-900/40
+                                    @elseif($dia === 'PE-SG') bg-gray-200 dark:bg-gray-700
                                     @else bg-orange-100 dark:bg-orange-900/30 @endif">
                                     {{ $dia }}
                                 </td>
