@@ -100,6 +100,12 @@
                     'color' => 'bg-yellow-100 dark:bg-yellow-700'
                 ],
                 [
+                    'titulo' => 'Gestión de Usuarios',
+                    'ruta' => route('admin.verUsuarios'),
+                    'icono' => 'user-code',
+                    'color' => 'bg-blue-100 dark:bg-blue-700',
+                ],
+                [
                     'titulo' => 'Buzón de Quejas y Sugerencias',
                     'ruta' => route('user.buzon'),
                     'icono' => 'message',
