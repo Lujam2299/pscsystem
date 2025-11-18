@@ -150,7 +150,7 @@ class Admigestionusuarios extends Component
             ];
         }
 
-        $baseQuery = User::with('solicitudAlta')
+        $baseQuery = User::with('solicitudAlta', 'documentacionAltas')
             ->when($this->search, function ($query) {
                 $query->where('name', 'like', '%' . $this->search . '%');
             })
