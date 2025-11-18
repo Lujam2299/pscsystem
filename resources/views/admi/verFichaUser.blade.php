@@ -1,6 +1,9 @@
 @php
     use Carbon\Carbon;
+    $authUser = Auth::user();
+    $esOperaciones = in_array($authUser->rol, ['OPERACIONES', 'AUXILIAR OPERACIONES'], true);
 @endphp
+
 <x-app-layout>
     <x-navbar></x-navbar>
     <div class="py-4 px-2 sm:py-6 sm:px-4">
@@ -38,7 +41,6 @@
                     </div>
                 @else
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <!-- Información del usuario -->
                         <div class="lg:col-span-2">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
@@ -165,7 +167,6 @@
                             </div>
                         </div>
 
-                        <!-- Foto del usuario -->
                         <div class="flex flex-col items-center">
                             <div class="bg-gray-50 dark:bg-gray-700/30 p-6 rounded-lg w-full">
                                 <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 text-center">Foto del solicitante</h3>
@@ -193,7 +194,6 @@
                         </div>
                     </div>
 
-                    <!-- Documentación -->
                     <div class="mt-8">
                         <div class="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
                             <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
@@ -204,137 +204,70 @@
                             </h2>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            @foreach([
-                                'arch_solicitud_empleo' => 'Solicitud de Empleo',
-                                'arch_acta_nacimiento' => 'Acta de Nacimiento',
-                                'arch_curp' => 'CURP',
-                                'arch_ine' => 'INE',
-                                'arch_comprobante_domicilio' => 'Comprobante de Domicilio',
-                                'arch_rfc' => 'RFC',
-                                'arch_comprobante_estudios' => 'Comprobante de Estudios',
-                                'arch_nss' => 'NSS',
-                                'arch_contrato' => 'Contrato',
-                                'arch_carta_rec_laboral' => 'Carta Recomendación Laboral',
-                                'arch_carta_rec_personal' => 'Carta Recomendación Personal',
-                                'arch_cartilla_militar' => 'Cartilla Militar',
-                                'arch_infonavit' => 'Infonavit',
-                                'arch_fonacot' => 'Fonacot',
-                                'arch_licencia_conducir' => 'Licencia de Conducir',
-                                'arch_carta_no_penales' => 'Carta No Penales',
-                                'arch_acuse_imss' => 'Acuse de IMSS',
-                                'arch_retencion_infonavit' => 'Retención de Infonavit',
-                                'arch_foto' => 'Fotografía',
-                                'visa' => 'Visa',
-                                'pasaporte' => 'Pasaporte'
-                            ] as $campo => $label)
-                                <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $label }}</span>
-                                        @if($documentacion?->$campo)
-                                            <a href="{{ asset($documentacion->$campo) }}" target="_blank" class="inline-flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-medium">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                                Ver
-                                            </a>
-                                        @else
-                                            <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full
-                                                {{ $campo == 'arch_rfc' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' }}">
-                                                No disponible
-                                            </span>
-                                        @endif
+                        @if ($esOperaciones)
+                            <div class="bg-gray-100 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a2 2 0 00-2-2H4a2 2 0 00-2 2v6a2 2 0 002 2h10V7z" />
+                                </svg>
+                                <p class="text-gray-600 dark:text-gray-300 text-sm font-medium">
+                                    Sección no disponible
+                                </p>
+                                <!--<p class="text-gray-500 dark:text-gray-400 text-xs mt-1">
+                                    Solo el personal de Recursos Humanos y Administración puede acceder a la documentación.
+                                </p>-->
+                            </div>
+                        @else
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                @foreach([
+                                    'arch_solicitud_empleo' => 'Solicitud de Empleo',
+                                    'arch_acta_nacimiento' => 'Acta de Nacimiento',
+                                    'arch_curp' => 'CURP',
+                                    'arch_ine' => 'INE',
+                                    'arch_comprobante_domicilio' => 'Comprobante de Domicilio',
+                                    'arch_rfc' => 'RFC',
+                                    'arch_comprobante_estudios' => 'Comprobante de Estudios',
+                                    'arch_nss' => 'NSS',
+                                    'arch_contrato' => 'Contrato',
+                                    'arch_carta_rec_laboral' => 'Carta Recomendación Laboral',
+                                    'arch_carta_rec_personal' => 'Carta Recomendación Personal',
+                                    'arch_cartilla_militar' => 'Cartilla Militar',
+                                    'arch_infonavit' => 'Infonavit',
+                                    'arch_fonacot' => 'Fonacot',
+                                    'arch_licencia_conducir' => 'Licencia de Conducir',
+                                    'arch_carta_no_penales' => 'Carta No Penales',
+                                    'arch_acuse_imss' => 'Acuse de IMSS',
+                                    'arch_retencion_infonavit' => 'Retención de Infonavit',
+                                    'arch_foto' => 'Fotografía',
+                                    'visa' => 'Visa',
+                                    'pasaporte' => 'Pasaporte'
+                                ] as $campo => $label)
+                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $label }}</span>
+                                            @if($documentacion?->$campo)
+                                                <a href="{{ asset($documentacion->$campo) }}" target="_blank" class="inline-flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-medium">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                    Ver
+                                                </a>
+                                            @else
+                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full
+                                                    {{ $campo == 'arch_rfc' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' }}">
+                                                    No disponible
+                                                </span>
+                                            @endif
+                                        </div>
                                     </div>
-                                </div>
-                            @endforeach
-                        </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
 
-                    <!-- Acciones -->
                     <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                         <div class="flex flex-wrap justify-center gap-3">
-                            @if($user->estatus != 'Inactivo')
-                                @if(Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || in_array(Auth::user()->solicitudAlta->rol, ['AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH', 'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH']) || in_array(Auth::user()->rol, ['AUXILIAR RECURSOS HUMANOS', 'Auxiliar recursos humanos']))
-                                    <a href="{{ route('admin.editarUsuarioForm', $user->id) }}"
-                                        class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                        Editar
-                                    </a>
-
-                                    <a href="{{ route('sup.solicitarVacacionesElementoForm', $user->id) }}"
-                                        class="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                        Generar Sol. Vacaciones
-                                    </a>
-
-                                    <a href="{{ route('rh.descargarFicha', $user->id) }}"
-                                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        Descargar Ficha
-                                    </a>
-
-                                    @if ((Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || in_array(Auth::user()->solicitudAlta->rol, ['AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH', 'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH']) || in_array(Auth::user()->rol, ['AUXILIAR RECURSOS HUMANOS', 'Auxiliar recursos humanos'])) && $user->estatus == 'Activo')
-                                        <button onclick="confirmarBaja({{ $user->id }})"
-                                            class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                            Dar de Baja
-                                        </button>
-                                    @endif
-                                @endif
-                            @elseif($user->estatus == 'Inactivo')
-                                @if(Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || in_array(Auth::user()->solicitudAlta->rol, ['AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH', 'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH']) || in_array(Auth::user()->rol, ['AUXILIAR RECURSOS HUMANOS', 'Auxiliar recursos humanos']))
-                                    <a href="{{ route('admin.editarUsuarioForm', $user->id) }}"
-                                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                        Editar
-                                    </a>
-                                    <button onclick="confirmarReingreso({{ $user->id }})"
-                                        class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                        </svg>
-                                        Reingreso
-                                    </button>
-                                @endif
-                            @endif
-
-                            @if (Auth::user()->rol == 'admin')
-                                <a href="{{ route('admin.verUsuarios') }}"
-                                    class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                    </svg>
-                                    Regresar
-                                </a>
-                            @elseif(in_array(Auth::user()->rol, ['AUXILIAR NOMINAS', 'Auxiliar Nominas']) || in_array(Auth::user()->solicitudAlta->rol ?? '', ['AUXILIAR NOMINAS', 'Auxiliar Nominas', 'Auxiliar nominas']))
-                                @if($documentacion->arch_rfc == null && $user->estatus == 'Activo')
-                                    <button onclick="enviarNotificacion({{ $user->id }})"
-                                        class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
-                                        Solicitar Const. de Situación Fiscal
-                                    </button>
-                                @endif
-                                <a href="{{ route('admin.verUsuarios') }}"
-                                    class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                    </svg>
-                                    Regresar
-                                </a>
-                            @else
+                            @if ($esOperaciones)
                                 <a href="{{ route('dashboard') }}"
                                     class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -342,6 +275,96 @@
                                     </svg>
                                     Regresar
                                 </a>
+                            @else
+                                @if($user->estatus != 'Inactivo')
+                                    @if(Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || in_array(Auth::user()->solicitudAlta->rol, ['AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH', 'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH']) || in_array(Auth::user()->rol, ['AUXILIAR RECURSOS HUMANOS', 'Auxiliar recursos humanos']))
+                                        <a href="{{ route('admin.editarUsuarioForm', $user->id) }}"
+                                            class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            Editar
+                                        </a>
+
+                                        <a href="{{ route('sup.solicitarVacacionesElementoForm', $user->id) }}"
+                                            class="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            Generar Sol. Vacaciones
+                                        </a>
+
+                                        <a href="{{ route('rh.descargarFicha', $user->id) }}"
+                                            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            Descargar Ficha
+                                        </a>
+
+                                        @if ((Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || in_array(Auth::user()->solicitudAlta->rol, ['AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH', 'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH']) || in_array(Auth::user()->rol, ['AUXILIAR RECURSOS HUMANOS', 'Auxiliar recursos humanos'])) && $user->estatus == 'Activo')
+                                            <button onclick="confirmarBaja({{ $user->id }})"
+                                                class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                Dar de Baja
+                                            </button>
+                                        @endif
+                                    @endif
+                                @elseif($user->estatus == 'Inactivo')
+                                    @if(Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || in_array(Auth::user()->solicitudAlta->rol, ['AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH', 'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH']) || in_array(Auth::user()->rol, ['AUXILIAR RECURSOS HUMANOS', 'Auxiliar recursos humanos']))
+                                        <a href="{{ route('admin.editarUsuarioForm', $user->id) }}"
+                                            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            Editar
+                                        </a>
+                                        <button onclick="confirmarReingreso({{ $user->id }})"
+                                            class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                            Reingreso
+                                        </button>
+                                    @endif
+                                @endif
+
+                                @if (Auth::user()->rol == 'admin')
+                                    <a href="{{ route('admin.verUsuarios') }}"
+                                        class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                        </svg>
+                                        Regresar
+                                    </a>
+                                @elseif(in_array(Auth::user()->rol, ['AUXILIAR NOMINAS', 'Auxiliar Nominas']) || in_array(Auth::user()->solicitudAlta->rol ?? '', ['AUXILIAR NOMINAS', 'Auxiliar Nominas', 'Auxiliar nominas']))
+                                    @if($documentacion->arch_rfc == null && $user->estatus == 'Activo')
+                                        <button onclick="enviarNotificacion({{ $user->id }})"
+                                            class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                            </svg>
+                                            Solicitar Const. de Situación Fiscal
+                                        </button>
+                                    @endif
+                                    <a href="{{ route('admin.verUsuarios') }}"
+                                        class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                        </svg>
+                                        Regresar
+                                    </a>
+                                @else
+                                    <a href="{{ route('dashboard') }}"
+                                        class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                        </svg>
+                                        Regresar
+                                    </a>
+                                @endif
                             @endif
                         </div>
                     </div>
@@ -352,7 +375,6 @@
 </x-app-layout>
 
 <script>
-    // Tus funciones JavaScript permanecen igual...
     function confirmarBaja(userId) {
         Swal.fire({
             title: '¿Estás seguro?',
