@@ -11,6 +11,8 @@ class Archivonomina extends Model
         'arch_nomina_spyt',
         'arch_nomina_montana',
         'arch_destajo',
-        'periodo'
+        'periodo',
+        'subtotal',
+        'total_destajos'
     ];
 }

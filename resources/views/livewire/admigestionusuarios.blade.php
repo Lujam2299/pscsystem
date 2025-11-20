@@ -250,28 +250,28 @@
                                     {{ $user->num_empleado }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-    <div class="flex items-center">
-        <div class="flex-shrink-0">
-            @php
-                $foto = $user->solicitudAlta?->documentacion?->arch_foto;
-            @endphp
-            @if($foto)
-                <img src="{{ asset($foto) }}" class="h-8 w-8 rounded-full" alt="{{ $user->name }}" />
-            @else
-                <div class="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                    <span class="text-white font-medium text-xs">
-                        {{ substr($user->name ?? '', 0, 2) }}
-                    </span>
-                </div>
-            @endif
-        </div>
-        <div class="ml-3">
-            <div class="text-sm font-medium text-gray-900 dark:text-white">
-                {{ $user->name }}
-            </div>
-        </div>
-    </div>
-</td>
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            @php
+                                                $foto = $user->solicitudAlta?->documentacion?->arch_foto;
+                                            @endphp
+                                            @if($foto)
+                                                <img src="{{ asset($foto) }}" class="h-8 w-8 rounded-full" alt="{{ $user->name }}" />
+                                            @else
+                                                <div class="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                                                    <span class="text-white font-medium text-xs">
+                                                        {{ substr($user->name ?? '', 0, 2) }}
+                                                    </span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                        <div class="ml-3">
+                                            <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                                {{ $user->name }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                                     {{ $user->punto ?? 'No Disponible' }}
                                 </td>

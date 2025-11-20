@@ -593,7 +593,7 @@ public function subirArchivosNominas(Request $request)
             \Log::info('Archivo destajos guardado', ['ruta' => $rutaArchivoDestajo]);
         }
 
-        // === Cálculo de subtotales (uno por uno, con liberación de memoria) ===
+        // === Cálculo de subtotales ===
         $subtotalpsc = 0;
         $subtotalspyt = 0;
         $subtotalmontana = 0;
@@ -662,9 +662,6 @@ public function subirArchivosNominas(Request $request)
             ->withInput();
     }
 }
-    /**
-     * Calcular el subtotal de la nómina desde el archivo Excel
-     */
 /**
  * Calcular el subtotal de la nómina o destajos según el tipo de archivo
  *
@@ -688,39 +685,74 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
             return 0;
         }
 
-        // Identificar tipo de archivo
         $tipoArchivo = \PhpOffice\PhpSpreadsheet\IOFactory::identify($rutaCompleta);
         $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader($tipoArchivo);
         $reader->setReadDataOnly(true);
         $reader->setLoadAllSheets();
-
-        \Log::info('Lector creado, cargando archivo...');
         $spreadsheet = $reader->load($rutaCompleta);
 
         $nombresHojas = $spreadsheet->getSheetNames();
         $totalGeneral = 0;
 
-        foreach ($nombresHojas as $nombreHoja) {
-            $worksheet = $spreadsheet->getSheetByName($nombreHoja);
-            $dimension = $worksheet->getHighestRowAndColumn();
-            \Log::info('Procesando hoja', [
-                'hoja' => $nombreHoja,
-                'ultima_fila' => $dimension['row'],
-                'ultima_columna' => $dimension['column']
-            ]);
+        // === MANEJO DE DESTAJOS (soporta DOS formatos) ===
+        if ($tipo === 'destajo') {
+            $hojaResumen = null;
+            foreach ($nombresHojas as $nombreHoja) {
+                if (strtoupper(trim($nombreHoja)) === 'RESUMEN') {
+                    $hojaResumen = $spreadsheet->getSheetByName($nombreHoja);
+                    break;
+                }
+            }
 
-            if ($tipo === 'destajo') {
-                // === LÓGICA: Destajos (sumar columna P con nombre en B) ===
+            if ($hojaResumen) {
+                \Log::info('Hoja RESUMEN encontrada. Buscando "TOTAL DESTAJO"...');
+                $dimension = $hojaResumen->getHighestRowAndColumn();
+                $maxRow = min((int)$dimension['row'], 100); // Buscar en primeras 100 filas
+                $maxColIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($dimension['column']);
+
+                for ($row = 1; $row <= $maxRow; $row++) {
+                    for ($colIndex = 1; $colIndex <= $maxColIndex; $colIndex++) {
+                        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+                        $cellValue = $hojaResumen->getCell("{$colLetter}{$row}")->getValue();
+
+                        // Verificar si la celda contiene "TOTAL DESTAJO" (case-insensitive)
+                        if (is_string($cellValue) && preg_match('/^\s*TOTAL\s+DESTAJO\s*$/i', $cellValue)) {
+                            $nextColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
+                            $montoCell = $hojaResumen->getCell("{$nextColLetter}{$row}");
+                            $monto = $montoCell->getCalculatedValue();
+
+                            if (is_numeric($monto)) {
+                                $totalGeneral = (float)$monto;
+                                \Log::info('✅ TOTAL DESTAJO encontrado en RESUMEN', [
+                                    'fila' => $row,
+                                    'columna' => $colLetter,
+                                    'monto' => $totalGeneral
+                                ]);
+                                // Liberar recursos y retornar
+                                $spreadsheet->disconnectWorksheets();
+                                unset($spreadsheet, $reader, $hojaResumen);
+                                gc_collect_cycles();
+                                return $totalGeneral;
+                            } else {
+                                \Log::warning('TOTAL DESTAJO encontrado, pero el valor no es numérico', [
+                                    'valor' => $monto
+                                ]);
+                            }
+                        }
+                    }
+                }
+                \Log::warning('Hoja RESUMEN encontrada, pero no se encontró "TOTAL DESTAJO"');
+            }
+
+            // Si no se usó RESUMEN, aplicar lógica original (columna P)
+            \Log::info('Usando lógica original de destajo (columna P)');
+            foreach ($nombresHojas as $nombreHoja) {
+                $worksheet = $spreadsheet->getSheetByName($nombreHoja);
                 $fila = 5;
                 $espaciosBlancoSeguidos = 0;
-
                 while ($espaciosBlancoSeguidos < 3 && $fila <= 1500) {
-                    $celdaB = $worksheet->getCell('B' . $fila);
-                    $celdaP = $worksheet->getCell('P' . $fila);
-
-                    $nombreEmpleado = $celdaB->getValue();
-                    $valorP = $celdaP->getCalculatedValue();
-
+                    $nombreEmpleado = $worksheet->getCell('B' . $fila)->getValue();
+                    $valorP = $worksheet->getCell('P' . $fila)->getCalculatedValue();
                     if (empty(trim((string)$nombreEmpleado))) {
                         $espaciosBlancoSeguidos++;
                     } else {
@@ -729,82 +761,50 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
                             $totalGeneral += (float)$valorP;
                         }
                     }
-
                     $fila++;
                 }
+            }
+        }
+        // === LÓGICA PARA NÓMINA (sin cambios) ===
+        elseif ($tipo === 'nomina') {
+            foreach ($nombresHojas as $nombreHoja) {
+                $worksheet = $spreadsheet->getSheetByName($nombreHoja);
+                $dimension = $worksheet->getHighestRowAndColumn();
 
-                \Log::debug('Subtotal destajo parcial', [
-                    'hoja' => $nombreHoja,
-                    'total' => $totalGeneral
-                ]);
-
-            } elseif ($tipo === 'nomina') {
-                // === LÓGICA: Nómina (buscar NETO, ignorar "ajuste al neto") ===
                 $columnaNeto = null;
                 $filaEncabezadoEncontrada = null;
-
-                // Buscar en filas 7 a 9
                 for ($filaEncabezado = 7; $filaEncabezado <= 9; $filaEncabezado++) {
                     for ($col = 'A'; $col <= 'Z'; $col++) {
                         $celda = $worksheet->getCell("{$col}{$filaEncabezado}")->getValue();
-
                         if (!$celda) continue;
-
-                        // Limpiar texto
                         $textoLimpio = strtoupper(trim($celda));
                         $textoLimpio = preg_replace('/[^A-Z0-9\s]/', ' ', $textoLimpio);
                         $textoLimpio = preg_replace('/\s+/', ' ', $textoLimpio);
-
-                        // Verificar que tenga "NETO"
                         if (str_contains($textoLimpio, 'NETO')) {
                             $palabrasProhibidas = ['AJUSTE', 'AJUSTES', 'POR PAGAR', 'PAGO', 'DESCUENTO'];
                             $tieneProhibida = false;
-
                             foreach ($palabrasProhibidas as $prohibida) {
                                 if (str_contains($textoLimpio, $prohibida)) {
                                     $tieneProhibida = true;
                                     break;
                                 }
                             }
-
                             if (!$tieneProhibida) {
                                 $columnaNeto = $col;
                                 $filaEncabezadoEncontrada = $filaEncabezado;
-                                \Log::info('✅ Encabezado NETO válido encontrado', [
-                                    'fila' => $filaEncabezado,
-                                    'columna' => $col,
-                                    'valor_original' => $celda,
-                                    'valor_limpio' => $textoLimpio,
-                                    'hoja' => $nombreHoja
-                                ]);
                                 break 2;
-                            } else {
-                                \Log::debug('Ignorando encabezado con NETO', [
-                                    'columna' => $col,
-                                    'valor' => $celda,
-                                    'razon' => 'Contiene palabra prohibida'
-                                ]);
                             }
                         }
                     }
                 }
 
-                if (!$columnaNeto) {
-                    \Log::warning('No se encontró encabezado válido de NETO', [
-                        'hoja' => $nombreHoja,
-                        'archivo' => $rutaArchivo
-                    ]);
-                    continue;
-                }
+                if (!$columnaNeto) continue;
 
-                // === BUSCAR EL ÚLTIMO VALOR NUMÉRICO EN LA COLUMNA (y adyacentes si es necesario) ===
                 $ultimoValorValido = 0;
-                $valoresLeidos = [];
                 $ultimaFilaConDatos = (int)$dimension['row'];
                 $fin = min($ultimaFilaConDatos, 1500);
                 $inicio = $filaEncabezadoEncontrada + 1;
 
-                // Función para buscar en una columna
                 $buscarEnColumna = function ($col) use ($worksheet, $inicio, $fin) {
                     $ultimoValor = 0;
                     for ($fila = $inicio; $fila <= $fin; $fila++) {
@@ -816,26 +816,16 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
                     return $ultimoValor;
                 };
 
-                // Primero: buscar en la columna original
                 $ultimoValorValido = $buscarEnColumna($columnaNeto);
 
-                // Si no encontró valor, buscar en columnas adyacentes (AO → AP, AQ, AR...)
                 if ($ultimoValorValido == 0) {
-                    \Log::warning('No se encontró valor en columna NETO, buscando en adyacentes', [
-                        'columna_original' => $columnaNeto
-                    ]);
-
                     $colIndex = array_search($columnaNeto, range('A', 'Z'));
                     if ($colIndex !== false) {
                         for ($i = $colIndex + 1; $i < 26; $i++) {
-                            $colAdyacente = chr(65 + $i); // A=65
+                            $colAdyacente = chr(65 + $i);
                             $valor = $buscarEnColumna($colAdyacente);
                             if ($valor > 0) {
                                 $ultimoValorValido = $valor;
-                                \Log::info('Valor encontrado en columna adyacente', [
-                                    'columna' => $colAdyacente,
-                                    'valor' => $valor
-                                ]);
                                 break;
                             }
                         }
@@ -843,15 +833,6 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
                 }
 
                 $totalGeneral += $ultimoValorValido;
-
-                \Log::info('Valor NETO extraído', [
-                    'hoja' => $nombreHoja,
-                    'columna' => $columnaNeto,
-                    'fila_encabezado' => $filaEncabezadoEncontrada,
-                    'valor_extraido' => $ultimoValorValido,
-                    'rango_analizado' => "Fila {$inicio} a {$fin}",
-                    'ultima_fila_con_datos' => $ultimaFilaConDatos
-                ]);
             }
         }
 
@@ -861,9 +842,8 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
             'archivo' => $rutaArchivo
         ]);
 
-        // Liberar recursos
         $spreadsheet->disconnectWorksheets();
-        unset($spreadsheet, $reader, $worksheet);
+        unset($spreadsheet, $reader);
         gc_collect_cycles();
 
         return $totalGeneral;
@@ -874,7 +854,6 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
             'archivo' => $rutaArchivo,
             'linea' => $e->getLine(),
             'tipo' => $tipo,
-            'trace' => $e->getTraceAsString(),
         ]);
 
         if (isset($spreadsheet)) {
