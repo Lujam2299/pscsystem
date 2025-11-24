@@ -88,57 +88,62 @@
         </div>
     </div>
 
+    <!-- Leyenda -->
+    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+        <h3 class="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">Simbología</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 text-xs">
+            <div class="flex items-center">
+                <span class="inline-block w-3 h-3 rounded-sm bg-green-200 dark:bg-green-900/40 mr-2"></span>
+                <span class="text-gray-700 dark:text-gray-300">A: Asistió</span>
+            </div>
+            <div class="flex items-center">
+                <span class="inline-block w-3 h-3 rounded-sm bg-red-200 dark:bg-red-900/40 mr-2"></span>
+                <span class="text-gray-700 dark:text-gray-300">F: Falta</span>
+            </div>
+            <div class="flex items-center">
+                <span class="inline-block w-3 h-3 rounded-sm bg-green-200 dark:bg-green-900/40 mr-2"></span>
+                <span class="text-gray-700 dark:text-gray-300">FJ: Falta Justificada</span>
+            </div>
+            <div class="flex items-center">
+                <span class="inline-block w-3 h-3 rounded-sm bg-yellow-200 dark:bg-yellow-900/40 mr-2"></span>
+                <span class="text-gray-700 dark:text-gray-300">D: Descanso</span>
+            </div>
+            <div class="flex items-center">
+                <span class="inline-block w-3 h-3 rounded-sm bg-blue-200 dark:bg-blue-900/40 mr-2"></span>
+                <span class="text-gray-700 dark:text-gray-300">V: Vacaciones</span>
+            </div>
+            <div class="flex items-center">
+                <span class="inline-block w-3 h-3 rounded-sm bg-orange-100 dark:bg-orange-900/30 mr-2"></span>
+                <span class="text-gray-700 dark:text-gray-300">Vacío: Sin registro</span>
+            </div>
+            <div class="flex items-center">
+                <span class="inline-block w-3 h-3 rounded-sm bg-gray-200 dark:bg-gray-700 mr-2"></span>
+                <span class="text-gray-700 dark:text-gray-300">TE: Tiempo Extra</span>
+            </div>
+            <div class="flex items-center">
+                <span class="inline-block w-3 h-3 rounded-sm bg-purple-200 dark:bg-purple-900/40 mr-2"></span>
+                <span class="text-gray-700 dark:text-gray-300">PE-CG: Permiso Especial con Goce</span>
+            </div>
+            <div class="flex items-center">
+                <span class="inline-block w-3 h-3 rounded-sm bg-gray-200 dark:bg-gray-700 mr-2"></span>
+                <span class="text-gray-700 dark:text-gray-300">PE-SG: Permiso Especial sin Goce</span>
+            </div>
+            <!-- Nuevo: Retardo -->
+            <div class="flex items-center">
+                <span class="inline-block w-3 h-3 rounded-sm bg-yellow-200 dark:bg-yellow-900/40 mr-2"></span>
+                <span class="text-gray-700 dark:text-gray-300">Rxx: Retardo (xx minutos)</span>
+            </div>
+        </div>
+        <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">
+            <strong>Turnos:</strong> Día (D), Tarde (T), Noche (N). Ej: D/T = Asistió en Día y Tarde.
+        </p>
+    </div>
+
     @if($usuarios->isEmpty())
         <div class="text-center py-8 text-gray-500 dark:text-gray-400">
             No hay datos para mostrar con los filtros actuales.
         </div>
     @else
-        <!-- Leyenda -->
-        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-            <h3 class="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">Simbología</h3>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 text-xs">
-                <div class="flex items-center">
-                    <span class="inline-block w-3 h-3 rounded-sm bg-green-200 dark:bg-green-900/40 mr-2"></span>
-                    <span class="text-gray-700 dark:text-gray-300">A: Asistió</span>
-                </div>
-                <div class="flex items-center">
-                    <span class="inline-block w-3 h-3 rounded-sm bg-red-200 dark:bg-red-900/40 mr-2"></span>
-                    <span class="text-gray-700 dark:text-gray-300">F: Falta</span>
-                </div>
-                <div class="flex items-center">
-                    <span class="inline-block w-3 h-3 rounded-sm bg-green-200 dark:bg-green-900/40 mr-2"></span>
-                    <span class="text-gray-700 dark:text-gray-300">FJ: Falta Justificada</span>
-                </div>
-                <div class="flex items-center">
-                    <span class="inline-block w-3 h-3 rounded-sm bg-yellow-200 dark:bg-yellow-900/40 mr-2"></span>
-                    <span class="text-gray-700 dark:text-gray-300">D: Descanso</span>
-                </div>
-                <div class="flex items-center">
-                    <span class="inline-block w-3 h-3 rounded-sm bg-blue-200 dark:bg-blue-900/40 mr-2"></span>
-                    <span class="text-gray-700 dark:text-gray-300">V: Vacaciones</span>
-                </div>
-                <div class="flex items-center">
-                    <span class="inline-block w-3 h-3 rounded-sm bg-orange-100 dark:bg-orange-900/30 mr-2"></span>
-                    <span class="text-gray-700 dark:text-gray-300">Vacío: Sin registro</span>
-                </div>
-                <div class="flex items-center">
-                    <span class="inline-block w-3 h-3 rounded-sm bg-gray-200 dark:bg-gray-700 mr-2"></span>
-                    <span class="text-gray-700 dark:text-gray-300">TE: Tiempo Extra</span>
-                </div>
-                <div class="flex items-center">
-                    <span class="inline-block w-3 h-3 rounded-sm bg-purple-200 dark:bg-purple-900/40 mr-2"></span>
-                    <span class="text-gray-700 dark:text-gray-300">PE-CG: Permiso Especial con Goce</span>
-                </div>
-                <div class="flex items-center">
-                    <span class="inline-block w-3 h-3 rounded-sm bg-gray-200 dark:bg-gray-700 mr-2"></span>
-                    <span class="text-gray-700 dark:text-gray-300">PE-SG: Permiso Especial sin Goce</span>
-                </div>
-            </div>
-            <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                <strong>Turnos:</strong> Día (D), Tarde (T), Noche (N). Ej: D/T = Asistió en Día y Tarde.
-            </p>
-        </div>
-
         <div class="overflow-x-auto">
             <table class="min-w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600">
                 <thead>
@@ -182,9 +187,9 @@
                             <th class="border-r border-gray-300 dark:border-gray-600"></th>
                         @endfor
                         @foreach($fechas as $fecha)
-                            <th class="px-1 py-1 text-center text-xs border-r border-gray-300 dark:border-gray-600">D</th>
-                            <th class="px-1 py-1 text-center text-xs border-r border-gray-300 dark:border-gray-600">T</th>
-                            <th class="px-1 py-1 text-center text-xs border-r border-gray-300 dark:border-gray-600">N</th>
+                            <th class="px-1 py-1 text-center text-xs border-r border-gray-300 dark:border-gray-600">Día</th>
+                            <th class="px-1 py-1 text-center text-xs border-r border-gray-300 dark:border-gray-600">Tarde</th>
+                            <th class="px-1 py-1 text-center text-xs border-r border-gray-300 dark:border-gray-600">Noche</th>
                             <th class="px-1 py-1 text-center text-xs">TE</th>
                         @endforeach
                     </tr>
@@ -256,13 +261,19 @@
                                     if (in_array('tarde', $turnosUsuario)) $tarde = 'A';
                                     if (in_array('noche', $turnosUsuario)) $noche = 'A';
                                     $asistenciasCount++;
+
+                                    // Verificar si tiene retardo
+                                    $minutosRetardo = $retardosPorUsuario[$user->id][$f] ?? 0;
+                                    if ($minutosRetardo > 0) {
+                                        $dia = 'R' . $minutosRetardo;
+                                    }
                                 }
 
                                 $incidencias[$f] = [$dia, $tarde, $noche];
-                                $totalHorasExtra += $horasExtrasPorUsuario[$user->id][$f] ?? 0;
                             }
 
                             $sueldoBase = $this->normalize($user->rol) === 'guardia' ? 5500 : 5500;
+                            $totalHorasExtra = array_sum($horasExtrasPorUsuario[$user->id] ?? []);
                             $pagoHorasExtra = $totalHorasExtra > 0 ? (940 / 24) * $totalHorasExtra : 0;
                         @endphp
                         <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50
@@ -338,7 +349,8 @@
                                 @endphp
                                 <!-- Día -->
                                 <td class="px-1 py-1 text-center text-sm font-medium border-r border-gray-300 dark:border-gray-600
-                                    @if($dia === 'F') bg-red-200 dark:bg-red-900/40
+                                    @if(str_starts_with($dia, 'R')) bg-yellow-200 dark:bg-yellow-900/40
+                                    @elseif($dia === 'F') bg-red-200 dark:bg-red-900/40
                                     @elseif($dia === 'FJ') bg-green-200 dark:bg-green-900/40
                                     @elseif($dia === 'V') bg-blue-200 dark:bg-blue-900/40
                                     @elseif($dia === 'D') bg-yellow-200 dark:bg-yellow-900/40
@@ -359,8 +371,8 @@
                                 <!-- Noche -->
                                 <td class="px-1 py-1 text-center text-sm font-medium border-r border-gray-300 dark:border-gray-600
                                     @if($noche === 'A') bg-green-200 dark:bg-green-900/40
-                                    @elseif($tarde === 'PE-CG') bg-purple-200 dark:bg-purple-900/40
-                                    @elseif($tarde === 'PE-SG') bg-gray-200 dark:bg-gray-700
+                                    @elseif($noche === 'PE-CG') bg-purple-200 dark:bg-purple-900/40
+                                    @elseif($noche === 'PE-SG') bg-gray-200 dark:bg-gray-700
                                     @else bg-orange-100 dark:bg-orange-900/30 @endif">
                                     {{ $noche }}
                                 </td>

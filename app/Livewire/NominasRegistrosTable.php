@@ -285,7 +285,6 @@ public function guardarEdicion()
                     }
                 }
 
-                // Si no se usó RESUMEN, aplicar lógica original (columna P)
                 foreach ($nombresHojas as $nombreHoja) {
                     $worksheet = $spreadsheet->getSheetByName($nombreHoja);
                     $fila = 5;
@@ -305,7 +304,6 @@ public function guardarEdicion()
                     }
                 }
             }
-            // === LÓGICA PARA NÓMINA (sin cambios) ===
             elseif ($tipo === 'nomina') {
                 foreach ($nombresHojas as $nombreHoja) {
                     $worksheet = $spreadsheet->getSheetByName($nombreHoja);

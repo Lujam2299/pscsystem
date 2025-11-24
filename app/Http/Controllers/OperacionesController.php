@@ -264,6 +264,8 @@ public function guardarAsistencias(Request $request)
         'tiempo_extra_horas.*' => 'nullable|numeric|min:0.01|max:24',
         'tiempo_extra_obs' => 'nullable|array',
         'tiempo_extra_obs.*' => 'nullable|string|max:255',
+        'minutos_retardo' => 'nullable|array',
+        'minutos_retardo.*' => 'nullable|integer|min:1|max:599', // Solo se guarda si > 0
         'punto_seleccionado' => 'required|string',
     ]);
 
@@ -303,6 +305,10 @@ public function guardarAsistencias(Request $request)
         }
     }
 
+    // Capturar minutos de retardo
+    $minutosRetardo = $request->input('minutos_retardo', []);
+    $retardosFiltrados = array_filter($minutosRetardo, fn($min) => $min > 0);
+
     // Subir archivos a carpeta temporal
     $rutasTemporales = [];
     if ($request->hasFile('foto_evidencia')) {
@@ -320,6 +326,7 @@ public function guardarAsistencias(Request $request)
             'asistencias' => $asistencias,
             'turnos' => $turnos,
             'tiempos_extra' => $tiemposExtra,
+            'retardos' => $retardosFiltrados, // 👈 Nuevo
             'fotos_temporales' => $rutasTemporales,
             'observaciones' => $request->input('observaciones'),
             'coberturas' => $coberturas,
@@ -387,7 +394,7 @@ public function finalizarAsistencia(Request $request)
             }
         }
 
-        \App\Models\Asistencia::create([
+        $registroAsistencia = \App\Models\Asistencia::create([
             'user_id' => $userRegistrador->id,
             'fecha' => $data['fecha'],
             'hora_asistencia' => $data['hora'],
@@ -407,10 +414,21 @@ public function finalizarAsistencia(Request $request)
             \App\Models\TiemposExtra::create([
                 'user_id' => $userId,
                 'fecha' => $data['fecha'],
-                'total_horas' => gmdate('H:i:s', $te['horas'] * 3600), // Convertir horas decimales a H:i:s
+                'total_horas' => gmdate('H:i:s', $te['horas'] * 3600),
                 'observaciones' => $te['obs'],
                 'registrado_por' => $userRegistrador->id,
                 'autorizado_por' => $userRegistrador->name,
+            ]);
+        }
+
+        // Guardar retardos
+        foreach ($data['retardos'] ?? [] as $userId => $minutos) {
+            \App\Models\Retardo::create([
+                'user_id' => $userId,
+                'asistencia_id' => $registroAsistencia->id, // Relación con el registro de asistencia
+                'fecha' => $data['fecha'],
+                'minutos_retardo' => $minutos,
+                'registrado_por' => $userRegistrador->id,
             ]);
         }
 

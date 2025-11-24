@@ -9,6 +9,7 @@ use App\Models\Subpunto;
 use App\Models\Asistencia;
 use App\Models\TiemposExtra;
 use App\Models\FaltaJustificada;
+use App\Models\Retardo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -29,14 +30,12 @@ class AsistenciasTabla extends Component
         $this->usuariosConAlerta = [];
 
         foreach ($usuarios as $usuario) {
-            // Obtener las últimas 2 asistencias del usuario (ordenadas por fecha descendente)
             $ultimasAsistencias = Asistencia::whereJsonContains('faltas', $usuario->id)
                 ->where('fecha', '<=', $this->fecha_fin)
                 ->orderBy('fecha', 'desc')
                 ->limit(2)
                 ->get();
 
-            // Si tiene exactamente 2 asistencias y ambas contienen al usuario en faltas
             if ($ultimasAsistencias->count() === 2) {
                 $primera = $ultimasAsistencias[0];
                 $segunda = $ultimasAsistencias[1];
@@ -55,12 +54,10 @@ class AsistenciasTabla extends Component
     {
         $datos = $this->obtenerDatos();
 
-        // Filtrar subpuntos según el rol del usuario autenticado
         $subpuntosMap = $this->getSubpuntosPorPunto();
         $rol = Auth::user()?->rol;
 
         if ($rol === 'AUXILIAR OPERACIONES') {
-            // Si es AUXILIAR OPERACIONES, solo mostramos Monterrey y sus subpuntos
             $subpuntosMap = [
                 'MONTERREY' => $subpuntosMap['MONTERREY'] ?? []
             ];
@@ -74,6 +71,7 @@ class AsistenciasTabla extends Component
             'horasExtrasPorUsuario' => $datos['horasExtrasPorUsuario'],
             'permisosPorUsuario' => $datos['permisosPorUsuario'],
             'faltasJustificadas' => $datos['faltasJustificadas'],
+            'retardosPorUsuario' => $datos['retardosPorUsuario'], // 👈 Nuevo
             'subpuntosMap' => $subpuntosMap,
         ]);
     }
@@ -95,6 +93,7 @@ class AsistenciasTabla extends Component
                 'horasExtrasPorUsuario' => [],
                 'permisosPorUsuario' => [],
                 'faltasJustificadas' => [],
+                'retardosPorUsuario' => [], // 👈 Nuevo
             ];
         }
 
@@ -142,11 +141,9 @@ class AsistenciasTabla extends Component
         }
 
         if ($filtro === 'MONTERREY') {
-            // Obtener todos los subpuntos de Monterrey
             $monterreySubpuntos = collect($this->getSubpuntosPorPunto()['MONTERREY'])->pluck('nombre')->toArray();
             $puntosAsistencias = array_merge(['MONTERREY'], $monterreySubpuntos, ['KANSAS', 'MTY']);
         } else {
-            // Si no, solo el punto seleccionado
             $puntosAsistencias = [$filtro];
         }
 
@@ -205,7 +202,6 @@ class AsistenciasTabla extends Component
 
         // Filtrar usuarios según el tipo seleccionado
         if ($this->tipoFiltro === 'asistencias') {
-            // Mostrar solo usuarios que asistieron al menos un día
             $usuarios = $usuarios->filter(function ($user) use ($asistenciasIndexadas) {
                 foreach ($asistenciasIndexadas as $asistencia) {
                     $enlistados = json_decode($asistencia->elementos_enlistados, true) ?? [];
@@ -216,7 +212,6 @@ class AsistenciasTabla extends Component
                 return false;
             });
         } elseif ($this->tipoFiltro === 'faltas') {
-            // Mostrar solo usuarios que faltaron al menos un día
             $usuarios = $usuarios->filter(function ($user) use ($asistenciasIndexadas) {
                 foreach ($asistenciasIndexadas as $asistencia) {
                     $faltantes = json_decode($asistencia->faltas, true) ?? [];
@@ -322,6 +317,18 @@ class AsistenciasTabla extends Component
             $faltasJustificadas[$userId][$fecha] = true;
         }
 
+        // Cargar retardos
+        $retardosPorUsuario = [];
+        $retardosQuery = Retardo::whereIn('fecha', $fechas)
+            ->get();
+
+        foreach ($retardosQuery as $retardo) {
+            $userId = $retardo->user_id;
+            $fecha = $retardo->fecha->format('Y-m-d');
+            $minutos = $retardo->minutos_retardo;
+            $retardosPorUsuario[$userId][$fecha] = $minutos;
+        }
+
         return [
             'usuarios' => $usuarios,
             'fechas' => $fechas,
@@ -330,6 +337,7 @@ class AsistenciasTabla extends Component
             'horasExtrasPorUsuario' => $horasExtrasPorUsuario,
             'permisosPorUsuario' => $permisosPorUsuario,
             'faltasJustificadas' => $faltasJustificadas,
+            'retardosPorUsuario' => $retardosPorUsuario, // 👈 Nuevo
         ];
     }
 

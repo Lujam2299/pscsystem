@@ -60,7 +60,6 @@
                     enctype="multipart/form-data" id="form-asistencias">
                     @csrf
 
-                    {{-- Campo oculto para pasar el punto seleccionado --}}
                     <input type="hidden" name="punto_seleccionado" value="{{ $punto }}">
 
                     <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6">
@@ -129,7 +128,7 @@
                                                 onchange="toggleAsistenciaPanel(this, {{ $elemento->id }})">
                                         </div>
 
-                                        {{-- Panel condicional: evidencia + turnos --}}
+                                        {{-- Panel condicional: evidencia + turnos + retardo --}}
                                         <div id="panel_{{ $elemento->id }}" class="mt-3 hidden space-y-3">
                                             <!-- Subida de evidencia -->
                                             <label
@@ -165,51 +164,69 @@
                                                     <label
                                                         class="inline-flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs">
                                                         <input type="checkbox" name="turnos[{{ $elemento->id }}][]"
-                                                            value="dia" class="h-3 w-3 text-blue-600 rounded">
+                                                            value="dia" class="h-3 w-3 text-blue-600 rounded"
+                                                            onchange="toggleTiempoExtra({{ $elemento->id }})">
                                                         <span class="ml-1 text-gray-700 dark:text-gray-300">Día</span>
                                                     </label>
                                                     <label
                                                         class="inline-flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs">
                                                         <input type="checkbox" name="turnos[{{ $elemento->id }}][]"
-                                                            value="tarde" class="h-3 w-3 text-blue-600 rounded">
+                                                            value="tarde" class="h-3 w-3 text-blue-600 rounded"
+                                                            onchange="toggleTiempoExtra({{ $elemento->id }})">
                                                         <span
                                                             class="ml-1 text-gray-700 dark:text-gray-300">Tarde</span>
                                                     </label>
                                                     <label
                                                         class="inline-flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs">
                                                         <input type="checkbox" name="turnos[{{ $elemento->id }}][]"
-                                                            value="noche" class="h-3 w-3 text-blue-600 rounded">
+                                                            value="noche" class="h-3 w-3 text-blue-600 rounded"
+                                                            onchange="toggleTiempoExtra({{ $elemento->id }})">
                                                         <span
                                                             class="ml-1 text-gray-700 dark:text-gray-300">Noche</span>
                                                     </label>
                                                 </div>
                                             </div>
+
+                                            <!-- Campo de minutos de retardo -->
+                                            <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
+                                                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    Minutos de Retardo (opcional)
+                                                </label>
+                                                <input type="number"
+                                                       name="minutos_retardo[{{ $elemento->id }}]"
+                                                       id="minutos_retardo_{{ $elemento->id }}"
+                                                       min="0"
+                                                       max="599"
+                                                       placeholder="0"
+                                                       class="block w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                                            </div>
+
                                             <!-- Panel de Tiempo Extra -->
-<div id="te_panel_{{ $elemento->id }}" class="mt-3 hidden space-y-2 bg-gray-50 dark:bg-gray-700/30 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
-    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-        Tiempo Extra (opcional)
-    </label>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-            <label for="te_horas_{{ $elemento->id }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Horas Extras</label>
-            <input type="number"
-                   name="tiempo_extra_horas[{{ $elemento->id }}]"
-                   id="te_horas_{{ $elemento->id }}"
-                   min="0"
-                   step="1"
-                   placeholder="0"
-                   class="block w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
-        </div>
-        <div>
-            <label for="te_observaciones_{{ $elemento->id }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Obs.</label>
-            <input type="text"
-                   name="tiempo_extra_obs[{{ $elemento->id }}]"
-                   id="te_observaciones_{{ $elemento->id }}"
-                   placeholder="Observaciones"
-                   class="block w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
-        </div>
-    </div>
-</div>
+                                            <div id="te_panel_{{ $elemento->id }}" class="mt-3 hidden space-y-2 bg-gray-50 dark:bg-gray-700/30 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                                                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    Tiempo Extra (opcional)
+                                                </label>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label for="te_horas_{{ $elemento->id }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Horas Extras</label>
+                                                        <input type="number"
+                                                               name="tiempo_extra_horas[{{ $elemento->id }}]"
+                                                               id="te_horas_{{ $elemento->id }}"
+                                                               min="0.01"
+                                                               step="0.01"
+                                                               placeholder="0.00"
+                                                               class="block w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                                                    </div>
+                                                    <div>
+                                                        <label for="te_observaciones_{{ $elemento->id }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Obs.</label>
+                                                        <input type="text"
+                                                               name="tiempo_extra_obs[{{ $elemento->id }}]"
+                                                               id="te_observaciones_{{ $elemento->id }}"
+                                                               placeholder="Observaciones"
+                                                               class="block w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -234,7 +251,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Coberturas de Turno
                             </label>
-                            @livewire('seleccioncoberturas')
+                            @livewire('seleccion-coberturas')
                         </div>
                     </div>
 
