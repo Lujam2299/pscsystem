@@ -88,7 +88,6 @@
         </div>
     </div>
 
-    <!-- Leyenda -->
     <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
         <h3 class="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">Simbología</h3>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 text-xs">
@@ -262,7 +261,6 @@
                                     if (in_array('noche', $turnosUsuario)) $noche = 'A';
                                     $asistenciasCount++;
 
-                                    // Verificar si tiene retardo
                                     $minutosRetardo = $retardosPorUsuario[$user->id][$f] ?? 0;
                                     if ($minutosRetardo > 0) {
                                         $dia = 'R' . $minutosRetardo;
@@ -347,7 +345,6 @@
                                     $noche = $turnos[2];
                                     $horasExtra = $horasExtrasPorUsuario[$user->id][$f] ?? 0;
                                 @endphp
-                                <!-- Día -->
                                 <td class="px-1 py-1 text-center text-sm font-medium border-r border-gray-300 dark:border-gray-600
                                     @if(str_starts_with($dia, 'R')) bg-yellow-200 dark:bg-yellow-900/40
                                     @elseif($dia === 'F') bg-red-200 dark:bg-red-900/40
@@ -360,7 +357,6 @@
                                     @else bg-orange-100 dark:bg-orange-900/30 @endif">
                                     {{ $dia }}
                                 </td>
-                                <!-- Tarde -->
                                 <td class="px-1 py-1 text-center text-sm font-medium border-r border-gray-300 dark:border-gray-600
                                     @if($tarde === 'A') bg-green-200 dark:bg-green-900/40
                                     @elseif($tarde === 'PE-CG') bg-purple-200 dark:bg-purple-900/40
@@ -368,7 +364,6 @@
                                     @else bg-orange-100 dark:bg-orange-900/30 @endif">
                                     {{ $tarde }}
                                 </td>
-                                <!-- Noche -->
                                 <td class="px-1 py-1 text-center text-sm font-medium border-r border-gray-300 dark:border-gray-600
                                     @if($noche === 'A') bg-green-200 dark:bg-green-900/40
                                     @elseif($noche === 'PE-CG') bg-purple-200 dark:bg-purple-900/40
@@ -376,7 +371,6 @@
                                     @else bg-orange-100 dark:bg-orange-900/30 @endif">
                                     {{ $noche }}
                                 </td>
-                                <!-- TE -->
                                 <td class="px-1 py-1 text-center text-sm {{ $horasExtra > 0 ? 'font-bold' : '' }}">
                                     {{ $horasExtra }}
                                 </td>

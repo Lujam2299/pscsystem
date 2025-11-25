@@ -193,7 +193,7 @@ class SupervisorController extends Controller
         $user->name = $solicitud->nombre . " " . $solicitud->apellido_paterno . " " . $solicitud->apellido_materno;
         $user->email = $solicitud->email;
         $user->password = Hash::make($solicitud->rfc);
-        $user->fecha_ingreso = Carbon::now();
+        $user->fecha_ingreso = $solicitud->fecha_ingreso;
         $user->punto = $solicitud->punto;
         $user->rol = $solicitud->rol;
         $user->estatus = 'Activo';

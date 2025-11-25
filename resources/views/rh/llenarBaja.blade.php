@@ -47,7 +47,7 @@
                                     <div>
                                         <label for="fecha_ingreso" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha de Ingreso</label>
                                         <p class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white">
-                                            {{ optional(\Carbon\Carbon::parse($user->fecha_ingreso))->format('d/m/Y') }}
+                                            {{ $user?->solicitudAlta->fecha_ingreso ? Carbon\Carbon::parse($user?->solicitudAlta->fecha_ingreso)->format('d/m/Y') : 'N/D' }}
                                         </p>
                                     </div>
 

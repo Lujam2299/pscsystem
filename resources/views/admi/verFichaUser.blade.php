@@ -129,7 +129,7 @@
                                 <div class="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
                                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Fecha de Ingreso</p>
                                     <p class="text-gray-900 dark:text-white">
-                                        {{ $user?->fecha_ingreso ? Carbon::parse($user?->fecha_ingreso)->format('d/m/Y') : 'N/D' }}
+                                        {{ $user?->solicitudAlta->fecha_ingreso ? Carbon::parse($user?->solicitudAlta->fecha_ingreso)->format('d/m/Y') : 'N/D' }}
                                     </p>
                                 </div>
 

@@ -427,7 +427,6 @@ public function guardarArchivosAlta(Request $request, $id)
                 $user->password = Hash::make($solicitud->curp);
 
             $user->fecha_ingreso = $solicitud->fecha_ingreso;
-            $user->fecha_ingreso = $solicitud->fecha_ingreso;
             $user->punto = $solicitud->punto;
             $user->rol = $solicitud->rol;
             $user->estatus = 'Activo';
