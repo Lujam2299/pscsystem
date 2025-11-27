@@ -42,10 +42,14 @@
                     'notificaciones' => $bajasEnProceso,
                 ],
                 [
-                    'titulo' => 'Archivos',
-                    'ruta' => route('rh.archivos'),
-                    'icono' => 'folder',
-                    'color' => 'bg-yellow-100 dark:bg-yellow-700'
+                    'titulo' => 'Lista de Asistencia Montana',
+                    'ruta' => route('rh.listaAsistencia'),
+                    'icono' => 'users',
+                    'color' => 'bg-yellow-100 dark:bg-yellow-700',
+                    'disabled' => !in_array(
+                        strtoupper(Auth::user()?->rol ?? ''),
+                        ['JEFA RECURSOS HUMANOS', 'JEFE', 'ADMINISTRADOR', 'ADMIN']
+                    ),
                 ],
                 [
                     'titulo' => 'Historial de Altas',
@@ -95,6 +99,12 @@
                     'ruta' => route('admin.verUsuarios'),
                     'icono' => 'users',
                     'color' => 'bg-pink-100 dark:bg-pink-700'
+                ],
+                [
+                    'titulo' => 'Archivos',
+                    'ruta' => route('rh.archivos'),
+                    'icono' => 'folder',
+                    'color' => 'bg-yellow-100 dark:bg-yellow-700'
                 ],
                 [
                     'titulo' => 'Mensajes',

@@ -15,6 +15,9 @@ use App\Models\DocumentacionAltas;
 use App\Models\SolicitudBajas;
 use App\Models\User;
 use App\Models\Punto;
+use App\Models\Asistencia;
+use App\Models\FaltaJustificada;
+use App\Models\Retardo;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Hash;
@@ -703,5 +706,123 @@ public function guardarArchivosAlta(Request $request, $id)
         return response($pdf->Output('ficha_tecnica_' . $user->id . '.pdf', 'S'))
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="ficha_tecnica_'.$user->id.'.pdf"');
+    }
+
+    public function listaAsistenciaMontana(){
+        $usuarios = User::where('empresa', 'Montana')
+            ->where('estatus', 'Activo')
+            ->orderBy('name')
+            ->get();
+
+        $fechaActual = now()->toDateString();
+        $yaRegistrado = \App\Models\Asistencia::where('punto', 'OFICINA')
+            ->whereDate('fecha', $fechaActual)
+            ->exists();
+
+        return view('rh.listaAsistenciaMontana', compact('usuarios', 'yaRegistrado'));
+    }
+
+    public function guardarAsistenciaMontana(Request $request)
+{
+    $validated = $request->validate([
+        'fecha_registro' => 'required|date|date_format:Y-m-d',
+        'asistio' => 'nullable|array',
+        'asistio.*' => 'integer|exists:users,id',
+        'falto' => 'nullable|array',
+        'falto.*' => 'integer|exists:users,id',
+        'retraso_minutos' => 'nullable|array',
+        'retraso_minutos.*' => 'nullable|integer|min:1|max:599',
+        'tipo_falta' => 'nullable|array', // Nuevo
+        'tipo_falta.*' => 'string|in:justificada,injustificada', // Nuevo
+        'observaciones' => 'nullable|string|max:500',
+    ]);
+
+    $user = Auth::user();
+    $fechaRegistro = $request->input('fecha_registro');
+    $horaRegistro = now('America/Mexico_City')->toTimeString();
+
+    $asistencias = $request->input('asistio', []);
+    $faltas = $request->input('falto', []);
+    $retrasos = $request->input('retraso_minutos', []);
+    $tiposFalta = $request->input('tipo_falta', []); // Nuevo
+
+    $asistencia = Asistencia::create([
+        'user_id' => $user->id,
+        'fecha' => $fechaRegistro,
+        'hora_asistencia' => $horaRegistro,
+        'elementos_enlistados' => json_encode($asistencias),
+        'faltas' => json_encode($faltas),
+        'descansos' => json_encode([]),
+        'observaciones' => $request->input('observaciones') ?: 'Ninguna',
+        'punto' => 'OFICINA', // Cambié a OFICINA como dijiste
+        'empresa' => 'Montana',
+    ]);
+
+    // Guardar faltas justificadas
+    foreach ($tiposFalta as $userId => $tipo) {
+        if ($tipo === 'justificada' && in_array($userId, $faltas)) {
+            \App\Models\FaltaJustificada::create([
+                'asistencia_id' => $asistencia->id,
+                'user_id' => $userId,
+                'fecha' => $fechaRegistro,
+                'tipo' => 'justificada',
+                'motivo' => 'Falta justificada por RH',
+                'registrado_por' => $user->id,
+            ]);
+        }
+    }
+
+    // Guardar retardos
+    foreach ($retrasos as $userId => $minutos) {
+        if ($minutos && in_array($userId, $asistencias)) {
+            \App\Models\Retardo::create([
+                'user_id' => $userId,
+                'asistencia_id' => $asistencia->id,
+                'fecha' => $fechaRegistro,
+                'minutos_retardo' => $minutos,
+                'registrado_por' => $user->id,
+            ]);
+        }
+    }
+
+    return redirect()->route('rh.listaAsistencia')
+        ->with('success', 'Asistencias guardadas correctamente.');
+}
+
+    public function obtenerUsuariosEnVacaciones($fecha)
+    {
+        $usuariosEnVacaciones = \DB::table('solicitud_vacaciones')
+            ->join('users', 'solicitud_vacaciones.user_id', '=', 'users.id')
+            ->where('users.empresa', 'Montana')
+            ->where('solicitud_vacaciones.estatus', 'Aceptada')
+            ->whereDate('solicitud_vacaciones.fecha_inicio', '<=', $fecha)
+            ->whereDate('solicitud_vacaciones.fecha_fin', '>=', $fecha)
+            ->pluck('user_id')
+            ->toArray();
+
+        return response()->json(['usuarios' => $usuariosEnVacaciones]);
+    }
+
+    public function obtenerUsuariosConPermisos($fecha)
+    {
+        $usuariosConPermisos = \App\Models\PermisoEspecial::where('estatus', 'Aprobado')
+            ->whereDate('fecha_inicio', '<=', $fecha)
+            ->whereDate('fecha_fin', '>=', $fecha)
+            ->pluck('user_id')
+            ->toArray();
+
+        return response()->json(['usuarios' => $usuariosConPermisos]);
+    }
+
+    public function verificarAsistenciaExistente($fecha)
+    {
+        $existe = \App\Models\Asistencia::where('punto', 'OFICINA') // O el punto que aplique
+            ->whereDate('fecha', $fecha)
+            ->exists();
+
+        return response()->json([
+            'existe' => $existe,
+            'fecha_formateada' => \Carbon\Carbon::parse($fecha)->format('d/m/Y'),
+        ]);
     }
 }

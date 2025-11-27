@@ -141,6 +141,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/alta-usuario', [RhController::class, 'formAlta'])->name('rh.formAlta');
     Route::get('/descargar_ficha/{id}', [RhController::class, 'exportFichaTecnica'])->name('rh.descargarFicha');
     Route::put('/solicitudes/baja/{id}', [RhController::class, 'actualizar'])->name('solicitudes.baja.actualizar');
+    Route::get('/listaAsistenciaMontana', [RhController::class, 'listaAsistenciaMontana'])->name('rh.listaAsistencia');
+    Route::post('/rh/asistencia-montana/guardar', [RhController::class, 'guardarAsistenciaMontana'])->name('rh.guardarAsistenciaMontana');
+    Route::get('/api/usuarios-vacaciones/{fecha}', [RHController::class, 'obtenerUsuariosEnVacaciones'])->name('api.usuarios.vacaciones');
+    Route::get('/api/usuarios-permisos/{fecha}', [RHController::class, 'obtenerUsuariosConPermisos'])->name('api.usuarios.permisos');
+    Route::get('/api/verificar-asistencia/{fecha}', [RHController::class, 'verificarAsistenciaExistente'])
+    ->name('api.verificar.asistencia');
 
     Route::get('/descargar-bajas', function () {
         return (new BajasSpreadsheetExport())->generateFile();
