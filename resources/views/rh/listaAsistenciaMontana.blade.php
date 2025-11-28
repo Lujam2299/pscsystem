@@ -89,6 +89,8 @@
                     @else
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             @foreach($usuarios as $user)
+                                @if($user->email == 'altas@spyt.com.mx')
+                                @else
                                 <div class="usuario-card relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 hover:shadow-md"
                                      data-user-id="{{ $user->id }}">
                                     <div class="p-5">
@@ -180,6 +182,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                @endif
                             @endforeach
                         </div>
                     @endif
