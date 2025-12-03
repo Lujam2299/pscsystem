@@ -91,7 +91,8 @@ class AdminController extends Controller
         $user = User::find($id);
         $user->estatus = 'Activo';
         $fechaReingreso = Carbon::parse($request->query('fecha'))->format('d-m-Y');
-
+        $user->fecha_ingreso = $request->query('fecha');
+        $user->solicitudAlta->fecha_ingreso = $request->query('fecha');
         $reingresoTexto = $user->solicitudAlta->reingreso;
 
         if (is_null($reingresoTexto) || trim($reingresoTexto) === '' || $reingresoTexto === 'NO') {
