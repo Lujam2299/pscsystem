@@ -37,7 +37,7 @@
 
                 <!-- Texto centrado -->
                 <div class="text-center mb-4">
-                    <p class="text-sm {{ $esFiestas ? 'text-gray-100 dark:text-gray-200' : 'text-gray-600 dark:text-gray-400' }}">
+                    <p class="text-sm {{ $esFiestas ? 'text-gray-700 dark:text-gray-200' : 'text-gray-600 dark:text-gray-400' }}">
                         &copy; {{ date('Y') }}
                         <span class="font-medium {{ $esFiestas ? 'text-gray-700 dark:text-gray-200' : 'text-gray-900 dark:text-white' }}">Sistema de Gestión Interna</span>
                     </p>
