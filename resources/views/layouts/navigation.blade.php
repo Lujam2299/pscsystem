@@ -35,7 +35,7 @@
             <div class="flex-grow text-center">
                 <div class="flex justify-center items-center space-x-4">
                     <span class="text-3xl">🎄</span>
-                    <h1 class="text-2xl font-bold text-white dark:text-white">
+                    <h1 class="text-2xl font-bold text-gray-700 dark:text-gray-200">
                         @if(Auth::user()->empresa === 'PSC')
                             PRIVATE SECURITY CONTRACTORS DE MEXICO, S.A. DE C.V.
                         @elseif(Auth::user()->empresa === 'Montana')
@@ -49,9 +49,9 @@
                     </h1>
                     <span class="text-3xl">🎄</span>
                 </div>
-                <p class="text-sm text-gray-100 dark:text-gray-100">Bienvenido al sistema</p>
+                <p class="text-sm text-gray-700 dark:text-gray-200">Bienvenido al sistema</p>
                 <div class="mt-2">
-                    <p class="text-xs font-semibold text-white dark:text-white animate-pulse">
+                    <p class="text-xs font-semibold text-gray-700 dark:text-gray-200 animate-pulse">
                         ¡Felices Fiestas y Próspero Año Nuevo!
                     </p>
                 </div>

@@ -32,14 +32,14 @@
                             </svg>
                         @endif
                     </div>
-                    <span class="text-xl font-bold {{ $esFiestas ? 'text-red-200 dark:text-red-100' : 'text-gray-900 dark:text-white' }}">SGI</span>
+                    <span class="text-xl font-bold {{ $esFiestas ? 'text-red-700 dark:text-red-200' : 'text-gray-900 dark:text-white' }}">SGI</span>
                 </div>
 
                 <!-- Texto centrado -->
                 <div class="text-center mb-4">
-                    <p class="text-sm {{ $esFiestas ? 'text-gray-100 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400' }}">
+                    <p class="text-sm {{ $esFiestas ? 'text-gray-100 dark:text-gray-200' : 'text-gray-600 dark:text-gray-400' }}">
                         &copy; {{ date('Y') }}
-                        <span class="font-medium {{ $esFiestas ? 'text-white dark:text-white' : 'text-gray-900 dark:text-white' }}">Sistema de Gestión Interna</span>
+                        <span class="font-medium {{ $esFiestas ? 'text-gray-700 dark:text-gray-200' : 'text-gray-900 dark:text-white' }}">Sistema de Gestión Interna</span>
                     </p>
                 </div>
 
@@ -49,7 +49,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 {{ $esFiestas ? 'text-green-600' : 'text-green-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
-                        <span class="text-xs {{ $esFiestas ? 'text-gray-100 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400' }}">
+                        <span class="text-xs {{ $esFiestas ? 'text-gray-700 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400' }}">
                             Acceso seguro
                         </span>
                     </div>
@@ -58,7 +58,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 {{ $esFiestas ? 'text-blue-600' : 'text-blue-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
-                        <span class="text-xs {{ $esFiestas ? 'text-gray-100 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400' }}">
+                        <span class="text-xs {{ $esFiestas ? 'text-gray-700 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400' }}">
                             Personal autorizado
                         </span>
                     </div>
@@ -69,7 +69,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87.69 6.89L12 21l-5.69-.48.69-6.89-5-4.87 6.91-1.01L12 2z"/>
                             </svg>
-                            <span class="text-xs text-gray-100 dark:text-gray-300">
+                            <span class="text-xs text-gray-700 dark:text-gray-200">
                                 ¡Felices Fiestas!
                             </span>
                         </div>
