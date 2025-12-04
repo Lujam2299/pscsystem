@@ -15,6 +15,9 @@ class HistorialRiesgosTrabajo extends Component
     use WithFileUploads;
 
     public $search = '';
+    public $fecha_desde = '';
+    public $fecha_hasta = '';
+    public $tipo_riesgo_filtro = '';
 
     // ✅ Propiedades para el formulario de edición
     public $mostrarModalEdicion = false;
@@ -37,19 +40,36 @@ class HistorialRiesgosTrabajo extends Component
 
     public function render()
     {
-        $riesgos = RiesgoTrabajo::with(['user' => function($query) {
-                $query->withTrashed(); // Cargar usuarios incluso si están soft deleted
-            }])
-            ->where(function($query) {
-                // Buscar por tipo_riesgo o por el nombre del usuario asociado
-                $query->where('tipo_riesgo', 'like', '%' . $this->search . '%')
-                      ->orWhereHas('user', function ($q) {
-                          $q->withTrashed() // Buscar también en usuarios soft deleted
-                            ->where('name', 'like', '%' . $this->search . '%');
-                      });
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
+        $query = RiesgoTrabajo::with(['user' => function($q) {
+            $q->withTrashed();
+        }]);
+
+        // Filtro de búsqueda general
+        if ($this->search) {
+            $query->where(function($q) {
+                $q->where('tipo_riesgo', 'like', '%' . $this->search . '%')
+                ->orWhereHas('user', function ($q2) {
+                    $q2->withTrashed()->where('name', 'like', '%' . $this->search . '%');
+                });
+            });
+        }
+
+        // ✅ Filtro por rango de fechas
+        if ($this->fecha_desde) {
+            $query->whereDate('fecha', '>=', $this->fecha_desde);
+        }
+        if ($this->fecha_hasta) {
+            $query->whereDate('fecha', '<=', $this->fecha_hasta);
+        }
+
+        // ✅ Filtro por tipo de riesgo
+        if ($this->tipo_riesgo_filtro) {
+            $query->where('tipo_riesgo', $this->tipo_riesgo_filtro);
+        }
+
+        $query->orderBy('created_at', 'desc');
+
+        $riesgos = $query->paginate(10);
 
         return view('livewire.historial-riesgos-trabajo', [
             'riesgos' => $riesgos,
@@ -61,6 +81,17 @@ class HistorialRiesgosTrabajo extends Component
         $this->resetPage();
     }
 
+    public function updatingFechaDesde() {
+        $this->resetPage();
+    }
+
+    public function updatingFechaHasta() {
+        $this->resetPage();
+    }
+
+    public function updatingTipoRiesgoFiltro() {
+        $this->resetPage();
+    }
     // ✅ Método para abrir el modal de edición
     public function abrirModalEdicion($id)
     {

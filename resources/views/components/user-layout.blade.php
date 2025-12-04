@@ -41,8 +41,8 @@ $notificaciones = Alerta::where('leida', false)->latest()->get();
 }
 @endphp
 
-<div class="bg-gray-100 rounded-lg dark:bg-gray-900">
-    <nav class="bg-white rounded-t-lg shadow-md dark:bg-gray-800">
+<div class="bg-gray-100 rounded-lg dark:bg-gray-900 h-16 w-full">
+    <nav class="bg-white rounded-t-lg rounded-b-lg shadow-md dark:bg-gray-800">
         <div class="container px-4 py-3 mx-auto sm:px-6 lg:px-8">
             <div class="flex flex-wrap items-center justify-between">
                 <div class="flex flex-wrap items-center gap-4">

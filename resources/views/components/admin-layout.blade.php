@@ -77,8 +77,8 @@
 @endphp
 
 
-<div class="rounded-lg bg-gray-100 dark:bg-gray-900">
-    <nav class="bg-white dark:bg-gray-800 shadow-md rounded-t-lg">
+<div class="rounded-lg bg-gray-100 dark:bg-gray-900 h-16 w-full">
+    <nav class="bg-white dark:bg-gray-800 shadow-md rounded-t-lg rounded-b-lg">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-3">
             <div class="flex flex-wrap items-center justify-between">
                 <div class="flex flex-wrap items-center gap-4">
