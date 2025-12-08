@@ -30,13 +30,13 @@ class SolicitudBajas extends Model
         return $this->belongsTo(User::class);
     }
     public function acuse()
-{
-    return $this->hasOne(BajaAcuse::class, 'solicitud_baja_id');
-}
- public function usuario()
-{
-    return $this->belongsTo(User::class, 'user_id');
-}
+    {
+        return $this->hasOne(BajaAcuse::class, 'solicitud_baja_id');
+    }
+    public function usuario()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 
 
 }

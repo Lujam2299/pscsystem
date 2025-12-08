@@ -13,4 +13,9 @@ class BajaAcuse extends Model
     {
         return $this->belongsTo(SolicitudBajas::class, 'solicitud_baja_id');
     }
+
+    public function solicitudBaja()
+    {
+        return $this->belongsTo(SolicitudBajas::class, 'solicitud_baja_id');
+    }
 }

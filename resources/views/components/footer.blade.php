@@ -15,11 +15,10 @@
     $esFiestas = $fechaActual->between($inicioFiestas, $finFiestas);
 @endphp
 
-<footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-12 {{ $esFiestas ? 'bg-gradient-to-r from-red-100 via-white to-green-100 dark:from-red-900 via-gray-800 to-green-900' : '' }}">
+<footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 {{ $esFiestas ? 'bg-gradient-to-r from-red-100 via-white to-green-100 dark:from-red-900 via-gray-800 to-green-900' : '' }}">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="py-8">
             <div class="flex flex-col items-center">
-                <!-- Logo -->
                 <div class="flex items-center justify-center space-x-3 mb-4">
                     <div class="flex items-center justify-center w-10 h-10 {{ $esFiestas ? 'bg-gradient-to-r from-red-600 to-green-700' : 'bg-gradient-to-r from-blue-600 to-indigo-700' }} rounded-lg shadow">
                         @if($esFiestas)
@@ -35,7 +34,6 @@
                     <span class="text-xl font-bold {{ $esFiestas ? 'text-red-700 dark:text-red-200' : 'text-gray-900 dark:text-white' }}">SGI</span>
                 </div>
 
-                <!-- Texto centrado -->
                 <div class="text-center mb-4">
                     <p class="text-sm {{ $esFiestas ? 'text-gray-700 dark:text-gray-200' : 'text-gray-600 dark:text-gray-400' }}">
                         &copy; {{ date('Y') }}
