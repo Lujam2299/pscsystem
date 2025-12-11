@@ -41,4 +41,8 @@ class Misiones extends Model
         'datos_embajada' => 'array',
     ];
 
+    public function geofences()
+{
+    return $this->hasMany(Geofence::class, 'mision_id');
+}
 }
