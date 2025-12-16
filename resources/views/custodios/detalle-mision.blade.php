@@ -1,12 +1,20 @@
-<!-- resources/views/detalle-mision.blade.php -->
 <x-app-layout>
   <x-navbar />
 <x-livewire.monitoreo-layout :breadcrumb-items="[
         ['icon' => 'ti-home', 'url' => route('admin.monitoreoDashboard')],
+        ['icon' => 'ti-map', 'label' => 'Mapa de Monitoreo'],
         ['icon' => 'ti-map', 'label' => 'Detalle Misión: ' . ($mision->nombre_clave ?? $mision->id)]
     ]" title-main="Detalle de Misión" help-text="Información y geocercas de la misión seleccionada">
+    <div class="mb-4">
+        <a href="{{ route('admin.mapaGeocercas') }}"
+           class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Regresar a Misiones
+        </a>
+    </div>
     <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <!-- Panel de Detalles de la Misión -->
         <div class="border border-gray-200 rounded-lg md:col-span-1 bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
             <div class="p-4 border-b border-gray-300 dark:border-gray-600">
                 <div class="flex items-center justify-between w-full min-h-8">
