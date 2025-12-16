@@ -610,9 +610,9 @@
       console.log("ℹ️ Modo de solo lectura activo, esperando nuevas alertas...");
       return;
     }
-    
+
     let necesitaActualizacionBackend = false;
-    
+
     if (Array.isArray(alertasReales)) {
       // Recalcular tiempos y verificar vencimiento
       for (const alerta of alertasReales) {
@@ -629,7 +629,7 @@
         }
       }
     }
-    
+
     // Acción basada en la verificación
     if (necesitaActualizacionBackend || !Array.isArray(alertasReales) || alertasReales.length === 0) {
       if (necesitaActualizacionBackend) {
@@ -656,7 +656,7 @@
         });
         grupoMarcadores.refreshClusters(); // Refrescar clusters
       }
-      
+
       actualizarTiemposRelativos(); // Actualiza tiempos relativos en las tarjetas
       console.log('🕒 Sistema actualizado automáticamente (tiempos/colores locales).');
     }
@@ -1422,7 +1422,7 @@
       actualizarEstadoMapa('Error: Datos de alertas recibidos inválidos.');
       return;
     }
-    
+
     setTimeout(() => {
       const habiaAlertasAntes = Array.isArray(alertasReales) && alertasReales.length > 0;
       const hayAlertasAhora = nuevasAlertas.length > 0;

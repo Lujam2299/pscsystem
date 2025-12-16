@@ -228,6 +228,9 @@ Route::middleware('auth')->group(function () {
     // Detalle de Compra (Livewire)
     Route::get('/compras/{id}', \App\Livewire\CompraDetalle::class)->name('compras.detalle');
 
+    Route::get('/mapa-geocercas', [CustodiosController::class, 'mostrarMapaGeocercas'])->name('admin.mapaGeocercas');
+    Route::get('/detalle-mision/{mision}', [CustodiosController::class, 'verDetalleMision'])->name('admin.detalleMision');
+
     //Usuario Aux Admin
     Route::get('/nuevas_altas_elementos', [AuxadminController::class, 'nuevasAltas'])->name('aux.nuevasAltas');
     Route::post('/subida_documentacion/{id}', [AuxadminController::class, 'guardarAcuses'])->name('documentacion.subir');

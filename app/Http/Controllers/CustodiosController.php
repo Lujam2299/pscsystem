@@ -171,7 +171,7 @@ class CustodiosController extends Controller
                 'lat' => $request->hotel['latitud'],
                 'lng' => $request->hotel['longitud'],
             ],
-            'radio_km' => 3.000,
+            'radio_km' => 1.000,
             'nombre_referencia' => $request->hotel['nombre'],
         ]);
     }
@@ -184,13 +184,10 @@ class CustodiosController extends Controller
                 'lat' => $request->aeropuerto['latitud'],
                 'lng' => $request->aeropuerto['longitud'],
             ],
-            'radio_km' => 7.000,
+            'radio_km' => 4.000,
             'nombre_referencia' => $request->aeropuerto['nombre'],
         ]);
     }
-    // --- Fin Crear Geocercas ---
-
-    // --- COMENTADO: Generación y guardado del PDF ---
     /*
     $agentes = User::whereIn('id', $request->agentes_id)->get();
 
@@ -225,6 +222,37 @@ class CustodiosController extends Controller
 
     public function mensajesIndex(){
         return view('custodios.mensajes');
+    }
+
+    public function mostrarMapaGeocercas()
+    {
+        return view('custodios.mapaGeocercas');
+    }
+
+    public function verDetalleMision($misionId)
+    {
+        try {
+            // Buscar la misión por ID
+            $mision = Misiones::findOrFail($misionId);
+
+            // Cargar las geocercas asociadas a esta misión
+            $geocercas = Geofence::where('mision_id', $misionId)->get();
+
+            // Opcional: Cargar agentes si necesitas mostrarlos
+            $agentesIds = json_decode($mision->agentes_id, true);
+            $agentes = User::whereIn('id', $agentesIds)->get();
+
+            // Retornar la vista con los datos
+            return view('custodios.detalle-mision', [
+                'mision' => $mision,
+                'geocercas' => $geocercas,
+                'agentes' => $agentes ?? null, // Pasa agentes si los usas
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Error al cargar detalle de misión: ", ['error' => $e->getMessage()]);
+            abort(404); // O redirige a una página de error
+        }
     }
 
 }
