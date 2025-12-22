@@ -9,9 +9,15 @@
                     'icono' => 'car',
                     'color' => 'bg-blue-100 dark:bg-blue-700',
                 ],
-                [
+                /*[
                     'titulo' => 'Notificaciones de Misiones',
                     'ruta' => '#',
+                    'icono' => 'bell',
+                    'color' => 'bg-yellow-100 dark:bg-yellow-700',
+                ],*/
+                [
+                    'titulo' => 'Alertas',
+                    'ruta' => route('admin.mapaGeocercas'),
                     'icono' => 'bell',
                     'color' => 'bg-yellow-100 dark:bg-yellow-700',
                 ],

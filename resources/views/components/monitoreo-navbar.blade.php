@@ -13,12 +13,6 @@ $cards = [
 'color' => 'bg-yellow-100 dark:bg-yellow-700',
 ],
 [
-'titulo' => 'Geocercas',
-'ruta' => route('admin.mapaGeocercas'),
-'icono' => 'map-2',
-'color' => 'bg-green-100 dark:bg-green-700',
-],
-[
 'titulo' => 'Control de Gastos',
 'ruta' => route('gastos.index'),
 'icono' => 'receipt-2',
