@@ -67,23 +67,67 @@
                                     <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Estatus:</h3>
                                     <p class="text-gray-900 dark:text-white">{{ $mision->estatus ?? 'Desconocido' }}</p>
                                 </div>
-                                @if ($mision->datos_hotel)
-                                    @php $hotel = json_decode($mision->datos_hotel, true); @endphp
-                                    <div>
-                                        <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Hotel:</h3>
-                                        <p class="text-gray-900 dark:text-white">{{ $hotel['nombre'] ?? 'No definido' }}
-                                        </p>
-                                    </div>
-                                @endif
-                                @if ($mision->datos_aeropuerto)
-                                    @php $aeropuerto = json_decode($mision->datos_aeropuerto, true); @endphp
-                                    <div>
-                                        <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Aeropuerto:
-                                        </h3>
-                                        <p class="text-gray-900 dark:text-white">
-                                            {{ $aeropuerto['nombre'] ?? 'No definido' }}</p>
-                                    </div>
-                                @endif
+@if ($mision->datos_hotel)
+    @php $hoteles = json_decode($mision->datos_hotel, true); @endphp
+    <div>
+        <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Hoteles:</h3>
+        @if (is_array($hoteles) && count($hoteles) > 0)
+            <ul class="list-disc pl-5 space-y-1">
+                @foreach ($hoteles as $hotel)
+                    <li class="text-gray-900 dark:text-white">{{ $hotel['nombre'] ?? 'Nombre no definido' }}</li>
+                @endforeach
+            </ul>
+        @else
+            <p class="text-gray-900 dark:text-white">No definido</p>
+        @endif
+    </div>
+@endif
+
+@if ($mision->datos_aeropuerto)
+    @php
+        $aeropuertos = json_decode($mision->datos_aeropuerto, true);
+        $aeropuertosSimplificados = [];
+        if (is_array($aeropuertos)) {
+            foreach ($aeropuertos as $aeropuerto) {
+                $nombre_completo = $aeropuerto['nombre'] ?? '';
+                $nombre_simplificado = '';
+                $municipio = '';
+
+                if ($nombre_completo) {
+                    $partes = explode(',', $nombre_completo);
+                    $nombre_simplificado = trim($partes[0]);
+
+                    foreach ($partes as $parte) {
+                        $parte = trim($parte);
+                        if (str_starts_with($parte, 'Municipio de ')) {
+                            $municipio = $parte;
+                            break;
+                        }
+                    }
+
+                    $nombre_final = $nombre_simplificado;
+                    if ($municipio) {
+                        $nombre_final .= ', ' . $municipio;
+                    }
+                    $aeropuertosSimplificados[] = $nombre_final;
+                }
+            }
+        }
+    @endphp
+    <div>
+        <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Aeropuertos:</h3>
+        @if (count($aeropuertosSimplificados) > 0)
+            <ul class="list-disc pl-5 space-y-1">
+                @foreach ($aeropuertosSimplificados as $aeropuerto_simplificado)
+                    <li class="text-gray-900 dark:text-white">{{ $aeropuerto_simplificado }}</li>
+                @endforeach
+            </ul>
+        @else
+            <p class="text-gray-900 dark:text-white">No definido</p>
+        @endif
+    </div>
+@endif
+
 
                                 @if ($agentes)
                                     <div>
