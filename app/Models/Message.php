@@ -33,7 +33,7 @@ class Message extends Model
         User::class,            // Modelo relacionado
         'conversation_user',    // Nombre de la tabla pivote
         'conversation_id',      // Foreign key en la tabla pivote hacia este modelo (Conversation)
-        'api_user_id'           // Foreign key en la tabla pivote hacia User
+        'user_id'           // Foreign key en la tabla pivote hacia User
     )
     ->withPivot('last_read_at')
     ->withTimestamps();
