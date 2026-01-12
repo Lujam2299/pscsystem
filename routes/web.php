@@ -41,6 +41,42 @@ Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+Route::middleware(['auth'])->post('/generate-api-token', function (Request $request) {
+    $request->validate([
+        'token_name' => 'required|string|max:255'
+    ]);
+
+    $user = auth()->user();
+
+    // Revocar tokens antiguos con el mismo nombre
+    $user->tokens()->where('name', $request->token_name)->delete();
+
+    // Crear nuevo token
+    $token = $user->createToken($request->token_name, ['*']);
+
+    return response()->json([
+        'token' => $token->plainTextToken,
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->name,
+        ],
+        'message' => 'Token generado exitosamente. ¡Guárdalo ahora!'
+    ]);
+});
+
+Route::middleware(['auth'])->get('/my-api-token', function () {
+    $user = auth()->user();
+
+    // Genera un token temporal
+    $token = $user->createToken('mobile_app_token_' . now()->format('Y-m-d_H-i-s'));
+
+    return response()->json([
+        'token' => $token->plainTextToken,
+        'user' => $user->only(['id', 'name', 'email']),
+        'expires_at' => now()->addHours(24)
+    ]);
+});
+
 Route::middleware('auth')->group(function () {
 
     //Broadcast::routes(['middleware' => ['web', 'auth']]);

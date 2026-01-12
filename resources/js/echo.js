@@ -117,3 +117,21 @@ window.setupChatListeners = function(conversationId, componentId = null) {
     console.log('✅ Canal WebSocket configurado correctamente');
     return channel;
 };
+
+document.addEventListener('DOMContentLoaded', function() {
+    const conversationId = 20; // Ajusta según tu conversación actual
+
+    if (conversationId) {
+        // Escuchar canal público temporal
+        const channel = window.Echo.channel(`public-conversacion.${conversationId}`);
+
+        channel.listen('.MensajeEnviado', (e) => {
+            console.log('📨 Mensaje recibido del servidor:', e);
+
+            // Actualizar la UI del chat
+            handleIncomingMessage(e, conversationId);
+        });
+
+        console.log(`🔔 Suscribiéndose a: public-conversacion.${conversationId}`);
+    }
+});

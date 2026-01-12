@@ -48,56 +48,74 @@
     @endif
 
     @push('scripts')
-        <script>
-            // Maneja Escape
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    Livewire.dispatch('cerrarConversacion');
+    <script>
+        // Maneja Escape
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                Livewire.dispatch('cerrarConversacion');
+            }
+        });
+
+        document.addEventListener('livewire:init', () => {
+            Livewire.on('updatedConversationId', (conversationId) => {
+                console.log('🟢 conversationId actualizado en JS:', conversationId);
+
+                if (!window.Echo) {
+                    console.warn('❌ Echo no está listo');
+                    return;
                 }
+
+                if (window.Echo.connector?.pusher?.connection?.state !== 'connected') {
+                    console.warn('❌ Echo no está conectado');
+                    return;
+                }
+
+                // Desuscribirse del anterior
+                if (window.currentEchoChannel) {
+                    window.Echo.leave(window.currentEchoChannel);
+                }
+
+                if (!conversationId) return;
+
+                // ========== CANAL PÚBLICO TEMPORAL (PARA DIAGNÓSTICO) ==========
+                const channelName = `public-conversacion.${conversationId}`;
+                window.currentEchoChannel = channelName;
+
+                console.log('🔔 Suscribiéndose a:', channelName);
+
+                window.Echo.channel(channelName)  // Canal público temporal
+                    .listen('.MensajeEnviado', (e) => {
+                        console.log('📩 Mensaje recibido (canal público):', e);
+                        @this.call('agregarMensaje', e);
+                    })
+                    .error((error) => {
+                        console.error('❌ Error en canal público:', error);
+                    });
+
+                // ========== CANAL PRIVADO (PARA PRODUCCIÓN) ==========
+                /*
+                const channelName = `conversacion.${conversationId}`;
+                window.currentEchoChannel = channelName;
+
+                console.log('🔔 Suscribiéndose a:', channelName);
+
+                window.Echo.private(channelName)  // Canal privado para producción
+                    .listen('.MensajeEnviado', (e) => {
+                        console.log('📩 Mensaje recibido (canal privado):', e);
+                        @this.call('agregarMensaje', e);
+                    })
+                    .error((error) => {
+                        console.error('❌ Error en canal privado:', error);
+                    });
+                */
             });
+        });
 
-            document.addEventListener('livewire:init', () => {
-    Livewire.on('updatedConversationId', (conversationId) => {
-        console.log('🟢 conversationId actualizado en JS:', conversationId);
-
-        if (!window.Echo) {
-            console.warn('❌ Echo no está listo');
-            return;
-        }
-
-        if (window.Echo.connector?.pusher?.connection?.state !== 'connected') {
-            console.warn('❌ Echo no está conectado');
-            return;
-        }
-
-        // Desuscribirse del anterior
-        if (window.currentEchoChannel) {
-            window.Echo.leave(window.currentEchoChannel);
-        }
-
-        if (!conversationId) return;
-
-        const channelName = `conversacion.${conversationId}`;
-        window.currentEchoChannel = channelName;
-
-        console.log('🔔 Suscribiéndose a:', channelName);
-
-        window.Echo.private(channelName)
-            .listen('.MensajeEnviado', (e) => {
-                console.log('📩 Mensaje recibido:', e);
-                @this.call('agregarMensaje', e);
-            })
-            .error((error) => {
-                console.error('❌ Error en canal:', error);
-            });
-    });
-});
-
-            // Scroll automático
-            Livewire.on('scrollToBottom', () => {
-                const container = document.getElementById('messages-container');
-                if (container) container.scrollTop = container.scrollHeight;
-            });
-        </script>
-    @endpush
+        // Scroll automático
+        Livewire.on('scrollToBottom', () => {
+            const container = document.getElementById('messages-container');
+            if (container) container.scrollTop = container.scrollHeight;
+        });
+    </script>
+@endpush
 </div>
