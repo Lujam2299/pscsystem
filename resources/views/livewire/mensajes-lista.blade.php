@@ -1,4 +1,5 @@
-<div class="h-full overflow-y-auto bg-blue-50 p-3 rounded-lg border border-blue-100"
+<div wire:key="lista-conversaciones-{{ count($conversaciones) }}-{{ $conversaciones->pluck('id')->sum() }}"
+     class="h-full overflow-y-auto bg-blue-50 p-3 rounded-lg border border-blue-100"
      wire:poll.{{ $enablePolling ? '5s' : '0s' }}="cargarConversaciones">
     <div class="flex items-center justify-between mb-4 px-2">
         <div class="flex items-center gap-2">
@@ -60,12 +61,19 @@
                 $otro = $conv->users->where('id', '!=', auth()->id())->first();
                 $foto = $otro?->documentacionAltas?->arch_foto;
                 $foto_url = $foto ? asset($foto) : asset('images/default-user.jpg');
+
+                // Detectar si esta conversación fue actualizada recientemente
+                $isRecent = $conv->latestMessage && \Carbon\Carbon::parse($conv->latestMessage->created_at)->diffInSeconds(now()) <= 10;
             @endphp
 
             <div x-data="{ animate: false }"
-                 x-init="() => {
-                     setTimeout(() => animate = true, 100);
-                 }"
+                 x-init="
+                     if (@json($isRecent)) {
+                         setTimeout(() => animate = true, 10);
+                     } else {
+                         animate = true; // Mostrar siempre si no es reciente
+                     }
+                 "
                  x-show="animate"
                  x-transition:enter="transform transition ease-in-out duration-300"
                  x-transition:enter-start="-translate-x-4 opacity-0"
@@ -77,9 +85,13 @@
                  id="conversation-{{ $conv->id }}">
 
                 <div x-data="{ showMenu: false }"
-                    @contextmenu.prevent="showMenu = true"
-                    @click.away="showMenu = false"
-                    class="relative group">
+                     @mousedown.right.prevent="(event) => {
+                         if (event.target.closest('.group') === event.currentTarget) {
+                             showMenu = true;
+                         }
+                     }"
+                     @click.away="showMenu = false"
+                     class="relative group">
 
                     <div wire:click="seleccionarConversacion({{ $conv->id }})"
                         class="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-blue-100 transition">

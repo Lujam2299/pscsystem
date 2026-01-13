@@ -47,8 +47,16 @@ class Message extends Model
     {
         return $this->hasMany(Message::class, 'parent_id');
     }
-public function user()
-{
-    return $this->belongsTo(User::class, 'user_id'); // Asegúrate de que 'user_id' sea la clave correcta
-}
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id'); // Asegúrate de que 'user_id' sea la clave correcta
+    }
+
+    protected static function booted()
+    {
+        static::created(function ($message) {
+            $message->conversation->touch(); // Actualiza updated_at de la conversación
+        });
+    }
 }
