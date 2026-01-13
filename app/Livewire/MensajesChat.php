@@ -6,6 +6,7 @@ use Livewire\Component;
 use App\Events\MensajeEnviado;
 use App\Models\Conversation;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class MensajesChat extends Component
 {
@@ -38,26 +39,33 @@ class MensajesChat extends Component
     }
 
     public function cargarConversacion($id)
-    {
-        if (is_null($id)) {
-            $this->conversation = null;
-            $this->messages = [];
-            $this->conversationId = null;
-            return;
-        }
-
-        $this->conversationId = $id;
-        $this->dispatch('updatedConversationId', $id);
-        $this->conversation = Conversation::with(['messages.user', 'users'])->find($id);
-
-        if ($this->conversation) {
-            $this->messages = $this->conversation->messages->toArray();
-            $this->dispatch('scrollToBottom');
-        } else {
-            $this->messages = [];
-            $this->conversationId = null;
-        }
+{
+    if (is_null($id)) {
+        $this->conversation = null;
+        $this->messages = [];
+        $this->conversationId = null;
+        return;
     }
+
+    $this->conversationId = $id;
+    $this->dispatch('updatedConversationId', $id);
+    $this->conversation = Conversation::with(['messages.user', 'users'])->find($id);
+
+    if ($this->conversation) {
+        $this->messages = $this->conversation->messages->toArray();
+
+        // Marcar mensajes como leídos para este usuario
+        DB::table('conversation_user')
+            ->where('conversation_id', $id)
+            ->where('api_user_id', auth()->id()) // Cambié a api_user_id
+            ->update(['unread_count' => 0]);
+
+        $this->dispatch('scrollToBottom');
+    } else {
+        $this->messages = [];
+        $this->conversationId = null;
+    }
+}
 
     public function enviarMensaje()
     {

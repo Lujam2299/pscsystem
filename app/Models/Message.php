@@ -4,6 +4,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Message extends Model
 {
@@ -27,7 +28,7 @@ class Message extends Model
         return $this->belongsTo(Conversation::class);
     }
 
-    public function users()
+    /*public function users()
 {
     return $this->belongsToMany(
         User::class,            // Modelo relacionado
@@ -37,7 +38,7 @@ class Message extends Model
     )
     ->withPivot('last_read_at')
     ->withTimestamps();
-}
+}*/
     public function parent()
     {
         return $this->belongsTo(Message::class, 'parent_id');
@@ -57,6 +58,27 @@ class Message extends Model
     {
         static::created(function ($message) {
             $message->conversation->touch(); // Actualiza updated_at de la conversación
+
+            // Incrementar unread_count para otros usuarios en la conversación
+            $otherUsers = $message->conversation->users->where('id', '!=', $message->user_id);
+
+            foreach ($otherUsers as $user) {
+                $conversationUser = DB::table('conversation_user')
+                    ->where('conversation_id', $message->conversation_id)
+                    ->where('api_user_id', $user->id)
+                    ->first();
+
+                if ($conversationUser) {
+                    DB::table('conversation_user')
+                        ->where('conversation_id', $message->conversation_id)
+                        ->where('api_user_id', $user->id)
+                        ->increment('unread_count');
+
+                    \Log::info("Incrementado unread_count para user: {$user->id}, conv: {$message->conversation_id}");
+                } else {
+                    \Log::info("No encontrado registro en conversation_user para user: {$user->id}, conv: {$message->conversation_id}");
+                }
+            }
         });
     }
 }

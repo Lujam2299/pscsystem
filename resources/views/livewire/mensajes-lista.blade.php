@@ -97,9 +97,20 @@
                         class="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-blue-100 transition">
                         <img src="{{ $foto_url }}" alt="Foto" class="w-10 h-10 rounded-full object-cover">
                         <div class="flex-1 min-w-0">
-                            <strong class="block text-slate-800 truncate">
-                                {{ $conv->is_group ? $conv->title ?? 'Grupo sin nombre' : $otro?->name }}
-                            </strong>
+<strong class="block text-slate-800 truncate">
+    {{ $conv->is_group ? $conv->title ?? 'Grupo sin nombre' : $otro?->name }}
+
+    @php
+        // Buscar el pivot del usuario actual en esta conversación
+        $currentUserPivot = $conv->users->firstWhere('id', auth()->id())?->pivot;
+    @endphp
+
+    @if($currentUserPivot && $currentUserPivot->unread_count > 0)
+        <span class="bg-red-500 text-white text-xs rounded-full px-2 py-0.5 ml-1 inline-block">
+            {{ $currentUserPivot->unread_count }}
+        </span>
+    @endif
+</strong>
 
                             <div class="flex justify-between items-center">
                                 <span class="text-sm text-slate-500 truncate max-w-[180px]">

@@ -29,14 +29,19 @@ class MensajesLista extends Component
         $this->cargarConversaciones();
     }
 
-    public function cargarConversaciones()
-    {
-        $this->conversaciones = Auth::user()
-            ->conversations()
-            ->with(['users.documentacionAltas', 'latestMessage'])
-            ->orderByDesc('updated_at') // Ordenar por última actividad
-            ->get();
-    }
+public function cargarConversaciones()
+{
+    $this->conversaciones = Auth::user()
+        ->conversations()
+        ->with([
+            'users' => function($query) {
+                $query->withPivot(['last_read_at', 'unread_count']);
+            },
+            'latestMessage'
+        ])
+        ->orderByDesc('updated_at')
+        ->get();
+}
 
     public function actualizarUltimoMensaje($data)
     {
