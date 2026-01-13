@@ -13,20 +13,16 @@ class MensajesLista extends Component
     public $buscarUsuario = '';
     public $usuariosFiltrados = [];
     public $mostrarBuscador = false;
+    public $enablePolling = true; // 👈 Nueva propiedad
 
     protected $listeners = [
         'forzarRender' => '$refresh',
         'eliminarConversacionJS' => 'eliminarConversacion',
-        'MensajeEnviado' => 'actualizarUltimoMensaje'
+        'MensajeEnviado' => 'actualizarUltimoMensaje',
+        'mensajeEnviadoEnConversacion' => 'actualizarConversacionEnLista',
+        'conversacionSeleccionada' => 'detenerPolling', // 👈 Nuevo listener
+        'cerrarConversacion' => 'iniciarPolling',       // 👈 Nuevo listener
     ];
-
-    public function actualizarUltimoMensaje($data)
-    {
-        $conversacion = $this->conversaciones->firstWhere('id', $data['conversation_id']);
-        if ($conversacion) {
-            $this->cargarConversaciones();
-        }
-    }
 
     public function mount()
     {
@@ -40,6 +36,28 @@ class MensajesLista extends Component
             ->with(['users.documentacionAltas', 'latestMessage'])
             ->latest('updated_at')
             ->get();
+    }
+
+    public function actualizarUltimoMensaje($data)
+    {
+        $this->cargarConversaciones();
+    }
+
+    public function actualizarConversacionEnLista($data)
+    {
+        $this->cargarConversaciones();
+    }
+
+    // Nuevo método: detener polling cuando se abre una conversación
+    public function detenerPolling($id)
+    {
+        $this->enablePolling = false;
+    }
+
+    // Nuevo método: reanudar polling cuando se cierra la conversación
+    public function iniciarPolling()
+    {
+        $this->enablePolling = true;
     }
 
     public function updatedBuscarUsuario($value)
@@ -113,6 +131,11 @@ class MensajesLista extends Component
 
     public function render()
     {
+        // Solo hacer polling si está habilitado
+        if ($this->enablePolling) {
+            $this->cargarConversaciones();
+        }
+
         return view('livewire.mensajes-lista');
     }
 }

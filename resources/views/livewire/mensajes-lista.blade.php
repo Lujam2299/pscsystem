@@ -1,4 +1,5 @@
-<div class="h-full overflow-y-auto bg-blue-50 p-3 rounded-lg border border-blue-100">
+<div class="h-full overflow-y-auto bg-blue-50 p-3 rounded-lg border border-blue-100"
+     wire:poll.{{ $enablePolling ? '5s' : '0s' }}="cargarConversaciones">
     <div class="flex items-center justify-between mb-4 px-2">
         <div class="flex items-center gap-2">
             <a href="{{ route('dashboard') }}"
@@ -144,4 +145,3 @@
     });
 </script>
 @endpush
-

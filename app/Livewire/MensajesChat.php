@@ -33,7 +33,6 @@ class MensajesChat extends Component
 
         if ($this->conversation && !$isOwnMessage) {
             $this->messages[] = $messageData;
-            // Forzar scroll al recibir mensaje
             $this->dispatch('scrollToBottom');
         }
     }
@@ -53,7 +52,6 @@ class MensajesChat extends Component
 
         if ($this->conversation) {
             $this->messages = $this->conversation->messages->toArray();
-            // Forzar scroll al cargar conversación
             $this->dispatch('scrollToBottom');
         } else {
             $this->messages = [];
@@ -80,8 +78,14 @@ class MensajesChat extends Component
             // Log opcional
         }
 
-        // Forzar scroll al enviar mensaje
         $this->dispatch('scrollToBottom');
+
+        // Notificar a mensajes-lista que hay un nuevo mensaje
+        $this->dispatch('mensajeEnviadoEnConversacion', [
+            'conversation_id' => $this->conversation->id,
+            'message_body' => $msg->body,
+            'user_id' => $msg->user_id,
+        ]);
     }
 
     public function cerrarConversacion()
