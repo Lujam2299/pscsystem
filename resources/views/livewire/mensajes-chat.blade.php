@@ -38,18 +38,16 @@
 
             <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition"
                 title="Enviar">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-0" fill="none"
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
             </button>
         </form>
-
     @endif
 
     @push('scripts')
     <script>
-        // Maneja Escape
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 Livewire.dispatch('cerrarConversacion');
@@ -57,6 +55,27 @@
         });
 
         document.addEventListener('livewire:init', () => {
+            // Escuchar el evento scrollToBottom
+            Livewire.on('scrollToBottom', () => {
+                setTimeout(() => {
+                    const container = document.getElementById('messages-container');
+                    if (container) {
+                        container.scrollTop = container.scrollHeight;
+                    }
+                }, 100);
+            });
+
+            // Forzar scroll al seleccionar conversación
+            Livewire.on('conversacionSeleccionada', () => {
+                setTimeout(() => {
+                    const container = document.getElementById('messages-container');
+                    if (container) {
+                        container.scrollTop = container.scrollHeight;
+                    }
+                }, 300);
+            });
+
+            // Suscripción a Echo (sin cambios)
             Livewire.on('updatedConversationId', (conversationId) => {
                 console.log('🟢 conversationId actualizado en JS:', conversationId);
 
@@ -70,24 +89,21 @@
                     return;
                 }
 
-                // Desuscribirse del anterior
                 if (window.currentEchoChannel) {
                     window.Echo.leave(window.currentEchoChannel);
                 }
 
                 if (!conversationId) return;
 
-                // ========== CANAL PRIVADO (PARA PRODUCCIÓN) ==========
                 const channelName = `conversacion.${conversationId}`;
                 window.currentEchoChannel = channelName;
 
                 console.log('🔔 Suscribiéndose a:', channelName);
 
-                window.Echo.private(channelName)  // Canal privado
+                window.Echo.private(channelName)
                     .listen('.MensajeEnviado', (e) => {
                         console.log('📩 Mensaje recibido (canal privado):', e);
 
-                        // Verificar que no sea el mismo usuario que envió el mensaje
                         const senderUserId = e.message?.user_id || e.message?.user?.id || null;
                         const currentUserId = {{ auth()->id() }};
 
@@ -102,12 +118,6 @@
                     });
             });
         });
-
-        // Scroll automático
-        Livewire.on('scrollToBottom', () => {
-            const container = document.getElementById('messages-container');
-            if (container) container.scrollTop = container.scrollHeight;
-        });
     </script>
-@endpush
+    @endpush
 </div>
