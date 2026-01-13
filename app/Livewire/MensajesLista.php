@@ -13,15 +13,15 @@ class MensajesLista extends Component
     public $buscarUsuario = '';
     public $usuariosFiltrados = [];
     public $mostrarBuscador = false;
-    public $enablePolling = true; // 👈 Nueva propiedad
+    public $enablePolling = true;
 
     protected $listeners = [
         'forzarRender' => '$refresh',
         'eliminarConversacionJS' => 'eliminarConversacion',
         'MensajeEnviado' => 'actualizarUltimoMensaje',
         'mensajeEnviadoEnConversacion' => 'actualizarConversacionEnLista',
-        'conversacionSeleccionada' => 'detenerPolling', // 👈 Nuevo listener
-        'cerrarConversacion' => 'iniciarPolling',       // 👈 Nuevo listener
+        'conversacionSeleccionada' => 'detenerPolling',
+        'cerrarConversacion' => 'iniciarPolling',
     ];
 
     public function mount()
@@ -34,7 +34,7 @@ class MensajesLista extends Component
         $this->conversaciones = Auth::user()
             ->conversations()
             ->with(['users.documentacionAltas', 'latestMessage'])
-            ->latest('updated_at')
+            ->orderByDesc('updated_at') // Ordenar por última actividad
             ->get();
     }
 
@@ -48,13 +48,11 @@ class MensajesLista extends Component
         $this->cargarConversaciones();
     }
 
-    // Nuevo método: detener polling cuando se abre una conversación
     public function detenerPolling($id)
     {
         $this->enablePolling = false;
     }
 
-    // Nuevo método: reanudar polling cuando se cierra la conversación
     public function iniciarPolling()
     {
         $this->enablePolling = true;
@@ -131,7 +129,6 @@ class MensajesLista extends Component
 
     public function render()
     {
-        // Solo hacer polling si está habilitado
         if ($this->enablePolling) {
             $this->cargarConversaciones();
         }
