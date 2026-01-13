@@ -77,37 +77,29 @@
 
                 if (!conversationId) return;
 
-                // ========== CANAL PÚBLICO TEMPORAL (PARA DIAGNÓSTICO) ==========
-                const channelName = `public-conversacion.${conversationId}`;
-                window.currentEchoChannel = channelName;
-
-                console.log('🔔 Suscribiéndose a:', channelName);
-
-                window.Echo.channel(channelName)  // Canal público temporal
-                    .listen('.MensajeEnviado', (e) => {
-                        console.log('📩 Mensaje recibido (canal público):', e);
-                        @this.call('agregarMensaje', e);
-                    })
-                    .error((error) => {
-                        console.error('❌ Error en canal público:', error);
-                    });
-
                 // ========== CANAL PRIVADO (PARA PRODUCCIÓN) ==========
-                /*
                 const channelName = `conversacion.${conversationId}`;
                 window.currentEchoChannel = channelName;
 
                 console.log('🔔 Suscribiéndose a:', channelName);
 
-                window.Echo.private(channelName)  // Canal privado para producción
+                window.Echo.private(channelName)  // Canal privado
                     .listen('.MensajeEnviado', (e) => {
                         console.log('📩 Mensaje recibido (canal privado):', e);
-                        @this.call('agregarMensaje', e);
+
+                        // Verificar que no sea el mismo usuario que envió el mensaje
+                        const senderUserId = e.message?.user_id || e.message?.user?.id || null;
+                        const currentUserId = {{ auth()->id() }};
+
+                        if (senderUserId != currentUserId) {
+                            @this.call('agregarMensaje', e);
+                        } else {
+                            console.log('💬 Mensaje propio ignorado para evitar duplicado');
+                        }
                     })
                     .error((error) => {
                         console.error('❌ Error en canal privado:', error);
                     });
-                */
             });
         });
 
