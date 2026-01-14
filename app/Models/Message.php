@@ -28,17 +28,6 @@ class Message extends Model
         return $this->belongsTo(Conversation::class);
     }
 
-    /*public function users()
-{
-    return $this->belongsToMany(
-        User::class,            // Modelo relacionado
-        'conversation_user',    // Nombre de la tabla pivote
-        'conversation_id',      // Foreign key en la tabla pivote hacia este modelo (Conversation)
-        'user_id'           // Foreign key en la tabla pivote hacia User
-    )
-    ->withPivot('last_read_at')
-    ->withTimestamps();
-}*/
     public function parent()
     {
         return $this->belongsTo(Message::class, 'parent_id');
