@@ -242,12 +242,13 @@ const mostrarHistorial = async (userId) => {
         // ✅ Limpiar rutas anteriores
         grupoRutasHistorial.clearLayers();
 
-        // ✅ Dibujar ruta si hay más de 1 ubicación
-        if (data.positions.length > 1) {
+        // ✅ Dibujar ruta y marcadores si hay ubicaciones
+        if (data.positions.length > 0) {
             const coords = data.positions
                 .map(pos => [parseFloat(pos.latitude), parseFloat(pos.longitude)])
                 .reverse(); // Más reciente al final
 
+            // Dibujar línea de trayectoria
             const polyline = L.polyline(coords, {
                 color: '#3b82f6', // Azul
                 weight: 4,
@@ -255,6 +256,26 @@ const mostrarHistorial = async (userId) => {
                 smoothFactor: 1
             }).addTo(grupoRutasHistorial);
 
+            // Dibujar marcadores pequeños en cada punto
+            coords.forEach((coord, index) => {
+                const markerSmall = L.circleMarker(coord, {
+                    radius: 6, // Tamaño del círculo
+                    color: '#1d4ed8', // Borde azul oscuro
+                    fillColor: '#3b82f6', // Fondo azul
+                    fillOpacity: 0.8,
+                    weight: 1
+                })
+                .bindPopup(`
+                    <div>
+                        <strong>Punto ${index + 1}</strong><br>
+                        ${dayjs(data.positions[data.positions.length - 1 - index].recorded_at).format('HH:mm:ss')}<br>
+                        ${coord[0]}, ${coord[1]}
+                    </div>
+                `)
+                .addTo(grupoRutasHistorial);
+            });
+
+            // Ajustar vista al trayecto
             mapa.fitBounds(polyline.getBounds(), { padding: [50, 50] });
         }
 
