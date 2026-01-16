@@ -83,9 +83,33 @@
         <!-- Mapa -->
         <div class="border border-gray-200 rounded-lg md:col-span-2 bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
             <div class="relative">
+                <div class="p-4 border-b border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white dark:bg-gray-800 p-3 rounded shadow text-center">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Usuarios Activos</p>
+                    <p id="contador-activos" class="text-xl font-bold text-green-500">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-3 rounded shadow text-center">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Usuarios Inactivos</p>
+                    <p id="contador-inactivos" class="text-xl font-bold text-red-500">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-3 rounded shadow text-center">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Sin Reportar (10 min)</p>
+                    <p id="contador-sin-reporte" class="text-xl font-bold text-yellow-500">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-3 rounded shadow text-center">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Total Escoltas</p>
+                    <p id="contador-total" class="text-xl font-bold text-blue-500">0</p>
+                </div>
+            </div>
+        </div>
                 <div
                     class="flex flex-wrap items-center justify-between w-full p-4 border-b border-gray-300 dark:border-gray-600 min-h-8">
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white">Vista del Mapa</h2>
+                    <div class="relative p-4 border-b border-gray-300 dark:border-gray-600">
+                        <input type="text" id="buscador-usuarios" placeholder="Buscar usuario..."
+                            class="w-full p-2 border border-gray-300 rounded dark:bg-gray-800 dark:text-white dark:border-gray-600">
+                    </div>
                     <div class="flex flex-wrap items-center gap-4 mt-2 md:mt-0 text-xs">
                         <span class="font-medium text-gray-600 dark:text-gray-400">Misión Seleccionada:</span>
                         @if($misionSeleccionadaId)
@@ -169,6 +193,7 @@ let grupoUsuariosEscolta;
 let grupoRutasHistorial; // ✅ Nuevo grupo para rutas de historial
 let marcadoresEscolta = {};
 let geocercasActuales = {};
+let todosLosUsuarios = [];
 
 const estadoMapa = {
     inicializado: false
@@ -416,15 +441,51 @@ const cargarUsuariosEscolta = (users) => {
 
     grupoUsuariosEscolta.clearLayers();
     marcadoresEscolta = {};
-    if (!users?.length) return;
 
-    users.forEach(user => {
+    // Guardar todos los usuarios para el buscador
+    todosLosUsuarios = [...users];
+
+    // Aplicar filtro de búsqueda si hay texto
+    const textoBusqueda = document.getElementById('buscador-usuarios')?.value?.toLowerCase() || '';
+    const usuariosFiltrados = textoBusqueda
+        ? users.filter(u => u.name.toLowerCase().includes(textoBusqueda))
+        : users;
+
+    if (!usuariosFiltrados.length) return;
+
+    usuariosFiltrados.forEach(user => {
         const marker = crearMarcadorEscolta(user);
         if (marker) {
             grupoUsuariosEscolta.addLayer(marker);
             marcadoresEscolta[user.id] = marker;
         }
     });
+
+    // Actualizar estadísticas
+    actualizarEstadisticas(users);
+};
+
+const actualizarEstadisticas = (users) => {
+    // Total de usuarios en el sistema con estatus Activo
+    const total = users.length;
+
+    // Usuarios sin reportar en los últimos 10 minutos
+    const sinReportar = users.filter(u => {
+        const ultima = dayjs(u.recorded_at);
+        return dayjs().diff(ultima, 'minute') > 10;
+    }).length;
+
+    // Usuarios con reporte reciente (menos de 10 min)
+    const activos = total - sinReportar;
+
+    // Inactivos (sin ubicación reciente en las últimas 24 hrs)
+    const inactivos = todosLosUsuarios.length - total;
+
+    // Actualizar contadores en el DOM
+    document.getElementById('contador-activos').textContent = activos;
+    document.getElementById('contador-inactivos').textContent = inactivos;
+    document.getElementById('contador-sin-reporte').textContent = sinReportar;
+    document.getElementById('contador-total').textContent = todosLosUsuarios.length;
 };
 
 // --- FUNCIONES DE GEOCERCAS ---
@@ -578,6 +639,13 @@ window.addEventListener('geocercasActualizadas', (e) => {
 // Botón centrar
 document.addEventListener('click', (e) => {
     if (e.target.closest('#btn-centrar-mapa')) centrarVistaMapa();
+});
+
+// Listener para buscador
+document.getElementById('buscador-usuarios')?.addEventListener('input', (e) => {
+    if (estadoMapa.inicializado) {
+        cargarUsuariosEscolta(todosLosUsuarios);
+    }
 });
 </script>
 @endpush

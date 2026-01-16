@@ -28,34 +28,40 @@ class MapaGeocercas extends Component
     }
 
     public function cargarUsuariosEscolta()
-    {
-        Log::info('MapaGeocercas@cargarUsuariosEscolta: Iniciando carga de usuarios escolta con ubicaciones recientes');
+{
+    Log::info('MapaGeocercas@cargarUsuariosEscolta: Iniciando carga de usuarios escolta con ubicaciones recientes');
 
-        $periodo = Carbon::now()->subHours(24);
-        $escortUsersAll = User::all();//where('rol', 'like', '%escolta%')->get();
+    $periodo = Carbon::now()->subHours(24);
 
-        $usersWithRecentLocation = [];
-        foreach ($escortUsersAll as $user) {
-            $lastLocation = RealtimePosition::where('user_id', $user->id)
-                ->where('created_at', '>', $periodo)
-                ->orderBy('created_at', 'desc')
-                ->first();
+    $query = User::where('estatus', 'Activo'); // Filtrar solo usuarios activos
 
-            if ($lastLocation) {
-                $usersWithRecentLocation[] = [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'latitude' => $lastLocation->latitude,
-                    'longitude' => $lastLocation->longitude,
-                    'recorded_at' => $lastLocation->recorded_at->toISOString(),
-                    'user_data' => $user->only(['rol', 'email'])
-                ];
-            }
+    // Opcional: Filtrar por rol (comentado para usar después)
+    // $query->where('rol', 'like', '%escolta%');
+
+    $escortUsersAll = $query->get();
+
+    $usersWithRecentLocation = [];
+    foreach ($escortUsersAll as $user) {
+        $lastLocation = RealtimePosition::where('user_id', $user->id)
+            ->where('created_at', '>', $periodo)
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($lastLocation) {
+            $usersWithRecentLocation[] = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'latitude' => $lastLocation->latitude,
+                'longitude' => $lastLocation->longitude,
+                'recorded_at' => $lastLocation->recorded_at->toISOString(),
+                'user_data' => $user->only(['rol', 'email', 'estatus'])
+            ];
         }
-
-        Log::info('MapaGeocercas@cargarUsuariosEscolta: Usuarios encontrados', ['count' => count($usersWithRecentLocation)]);
-        $this->dispatch('escortUsersLoaded', users: $usersWithRecentLocation);
     }
+
+    Log::info('MapaGeocercas@cargarUsuariosEscolta: Usuarios encontrados', ['count' => count($usersWithRecentLocation)]);
+    $this->dispatch('escortUsersLoaded', users: $usersWithRecentLocation);
+}
 
     public function seleccionarMision($misionId)
     {
