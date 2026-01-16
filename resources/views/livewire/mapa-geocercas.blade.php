@@ -279,7 +279,7 @@ const mostrarHistorial = async (userId) => {
             mapa.fitBounds(polyline.getBounds(), { padding: [50, 50] });
         }
 
-        // ✅ Contenido con scroll
+        // ✅ Contenido con scroll y filas clicables
         let historialHtml = `
             <div style="max-width: 400px;">
                 <h3 class="font-bold mb-2">Historial de ${data.total} ubicaciones (últimas 24 hrs)</h3>
@@ -311,7 +311,7 @@ const mostrarHistorial = async (userId) => {
             `;
             data.positions.forEach(pos => {
                 historialHtml += `
-                    <tr>
+                    <tr onclick="centrarEnCoordenada(${pos.latitude}, ${pos.longitude})" style="cursor: pointer;" class="hover:bg-blue-50">
                         <td>${dayjs(pos.recorded_at).format('HH:mm:ss')}</td>
                         <td>${pos.latitude}</td>
                         <td>${pos.longitude}</td>
@@ -332,6 +332,28 @@ const mostrarHistorial = async (userId) => {
         console.error('Error al cargar historial:', err);
         alert('No se pudo cargar el historial: ' + err.message);
     }
+};
+
+// ✅ Función para centrar el mapa en una coordenada específica
+const centrarEnCoordenada = (lat, lng) => {
+    console.log('Centrando en coordenada:', lat, lng);
+
+    // Centrar el mapa en la coordenada
+    mapa.setView([lat, lng], 15); // Zoom nivel 15 para ver bien el detalle
+
+    // Opcional: Añadir un marcador temporal que parpadee o destaque
+    const tempMarker = L.circleMarker([lat, lng], {
+        radius: 10,
+        color: '#ef4444',    // Rojo
+        fillColor: '#f87171', // Rojo claro
+        fillOpacity: 0.9,
+        weight: 2
+    }).addTo(mapa);
+
+    // Remover el marcador temporal después de 2 segundos
+    setTimeout(() => {
+        mapa.removeLayer(tempMarker);
+    }, 2000);
 };
 
 // ✅ FUNCIÓN PARA LIMPIAR LA RUTA
