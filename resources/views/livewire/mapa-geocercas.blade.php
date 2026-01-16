@@ -86,7 +86,7 @@
                 <div class="p-4 border-b border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-white dark:bg-gray-800 p-3 rounded shadow text-center">
-                    <p class="text-sm text-gray-600 dark:text-gray-300">Usuarios Activos</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-300">En Movimiento</p>
                     <p id="contador-activos" class="text-xl font-bold text-green-500">0</p>
                 </div>
                 <div class="bg-white dark:bg-gray-800 p-3 rounded shadow text-center">
@@ -208,13 +208,28 @@ const crearMarcadorEscolta = (user) => {
         return null;
     }
 
-    // Ícono con fondo verde y borde negro
+    // Calcular minutos desde la última actualización
+    const tiempoUltimo = dayjs(user.recorded_at);
+    const minutos = dayjs().diff(tiempoUltimo, 'minute');
+
+    // Determinar color según tiempo
+    let bgColor = '#22c55e'; // Verde
+    let borderColor = 'black';
+    if (minutos >= 10 && minutos < 60) {
+        bgColor = '#f59e0b'; // Amarillo
+    } else if (minutos >= 60 && minutos < 180) {
+        bgColor = '#ef4444'; // Rojo
+    } else if (minutos >= 180) {
+        bgColor = '#9ca3af'; // Gris
+    }
+
+    // Ícono con color dinámico
     const escoltaIcon = L.divIcon({
         className: 'custom-escolta-icon',
         html: `<div style="
-            background-color: #22c55e;
+            background-color: ${bgColor};
             color: white;
-            border: 2px solid black;
+            border: 2px solid ${borderColor};
             border-radius: 50%;
             width: 32px;
             height: 32px;
@@ -237,9 +252,13 @@ const crearMarcadorEscolta = (user) => {
             <strong>${user.name}</strong><br>
             <small>Rol: ${user.user_data?.rol || 'N/A'}</small><br>
             <small>Última actualización: ${dayjs(user.recorded_at).fromNow()}</small><br>
+            <small>Hace: ${minutos} min</small><br>
             <button onclick="mostrarHistorial(${user.id})" class="text-blue-500 underline text-sm mt-1">Ver historial</button>
         </div>
     `);
+
+    // Opcional: Añadir tooltip con nombre
+    marker.bindTooltip(`${user.name} (${minutos} min)`, { permanent: false, direction: 'top' });
 
     return marker;
 };
@@ -395,7 +414,7 @@ const actualizarOMarcarEscolta = (userId, name, nuevaLat, nuevaLng, nuevoRecorde
         return;
     }
 
-    // Si el mapa no está listo, reintentar en 500ms (máximo 3 intentos)
+    // Si el mapa no está listo, reintentar en 500ms
     if (!estadoMapa.inicializado) {
         console.log('⚠️ Mapa no inicializado. Reintentando en 500ms...');
         setTimeout(() => {
@@ -404,7 +423,6 @@ const actualizarOMarcarEscolta = (userId, name, nuevaLat, nuevaLng, nuevoRecorde
         return;
     }
 
-    // Verificar que los grupos existan
     if (!grupoUsuariosEscolta || !(grupoUsuariosEscolta instanceof L.LayerGroup)) {
         console.error('❌ grupoUsuariosEscolta no es un LayerGroup válido');
         return;
@@ -412,17 +430,64 @@ const actualizarOMarcarEscolta = (userId, name, nuevaLat, nuevaLng, nuevoRecorde
 
     let marker = marcadoresEscolta[userId];
     if (marker) {
+        // Actualizar posición
         marker.setLatLng([lat, lng]);
+
+        // Recalcular color según nuevo tiempo
+        const tiempoUltimo = dayjs(nuevoRecordedAt);
+        const minutos = dayjs().diff(tiempoUltimo, 'minute');
+
+        let bgColor = '#22c55e'; // Verde
+        let borderColor = 'black';
+        if (minutos >= 10 && minutos < 60) {
+            bgColor = '#f59e0b'; // Amarillo
+        } else if (minutos >= 60 && minutos < 180) {
+            bgColor = '#ef4444'; // Rojo
+        } else if (minutos >= 180) {
+            bgColor = '#9ca3af'; // Gris
+        }
+
+        // Actualizar ícono con nuevo color
+        const newIcon = L.divIcon({
+            className: 'custom-escolta-icon',
+            html: `<div style="
+                background-color: ${bgColor};
+                color: white;
+                border: 2px solid ${borderColor};
+                border-radius: 50%;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                box-shadow: 0 0 5px rgba(0,0,0,0.5);
+                font-size: 14px;
+            ">${name.charAt(0).toUpperCase()}</div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+
+        marker.setIcon(newIcon);
+
+        // Actualizar popup
         const popupContent = `
             <div>
                 <strong>${name}</strong><br>
                 <small>Rol: ${userData?.rol || 'N/A'}</small><br>
-                <small>Última actualización: ${dayjs(nuevoRecordedAt).fromNow()}</small>
+                <small>Última actualización: ${dayjs(nuevoRecordedAt).fromNow()}</small><br>
+                <small>Hace: ${minutos} min</small><br>
+                <button onclick="mostrarHistorial(${userId})" class="text-blue-500 underline text-sm mt-1">Ver historial</button>
             </div>
         `;
         marker.getPopup().setContent(popupContent);
-        console.log('🔄 Marcador actualizado para usuario:', userId);
+
+        // Actualizar tooltip
+        marker.getTooltip()?.setContent(`${name} (${minutos} min)`);
+
+        console.log('🔄 Marcador actualizado para usuario:', userId, 'color:', bgColor);
     } else {
+        // Crear nuevo marcador
         const newUserObj = { id: userId, name, latitude: lat, longitude: lng, recorded_at: nuevoRecordedAt, user_data: userData };
         const newMarker = crearMarcadorEscolta(newUserObj);
         if (newMarker) {
