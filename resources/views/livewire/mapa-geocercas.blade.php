@@ -182,11 +182,11 @@ const crearMarcadorEscolta = (user) => {
         return null;
     }
 
-    // Ícono con fondo verde y borde negro como solicitaste
+    // Ícono con fondo verde y borde negro
     const escoltaIcon = L.divIcon({
         className: 'custom-escolta-icon',
         html: `<div style="
-            background-color: #22c55e; /* verde tailwind */
+            background-color: #22c55e;
             color: white;
             border: 2px solid black;
             border-radius: 50%;
@@ -204,15 +204,83 @@ const crearMarcadorEscolta = (user) => {
     });
 
     const marker = L.marker([lat, lng], { icon: escoltaIcon });
-    const popupContent = `
+
+    // Popup normal al hacer clic en el marcador
+    marker.bindPopup(`
         <div>
             <strong>${user.name}</strong><br>
             <small>Rol: ${user.user_data?.rol || 'N/A'}</small><br>
-            <small>Última actualización: ${dayjs(user.recorded_at).fromNow()}</small>
+            <small>Última actualización: ${dayjs(user.recorded_at).fromNow()}</small><br>
+            <button onclick="mostrarHistorial(${user.id})" class="text-blue-500 underline text-sm mt-1">Ver historial</button>
         </div>
-    `;
-    marker.bindPopup(popupContent);
+    `);
+
     return marker;
+};
+
+const mostrarHistorial = async (userId) => {
+    console.log('Mostrando historial para usuario:', userId);
+
+    try {
+        // ✅ Cambiado: sin Authorization header, solo credenciales
+        const response = await fetch(`/api/realtime-position/user/${userId}/recent`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+            credentials: 'include' // ✅ Esto envía la cookie de sesión
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al cargar historial');
+        }
+
+        const data = await response.json();
+        console.log('Historial recibido:', data);
+
+        let historialHtml = `<h3 class="font-bold">Historial de ${data.total} ubicaciones (últimas 24 hrs)</h3>`;
+        if (data.positions.length === 0) {
+            historialHtml += '<p>No hay registros recientes.</p>';
+        } else {
+            historialHtml += `
+                <table class="min-w-full text-xs">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th>Fecha/Hora</th>
+                            <th>Lat</th>
+                            <th>Lng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            data.positions.forEach(pos => {
+                historialHtml += `
+                    <tr>
+                        <td>${dayjs(pos.recorded_at).format('HH:mm:ss')}</td>
+                        <td>${pos.latitude}</td>
+                        <td>${pos.longitude}</td>
+                    </tr>
+                `;
+            });
+            historialHtml += '</tbody></table>';
+        }
+
+        const historialPopup = L.popup()
+            .setLatLng([data.positions[0]?.latitude || 25.6866, data.positions[0]?.longitude || -100.3161])
+            .setContent(historialHtml)
+            .openOn(mapa);
+    } catch (err) {
+        console.error('Error al cargar historial:', err);
+        alert('No se pudo cargar el historial: ' + err.message);
+    }
+};
+
+// Función auxiliar para obtener token
+const getAuthToken = () => {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+           localStorage.getItem('sanctum.token') ||
+           null;
 };
 
 const actualizarOMarcarEscolta = (userId, name, nuevaLat, nuevaLng, nuevoRecordedAt, userData) => {

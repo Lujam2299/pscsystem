@@ -30,6 +30,7 @@ use App\Http\Controllers\BajaAcuseController;
 use App\Http\Controllers\AuxcontController;
 use App\Http\Controllers\JuridicoController;
 use App\Http\Controllers\OperacionesController;
+use App\Http\Controllers\RealtimePositionController;
 use Illuminate\Http\Request;
 
 
@@ -420,6 +421,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/mensajes', [ChatWebController::class, 'index'])->name('mensajes.index');
     Route::get('/mensajes/{conversation}', [ChatWebController::class, 'show'])->name('mensajes.show');
     Route::post('/mensajes/enviar', [ChatWebController::class, 'storeMensaje'])->name('mensajes.store');
+
+    //Ubicaciones en tiempo real
+    Route::get('/api/realtime-position/user/{id}/recent', [RealtimePositionController::class, 'getUserRecentPositions']);
 });
 
 require __DIR__ . '/auth.php';

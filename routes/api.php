@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\RealtimePositionController;
 use Illuminate\Http\Request;
 
 // Rutas de autenticación API
@@ -26,4 +27,5 @@ Route::middleware('auth:sanctum')->group(function () {
             'token_id' => $token->accessToken->id ?? null,
         ]);
     });
+
 });
