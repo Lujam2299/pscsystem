@@ -126,16 +126,16 @@
         </style>
     @endpush
 
-   @push('scripts')
+@push('scripts')
 <!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js  " crossorigin=""></script>
 <!-- DayJS -->
-<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/relativeTime.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/utc.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/timezone.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/updateLocale.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/locale/es.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js  "></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/relativeTime.min.js  "></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/utc.min.js  "></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/timezone.min.js  "></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/updateLocale.min.js  "></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/locale/es.min.js  "></script>
 
 <script>
 // --- CONFIGURACIÓN DAYJS ---
@@ -166,6 +166,7 @@ dayjs.updateLocale('es', {
 let mapa;
 let grupoGeocercas;
 let grupoUsuariosEscolta;
+let grupoRutasHistorial; // ✅ Nuevo grupo para rutas de historial
 let marcadoresEscolta = {};
 let geocercasActuales = {};
 
@@ -222,13 +223,12 @@ const mostrarHistorial = async (userId) => {
     console.log('Mostrando historial para usuario:', userId);
 
     try {
-        // ✅ Cambiado: sin Authorization header, solo credenciales
         const response = await fetch(`/api/realtime-position/user/${userId}/recent`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
             },
-            credentials: 'include' // ✅ Esto envía la cookie de sesión
+            credentials: 'include'
         });
 
         if (!response.ok) {
@@ -239,7 +239,41 @@ const mostrarHistorial = async (userId) => {
         const data = await response.json();
         console.log('Historial recibido:', data);
 
-        let historialHtml = `<h3 class="font-bold">Historial de ${data.total} ubicaciones (últimas 24 hrs)</h3>`;
+        // ✅ Limpiar rutas anteriores
+        grupoRutasHistorial.clearLayers();
+
+        // ✅ Dibujar ruta si hay más de 1 ubicación
+        if (data.positions.length > 1) {
+            const coords = data.positions
+                .map(pos => [parseFloat(pos.latitude), parseFloat(pos.longitude)])
+                .reverse(); // Más reciente al final
+
+            const polyline = L.polyline(coords, {
+                color: '#3b82f6', // Azul
+                weight: 4,
+                opacity: 0.7,
+                smoothFactor: 1
+            }).addTo(grupoRutasHistorial);
+
+            mapa.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+        }
+
+        // ✅ Contenido con scroll
+        let historialHtml = `
+            <div style="max-width: 400px;">
+                <h3 class="font-bold mb-2">Historial de ${data.total} ubicaciones (últimas 24 hrs)</h3>
+                <button onclick="limpiarRutaHistorial()" class="text-red-500 underline text-sm mb-2">Ocultar ruta</button>
+                <div style="
+                    max-height: 300px;
+                    overflow-y: auto;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    padding: 8px;
+                    background: white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                ">
+        `;
+
         if (data.positions.length === 0) {
             historialHtml += '<p>No hay registros recientes.</p>';
         } else {
@@ -266,6 +300,9 @@ const mostrarHistorial = async (userId) => {
             historialHtml += '</tbody></table>';
         }
 
+        historialHtml += '</div></div>';
+
+        // Abrir popup
         const historialPopup = L.popup()
             .setLatLng([data.positions[0]?.latitude || 25.6866, data.positions[0]?.longitude || -100.3161])
             .setContent(historialHtml)
@@ -276,11 +313,10 @@ const mostrarHistorial = async (userId) => {
     }
 };
 
-// Función auxiliar para obtener token
-const getAuthToken = () => {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
-           localStorage.getItem('sanctum.token') ||
-           null;
+// ✅ FUNCIÓN PARA LIMPIAR LA RUTA
+const limpiarRutaHistorial = () => {
+    console.log('Limpiando rutas de historial...');
+    grupoRutasHistorial.clearLayers();
 };
 
 const actualizarOMarcarEscolta = (userId, name, nuevaLat, nuevaLng, nuevoRecordedAt, userData) => {
@@ -425,11 +461,14 @@ const inicializarMapa = () => {
 
     grupoGeocercas = L.layerGroup().addTo(mapa);
     grupoUsuariosEscolta = L.layerGroup().addTo(mapa);
+    grupoRutasHistorial = L.layerGroup().addTo(mapa); // ✅ Nuevo grupo añadido al mapa
+
     estadoMapa.inicializado = true;
 
     console.log('✅ Mapa inicializado. Grupos creados:');
     console.log('grupoGeocercas:', grupoGeocercas);
     console.log('grupoUsuariosEscolta:', grupoUsuariosEscolta);
+    console.log('grupoRutasHistorial:', grupoRutasHistorial);
 
     actualizarEstadoMapa('Mapa listo');
     return Promise.resolve();
