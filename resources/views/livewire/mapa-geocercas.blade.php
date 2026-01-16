@@ -110,7 +110,7 @@
 
     @push('styles')
         <!-- Leaflet CSS -->
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css    " />
         <!-- Tus estilos personalizados (reutilizados del mapa anterior) -->
         <style>
             #mapaContainer {
@@ -126,340 +126,309 @@
         </style>
     @endpush
 
-    @push('scripts')
-        <!-- Leaflet JS -->
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-        <!-- DayJS y plugins (si los usas para fechas en geocercas, aunque probablemente no aquí) -->
-        <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/relativeTime.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/utc.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/timezone.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/updateLocale.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/locale/es.min.js"></script>
-        <script>
-            // --- CONFIGURACIÓN INICIAL DAYJS (opcional para geocercas) ---
-            dayjs.extend(window.dayjs_plugin_utc);
-            dayjs.extend(window.dayjs_plugin_timezone);
-            dayjs.extend(window.dayjs_plugin_updateLocale);
-            dayjs.extend(window.dayjs_plugin_relativeTime);
-            dayjs.locale('es');
-            dayjs.updateLocale('es', {
-                relativeTime: {
-                    future: 'en %s',
-                    past: 'hace %s',
-                    s: 'un momento',
-                    m: '1 min',
-                    mm: '%d min',
-                    h: '1 h',
-                    hh: '%d hrs',
-                    d: '1 día',
-                    dd: '%d días',
-                    M: '1 mes',
-                    MM: '%d meses',
-                    y: '1 año',
-                    yy: '%d años'
-                }
-            });
+   @push('scripts')
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<!-- DayJS -->
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/relativeTime.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/utc.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/timezone.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/updateLocale.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/locale/es.min.js"></script>
 
-            // --- VARIABLES GLOBALES DEL MAPA ---
-            let mapa;
-            let grupoGeocercas; // Grupo para manejar todas las geocercas
-            let geocercasActuales = {}; // Almacenar geocercas por ID para poder removerlas
-            // let geocercasActualesData = []; // Datos globales de geocercas actuales para centrar (Ya no es estrictamente necesario si usamos getLayers)
+<script>
+// --- CONFIGURACIÓN DAYJS ---
+dayjs.extend(window.dayjs_plugin_utc);
+dayjs.extend(window.dayjs_plugin_timezone);
+dayjs.extend(window.dayjs_plugin_updateLocale);
+dayjs.extend(window.dayjs_plugin_relativeTime);
+dayjs.locale('es');
+dayjs.updateLocale('es', {
+    relativeTime: {
+        future: 'en %s',
+        past: 'hace %s',
+        s: 'un momento',
+        m: '1 min',
+        mm: '%d min',
+        h: '1 h',
+        hh: '%d hrs',
+        d: '1 día',
+        dd: '%d días',
+        M: '1 mes',
+        MM: '%d meses',
+        y: '1 año',
+        yy: '%d años'
+    }
+});
 
-            const estadoMapa = {
-                inicializado: false,
-                cargando: false
-            };
+// --- VARIABLES GLOBALES DEL MAPA ---
+let mapa;
+let grupoGeocercas;
+let grupoUsuariosEscolta;
+let marcadoresEscolta = {};
+let geocercasActuales = {};
 
-            // --- FUNCIONALIDAD PARA GEOCERCAS ---
-            const crearGeocerca = (centro, radioKm, tipo, nombre) => {
-                if (!centro || isNaN(parseFloat(centro.lat)) || isNaN(parseFloat(centro.lng))) {
-                    console.error('Coordenadas inválidas:', centro);
-                    return null; // No crea la capa
-                }
-                const lat = parseFloat(centro.lat);
-                const lng = parseFloat(centro.lng);
-                const radioMetros = radioKm * 1000; // Convertir km a metros
+const estadoMapa = {
+    inicializado: false
+};
 
-                // Definir un color base según el tipo
-                let color = 'blue';
-                let fillColor = 'lightblue';
-                if (tipo === 'hotel') {
-                    color = 'green';
-                    fillColor = 'lightgreen';
-                } else if (tipo === 'aeropuerto') {
-                    color = 'orange';
-                    fillColor = 'wheat';
-                }
+// --- FUNCIONES DE MARCADORES ---
+const crearMarcadorEscolta = (user) => {
+    const lat = parseFloat(user.latitude);
+    const lng = parseFloat(user.longitude);
+    if (isNaN(lat) || isNaN(lng)) {
+        console.error('Coordenadas inválidas al crear marcador:', user);
+        return null;
+    }
 
-                // Crear un círculo
-                const circulo = L.circle([lat, lng], {
-                    radius: radioMetros, // Radio en metros
-                    color: color,
-                    fillColor: fillColor,
-                    fillOpacity: 0.2,
-                    weight: 2
-                });
+    // Ícono con fondo verde y borde negro como solicitaste
+    const escoltaIcon = L.divIcon({
+        className: 'custom-escolta-icon',
+        html: `<div style="
+            background-color: #22c55e; /* verde tailwind */
+            color: white;
+            border: 2px solid black;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            font-size: 14px;
+        ">${user.name.charAt(0).toUpperCase()}</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+    });
 
-                // Opcional: Añadir un popup con información
-                circulo.bindPopup(`<b>${nombre}</b><br>Tipo: ${tipo}<br>Radio: ${radioKm} km`);
+    const marker = L.marker([lat, lng], { icon: escoltaIcon });
+    const popupContent = `
+        <div>
+            <strong>${user.name}</strong><br>
+            <small>Rol: ${user.user_data?.rol || 'N/A'}</small><br>
+            <small>Última actualización: ${dayjs(user.recorded_at).fromNow()}</small>
+        </div>
+    `;
+    marker.bindPopup(popupContent);
+    return marker;
+};
 
-                console.log('Creando geocerca para:', {nombre, tipo, centro, radioKm});
-                return circulo;
-            };
+const actualizarOMarcarEscolta = (userId, name, nuevaLat, nuevaLng, nuevoRecordedAt, userData) => {
+    const lat = parseFloat(nuevaLat);
+    const lng = parseFloat(nuevaLng);
+    if (isNaN(lat) || isNaN(lng)) {
+        console.error('Coordenadas inválidas para usuario:', userId, { lat: nuevaLat, lng: nuevaLng });
+        return;
+    }
 
-            const cargarGeocercas = (geocercasData) => {
-                console.log("Cargando geocercas:", geocercasData);
+    // Si el mapa no está listo, reintentar en 500ms (máximo 3 intentos)
+    if (!estadoMapa.inicializado) {
+        console.log('⚠️ Mapa no inicializado. Reintentando en 500ms...');
+        setTimeout(() => {
+            actualizarOMarcarEscolta(userId, name, nuevaLat, nuevaLng, nuevoRecordedAt, userData);
+        }, 500);
+        return;
+    }
 
-                // Verificar que grupoGeocercas esté definido y sea un LayerGroup
-                if (!grupoGeocercas || !(grupoGeocercas instanceof L.LayerGroup)) {
-                    console.error("grupoGeocercas no está inicializado como un LayerGroup o es null/undefined.");
-                    actualizarEstadoMapa('Error: Grupo de geocercas no disponible.');
-                    return;
-                }
+    // Verificar que los grupos existan
+    if (!grupoUsuariosEscolta || !(grupoUsuariosEscolta instanceof L.LayerGroup)) {
+        console.error('❌ grupoUsuariosEscolta no es un LayerGroup válido');
+        return;
+    }
 
-                // Limpiar geocercas anteriores
-                grupoGeocercas.clearLayers();
-                geocercasActuales = {}; // Resetear el objeto de geocercas actuales
-                // geocercasActualesData = []; // Resetear datos globales (ya no se usa si se calcula bounds dinámicamente)
+    let marker = marcadoresEscolta[userId];
+    if (marker) {
+        marker.setLatLng([lat, lng]);
+        const popupContent = `
+            <div>
+                <strong>${name}</strong><br>
+                <small>Rol: ${userData?.rol || 'N/A'}</small><br>
+                <small>Última actualización: ${dayjs(nuevoRecordedAt).fromNow()}</small>
+            </div>
+        `;
+        marker.getPopup().setContent(popupContent);
+        console.log('🔄 Marcador actualizado para usuario:', userId);
+    } else {
+        const newUserObj = { id: userId, name, latitude: lat, longitude: lng, recorded_at: nuevoRecordedAt, user_data: userData };
+        const newMarker = crearMarcadorEscolta(newUserObj);
+        if (newMarker) {
+            grupoUsuariosEscolta.addLayer(newMarker);
+            marcadoresEscolta[userId] = newMarker;
+            console.log('✅ Nuevo marcador creado para usuario:', userId, 'en', [lat, lng]);
+        }
+    }
+};
 
-                if (!geocercasData || geocercasData.length === 0) {
-                    console.log("No hay geocercas para cargar.");
-                    actualizarEstadoMapa('No hay geocercas para mostrar.');
-                    return;
-                }
+const cargarUsuariosEscolta = (users) => {
+    if (!grupoUsuariosEscolta || !(grupoUsuariosEscolta instanceof L.LayerGroup)) {
+        console.error('❌ No se puede cargar usuarios: grupoUsuariosEscolta no válido');
+        return;
+    }
 
-                geocercasData.forEach(geofence => {
-                    const layer = crearGeocerca(geofence.centro, geofence.radio_km, geofence.tipo, geofence.nombre_referencia);
-                    if (layer) {
-                        grupoGeocercas.addLayer(layer);
-                        geocercasActuales[geofence.id] = layer;
-                        console.log("Geocerca añadida al grupo:", geofence.nombre_referencia);
-                    }
-                });
+    grupoUsuariosEscolta.clearLayers();
+    marcadoresEscolta = {};
+    if (!users?.length) return;
 
-                // Ajustar vista al grupo de geocercas
-                if (grupoGeocercas.getLayers().length > 0) { // Usar getLayers() en lugar de getBounds()
-                    try {
-                        // Usar el mapa para ajustar los bounds, ya que LayerGroup no lo tiene directamente
-                        // Necesitamos calcular los bounds manualmente o usar el mapa
-                        const layers = grupoGeocercas.getLayers();
-                        if (layers.length > 0) {
-                            // Crear un FeatureGroup temporal para calcular bounds
-                            const tempGroup = L.featureGroup(layers);
-                            const bounds = tempGroup.getBounds();
-                            if (bounds.isValid()) {
-                                mapa.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
-                                actualizarEstadoMapa(`Cargadas ${grupoGeocercas.getLayers().length} geocercas.`);
-                                console.log("Vista ajustada a las geocercas.");
-                            } else {
-                                console.warn("Bounds calculados no son válidos.");
-                                 // Opcional: centrar en la primera geocerca
-                                 const primeraGeofence = geocercasData[0];
-                                 if (primeraGeofence && primeraGeofence.centro) {
-                                     const lat = parseFloat(primeraGeofence.centro.lat);
-                                     const lng = parseFloat(primeraGeofence.centro.lng);
-                                     if (!isNaN(lat) && !isNaN(lng)) {
-                                         mapa.setView([lat, lng], 13);
-                                         console.log("Vista centrada en la primera geocerca.");
-                                     }
-                                 }
-                            }
-                        }
-                    } catch (e) {
-                        console.warn("No se pudo ajustar la vista a las geocercas:", e);
-                        // Opcional: centrar en la primera geocerca
-                        const primeraGeofence = geocercasData[0];
-                        if (primeraGeofence && primeraGeofence.centro) {
-                            const lat = parseFloat(primeraGeofence.centro.lat);
-                            const lng = parseFloat(primeraGeofence.centro.lng);
-                            if (!isNaN(lat) && !isNaN(lng)) {
-                                mapa.setView([lat, lng], 13);
-                                console.log("Vista centrada en la primera geocerca (fallback).");
-                            }
-                        }
-                    }
+    users.forEach(user => {
+        const marker = crearMarcadorEscolta(user);
+        if (marker) {
+            grupoUsuariosEscolta.addLayer(marker);
+            marcadoresEscolta[user.id] = marker;
+        }
+    });
+};
+
+// --- FUNCIONES DE GEOCERCAS ---
+const crearGeocerca = (centro, radioKm, tipo, nombre) => {
+    const lat = parseFloat(centro.lat);
+    const lng = parseFloat(centro.lng);
+    if (isNaN(lat) || isNaN(lng)) return null;
+
+    const radioMetros = radioKm * 1000;
+    let color = 'blue', fillColor = 'lightblue';
+    if (tipo === 'hotel') { color = 'green'; fillColor = 'lightgreen'; }
+    else if (tipo === 'aeropuerto') { color = 'orange'; fillColor = 'wheat'; }
+
+    return L.circle([lat, lng], {
+        radius: radioMetros,
+        color: color,
+        fillColor: fillColor,
+        fillOpacity: 0.2,
+        weight: 2
+    }).bindPopup(`<b>${nombre}</b><br>Tipo: ${tipo}<br>Radio: ${radioKm} km`);
+};
+
+const cargarGeocercas = (geocercasData) => {
+    if (!grupoGeocercas || !(grupoGeocercas instanceof L.LayerGroup)) {
+        console.error('❌ No se puede cargar geocercas: grupoGeocercas no válido');
+        return;
+    }
+
+    grupoGeocercas.clearLayers();
+    geocercasActuales = {};
+    if (!geocercasData?.length) return;
+
+    geocercasData.forEach(gf => {
+        const layer = crearGeocerca(gf.centro, gf.radio_km, gf.tipo, gf.nombre_referencia);
+        if (layer) {
+            grupoGeocercas.addLayer(layer);
+            geocercasActuales[gf.id] = layer;
+        }
+    });
+
+    const layers = grupoGeocercas.getLayers();
+    if (layers.length > 0) {
+        const bounds = L.featureGroup(layers).getBounds();
+        if (bounds.isValid()) {
+            mapa.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
+        }
+    }
+};
+
+// --- INICIALIZACIÓN DEL MAPA ---
+const actualizarEstadoMapa = (mensaje) => {
+    const el = document.getElementById('mapaEstado');
+    if (el) el.textContent = mensaje;
+};
+
+const inicializarMapa = () => {
+    if (mapa) {
+        mapa.invalidateSize();
+        return Promise.resolve();
+    }
+
+    const contenedor = document.getElementById('mapaContainer');
+    if (!contenedor) {
+        actualizarEstadoMapa('Error: Contenedor del mapa no encontrado.');
+        return Promise.resolve();
+    }
+
+    contenedor.innerHTML = '';
+    mapa = L.map(contenedor, {
+        center: [25.6866, -100.3161],
+        zoom: 13
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(mapa);
+
+    grupoGeocercas = L.layerGroup().addTo(mapa);
+    grupoUsuariosEscolta = L.layerGroup().addTo(mapa);
+    estadoMapa.inicializado = true;
+
+    console.log('✅ Mapa inicializado. Grupos creados:');
+    console.log('grupoGeocercas:', grupoGeocercas);
+    console.log('grupoUsuariosEscolta:', grupoUsuariosEscolta);
+
+    actualizarEstadoMapa('Mapa listo');
+    return Promise.resolve();
+};
+
+const centrarVistaMapa = () => {
+    if (!mapa || !grupoGeocercas) return;
+    const layers = grupoGeocercas.getLayers();
+    if (layers.length > 0) {
+        const bounds = L.featureGroup(layers).getBounds();
+        if (bounds.isValid()) mapa.fitBounds(bounds, { padding: [50, 50] });
+    }
+};
+
+// --- INICIALIZACIÓN PRINCIPAL ---
+const inicializarSistema = async () => {
+    if (typeof L === 'undefined') {
+        setTimeout(inicializarSistema, 100);
+        return;
+    }
+    await inicializarMapa();
+};
+
+// --- ESCUCHADORES ---
+document.addEventListener('DOMContentLoaded', () => {
+    inicializarSistema();
+
+    // ✅ ESCUCHAR EVENTO DE WEBSOCKET CORRECTAMENTE
+    if (typeof window.Echo !== 'undefined') {
+        window.Echo.channel('realtime-positions.all')
+            .listen('.NuevaUbicacionRealtime', (e) => {
+                console.log('📍 Ubicación en tiempo real recibida:', e);
+                const { user_id, latitude, longitude, recorded_at, user } = e.position;
+                if (user && user.rol && user.rol.toLowerCase().includes('escolta')) {
+                    actualizarOMarcarEscolta(user_id, user.name, latitude, longitude, recorded_at, user);
                 } else {
-                     console.warn("No se añadió ninguna geocerca válida al grupo.");
-                     actualizarEstadoMapa('No se pudieron cargar las geocercas válidas.');
-                }
-            };
-
-            const limpiarGeocercas = () => {
-                console.log("Limpiando geocercas del mapa.");
-                if (grupoGeocercas) {
-                    grupoGeocercas.clearLayers();
-                    geocercasActuales = {};
-                    // geocercasActualesData = []; // (ya no se usa si se calcula bounds dinámicamente)
-                }
-                actualizarEstadoMapa('Geocercas limpiadas.');
-            };
-
-            // --- FUNCIONALIDAD DEL MAPA ---
-            const actualizarEstadoMapa = (mensaje) => {
-                const el = document.getElementById('mapaEstado');
-                if (el) {
-                    el.className = 'mt-2 text-xs'; // Resetear clases
-                    if (mensaje.toLowerCase().includes('error')) {
-                        el.classList.add('text-red-500', 'font-bold');
-                    } else if (mensaje.toLowerCase().includes('cargando') || mensaje.toLowerCase().includes('inicializando')) {
-                        el.classList.add('text-blue-500');
-                    } else {
-                        el.classList.add('text-gray-500');
-                    }
-                    el.textContent = mensaje;
-                }
-            };
-
-            // Función para inicializar el mapa
-            const inicializarMapa = () => {
-                if (mapa) {
-                    console.log('Mapa ya existe, reutilizando.');
-                    mapa.invalidateSize(); // Refresca tamaño por si DOM cambió
-                    return Promise.resolve();
-                }
-
-                // Resetear banderas de estado
-                estadoMapa.inicializado = false;
-                estadoMapa.cargando = false;
-
-                try {
-                    const contenedor = document.getElementById('mapaContainer');
-                    if (!contenedor) {
-                        console.error('❌ Contenedor del mapa (#mapaContainer) no encontrado en inicializarMapa');
-                        actualizarEstadoMapa('Error: Contenedor del mapa no encontrado.');
-                        return Promise.resolve();
-                    }
-                    // Limpiar explícitamente el contenedor antes de crear el mapa
-                    contenedor.innerHTML = ''; // Vaciar completamente
-                    // Reafirmar estilos básicos si es necesario
-                    contenedor.style.height = '400px';
-                    contenedor.style.minHeight = '400px';
-                    contenedor.style.width = '100%';
-                    // Crear el nuevo mapa
-                    mapa = L.map(contenedor, {
-                        center: [25.6866, -100.3161], // Coordenadas de Monterrey
-                        zoom: 13,
-                        zoomControl: true,
-                        attributionControl: true
-                    });
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '© OpenStreetMap contributors',
-                        maxZoom: 18
-                    }).addTo(mapa);
-                    // Crear o reutilizar grupoGeocercas
-                    if (!grupoGeocercas) {
-                        grupoGeocercas = L.layerGroup(); // Grupo para geocercas
-                    }
-                    // Asegurarse de que el grupo esté añadido al mapa
-                    if (!mapa.hasLayer(grupoGeocercas)) {
-                        grupoGeocercas.addTo(mapa);
-                        console.log("grupoGeocercas añadido al mapa.");
-                    }
-
-                    estadoMapa.inicializado = true;
-                    // Forzar una actualización del tamaño del mapa
-                    setTimeout(() => {
-                        if (mapa) {
-                            try {
-                                mapa.invalidateSize();
-                            } catch (e) {
-                                console.warn("No se pudo invalidar el tamaño del mapa:", e);
-                            }
-                        }
-                    }, 50);
-                    console.log('✅ Mapa inicializado desde cero en inicializarMapa');
-                    actualizarEstadoMapa('Mapa listo');
-                    return Promise.resolve();
-                } catch (error) {
-                    console.error('❌ Error crítico al inicializar mapa desde cero en inicializarMapa:', error);
-                    actualizarEstadoMapa(`Error de inicialización: ${error.message}`);
-                    estadoMapa.inicializado = false;
-                    mapa = undefined;
-                    return Promise.resolve();
-                }
-            };
-
-            // Centrar vista del mapa en las geocercas
-            const centrarVistaMapa = () => {
-                if (!mapa || !grupoGeocercas) {
-                    console.warn("Mapa o grupo de geocercas no disponible para centrar.");
-                    return;
-                }
-                try {
-                    const layers = grupoGeocercas.getLayers();
-                    if (layers.length > 0) {
-                        const tempGroup = L.featureGroup(layers);
-                        const bounds = tempGroup.getBounds();
-                        if (bounds.isValid()) {
-                            mapa.fitBounds(bounds, { padding: [50, 50] });
-                        } else {
-                            // Si no hay bounds válidos pero hay geocercas, centrar en la primera
-                            const primeraGeofence = Object.values(geocercasActuales)[0]; // Usar geocercasActuales en lugar de geocercasActualesData
-                            if (primeraGeofence) {
-                                const latlng = primeraGeofence.getLatLng();
-                                mapa.setView([latlng.lat, latlng.lng], 13);
-                            }
-                        }
-                    }
-                    console.log("Vista del mapa centrada en geocercas.");
-                } catch (e) {
-                    console.error("Error al centrar la vista del mapa en geocercas:", e);
-                }
-            };
-
-            // Inicializar sistema completo
-            const inicializarSistema = async () => {
-                if (typeof L === 'undefined') {
-                    console.warn("Leaflet no cargado, reintentando...");
-                    setTimeout(inicializarSistema, 100);
-                    return Promise.resolve();
-                }
-                await inicializarMapa();
-                console.log("✅ inicializarSistema completado (mapa de geocercas)");
-            };
-
-            // --- LISTENERS ---
-            document.addEventListener('DOMContentLoaded', () => {
-                inicializarSistema();
-            });
-
-            // Listener para actualizaciones de geocercas desde Livewire
-            window.addEventListener('geocercasActualizadas', (event) => {
-                console.log("🔔 Evento 'geocercasActualizadas' recibido:", event.detail);
-                const nuevasGeocercas = event.detail && event.detail.geocercas ? event.detail.geocercas : [];
-                // Validar que se recibieron datos
-                if (!Array.isArray(nuevasGeocercas)) {
-                    console.error("❌ Los datos recibidos en 'geocercasActualizadas' no son un array válido:", nuevasGeocercas);
-                    actualizarEstadoMapa('Error: Datos de geocercas recibidos inválidos.');
-                    return;
-                }
-
-                if (mapa && estadoMapa.inicializado) {
-                    console.log("Mapa inicializado, cargando nuevas geocercas...");
-                    cargarGeocercas(nuevasGeocercas);
-                } else {
-                    console.log("Mapa no inicializado en 'geocercasActualizadas', iniciando sistema...");
-                    inicializarSistema().then(() => {
-                        console.log("Sistema iniciado, cargando geocercas...");
-                        cargarGeocercas(nuevasGeocercas);
-                    });
+                    console.log('ℹ️ Usuario no es escolta, ignorado:', user_id);
                 }
             });
+    } else {
+        console.error('❌ Echo no está disponible. Verifica tu archivo echo.js');
+    }
+});
 
-            // Listener para actualizaciones de Livewire (cambio de misión)
-            document.addEventListener('livewire:updated', () => {
-                console.log("🔔 Evento 'livewire:updated' recibido en mapa geocercas (puede ser redundante).");
-            });
+// Eventos desde Livewire
+window.addEventListener('escortUsersLoaded', (e) => {
+    console.log("🔔 Evento 'escortUsersLoaded' recibido:", e.detail);
+    if (estadoMapa.inicializado) {
+        cargarUsuariosEscolta(e.detail.users || []);
+    } else {
+        inicializarSistema().then(() => cargarUsuariosEscolta(e.detail.users || []));
+    }
+});
 
-            // Listener para botón de centrar mapa
-            document.addEventListener('click', function(e) {
-                if (e.target.closest('#btn-centrar-mapa')) {
-                    centrarVistaMapa();
-                }
-            });
+window.addEventListener('geocercasActualizadas', (e) => {
+    console.log("🔔 Evento 'geocercasActualizadas' recibido:", e.detail);
+    if (estadoMapa.inicializado) {
+        cargarGeocercas(e.detail.geocercas || []);
+    } else {
+        inicializarSistema().then(() => cargarGeocercas(e.detail.geocercas || []));
+    }
+});
 
-        </script>
-    @endpush
+// Botón centrar
+document.addEventListener('click', (e) => {
+    if (e.target.closest('#btn-centrar-mapa')) centrarVistaMapa();
+});
+</script>
+@endpush
 </x-livewire.monitoreo-layout>

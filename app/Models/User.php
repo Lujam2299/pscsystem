@@ -109,4 +109,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Location::class);
     }
+
+    public function realtimePositions()
+    {
+        return $this->hasMany(\App\Models\RealtimePosition::class, 'user_id');
+    }
 }

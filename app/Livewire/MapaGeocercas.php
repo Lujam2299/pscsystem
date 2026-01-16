@@ -3,10 +3,12 @@
 namespace App\Livewire;
 
 use Livewire\Component;
-use App\Models\Misiones; // Asegúrate de tener el modelo Misiones
-use App\Models\Geofence; // Asegúrate de tener el modelo Geofence
+use App\Models\Misiones;
+use App\Models\Geofence;
+use App\Models\User;
+use App\Models\RealtimePosition;
 use Illuminate\Support\Facades\Log;
-use Livewire\Attributes\On;
+use Illuminate\Support\Carbon;
 
 class MapaGeocercas extends Component
 {
@@ -17,12 +19,42 @@ class MapaGeocercas extends Component
     public function mount()
     {
         $this->cargarMisionesRecientes();
+        $this->cargarUsuariosEscolta();
     }
 
     public function cargarMisionesRecientes()
     {
-        // Cargar las misiones más recientes con eager loading para geofences
         $this->misionesRecientes = Misiones::with('geofences')->orderBy('created_at', 'desc')->limit(10)->get();
+    }
+
+    public function cargarUsuariosEscolta()
+    {
+        Log::info('MapaGeocercas@cargarUsuariosEscolta: Iniciando carga de usuarios escolta con ubicaciones recientes');
+
+        $periodo = Carbon::now()->subHours(24);
+        $escortUsersAll = User::all();//where('rol', 'like', '%escolta%')->get();
+
+        $usersWithRecentLocation = [];
+        foreach ($escortUsersAll as $user) {
+            $lastLocation = RealtimePosition::where('user_id', $user->id)
+                ->where('created_at', '>', $periodo)
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($lastLocation) {
+                $usersWithRecentLocation[] = [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'latitude' => $lastLocation->latitude,
+                    'longitude' => $lastLocation->longitude,
+                    'recorded_at' => $lastLocation->recorded_at->toISOString(),
+                    'user_data' => $user->only(['rol', 'email'])
+                ];
+            }
+        }
+
+        Log::info('MapaGeocercas@cargarUsuariosEscolta: Usuarios encontrados', ['count' => count($usersWithRecentLocation)]);
+        $this->dispatch('escortUsersLoaded', users: $usersWithRecentLocation);
     }
 
     public function seleccionarMision($misionId)
@@ -33,10 +65,8 @@ class MapaGeocercas extends Component
 
     public function cargarGeocercasMision($misionId)
     {
-        // Cargar las geocercas asociadas a la misión seleccionada
         $this->geocercasMisionSeleccionada = Geofence::where('mision_id', $misionId)->get();
         Log::info('Geocercas cargadas para misión ' . $misionId . ': ' . $this->geocercasMisionSeleccionada->count());
-        // Opcional: Enviar datos al mapa
         $this->dispatch('geocercasActualizadas', geocercas: $this->geocercasMisionSeleccionada->toArray());
     }
 
