@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\Asistencia;
 use App\Models\BuzonQueja;
 use App\Models\Nomina;
+use App\Models\Punto;
 use Carbon\Carbon;
 
 class AdminController extends Controller
@@ -71,14 +72,17 @@ class AdminController extends Controller
     }
 
     public function editarUsuario($id){
-        $user = User::find($id);
-        $solicitudId = $user->sol_alta_id;
-        $solicitud = SolicitudAlta::find($solicitudId);
-        $docsId = $solicitud->sol_docs_id;
-        $documentacion = DocumentacionAltas::find($docsId);
+    $user = User::find($id);
+    $solicitudId = $user->sol_alta_id;
+    $solicitud = SolicitudAlta::find($solicitudId);
+    $docsId = $solicitud->sol_docs_id;
+    $documentacion = DocumentacionAltas::find($docsId);
+    $puntos = Punto::with('subpuntos')->get(); // Agregamos los puntos
 
-        return view('admi.admiEditarUsuarioForm', compact('user','solicitud', 'documentacion'));
-    }
+    $tipoSeleccionado = $solicitud->tipo_empleado ?? 'oficina';
+
+    return view('admi.admiEditarUsuarioForm', compact('user', 'solicitud', 'documentacion', 'puntos', 'tipoSeleccionado'));
+}
 
     public function verBuzon(){
         $quejas = BuzonQueja::orderBy('created_at', 'desc')

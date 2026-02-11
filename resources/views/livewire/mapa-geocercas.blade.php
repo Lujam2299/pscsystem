@@ -20,49 +20,49 @@
                 <div class="space-y-3 max-h-[420px] overflow-y-auto overflow-x-hidden relative bg-slate-50 dark:bg-gray-800">
                     @if(count($misionesRecientes) > 0)
                         @foreach($misionesRecientes as $mision)
-    <!-- Div principal ahora es un contenedor clickable via <a> -->
-    <div class="p-3 transition-all duration-200 border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded hover:shadow-md hover:scale-[1.02] mision-card" wire:key="mision-{{ $mision->id }}">
-        <!-- Enlace que cubre toda la tarjeta -->
-        <a href="{{ route('admin.detalleMision', $mision->id) }}" class="block">
-            <div class="flex items-start justify-between">
-                <div class="flex items-start gap-3">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <p class="font-semibold text-gray-900 dark:text-white card-mision-name">{{ $mision->nombre_clave ?? $mision->id }}</p>
-                        </div>
-                        <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">
-                            <i class="mr-1 ti ti-map-pin"></i>
-                            <span class="card-location">
-                                Cliente: {{ $mision->cliente ?? 'N/A' }}
-                            </span>
-                        </p>
-                        <p class="text-xs text-gray-500">
-                            <i class="mr-1 ti ti-calendar"></i>
-                            <span class="card-date">{{ $mision->created_at->format('d/m/y') }}</span>
-                            <i class="mr-1 ti ti-clock"></i>
-                            <span class="card-time">{{ $mision->created_at->format('h:i A') }}</span>
-                        </p>
-                        <!-- Mostrar tipos de geocercas disponibles -->
-                        @php
-                            $geofences = $mision->geofences; // Asumiendo relación
-                            $tipos = $geofences->pluck('tipo')->unique()->join(', ');
-                        @endphp
-                        <p class="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                            <i class="mr-1 ti ti-shape"></i>
-                            <span>Geocercas: {{ $tipos ?: 'Ninguna' }}</span>
-                        </p>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <span class="inline-block w-4 h-4 bg-blue-500 rounded-full"></span>
-                    <p class="mt-1 text-xs font-bold text-blue-700 dark:text-blue-300">
-                        {{ $mision->estatus ?? 'Desconocido' }}
-                    </p>
-                </div>
-            </div>
-        </a>
-    </div>
-@endforeach
+                            <!-- Div principal ahora es un contenedor clickable via <a> -->
+                            <div class="p-3 transition-all duration-200 border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded hover:shadow-md hover:scale-[1.02] mision-card" wire:key="mision-{{ $mision->id }}">
+                                <!-- Enlace que cubre toda la tarjeta -->
+                                <a href="{{ route('admin.detalleMision', $mision->id) }}" class="block">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex items-start gap-3">
+                                            <div class="flex-1">
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <p class="font-semibold text-gray-900 dark:text-white card-mision-name">{{ $mision->nombre_clave ?? $mision->id }}</p>
+                                                </div>
+                                                <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                                                    <i class="mr-1 ti ti-map-pin"></i>
+                                                    <span class="card-location">
+                                                        Cliente: {{ $mision->cliente ?? 'N/A' }}
+                                                    </span>
+                                                </p>
+                                                <p class="text-xs text-gray-500">
+                                                    <i class="mr-1 ti ti-calendar"></i>
+                                                    <span class="card-date">{{ $mision->created_at->format('d/m/y') }}</span>
+                                                    <i class="mr-1 ti ti-clock"></i>
+                                                    <span class="card-time">{{ $mision->created_at->format('h:i A') }}</span>
+                                                </p>
+                                                <!-- Mostrar tipos de geocercas disponibles -->
+                                                @php
+                                                    $geofences = $mision->geofences; // Asumiendo relación
+                                                    $tipos = $geofences->pluck('tipo')->unique()->join(', ');
+                                                @endphp
+                                                <p class="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                                                    <i class="mr-1 ti ti-shape"></i>
+                                                    <span>Geocercas: {{ $tipos ?: 'Ninguna' }}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <span class="inline-block w-4 h-4 bg-blue-500 rounded-full"></span>
+                                            <p class="mt-1 text-xs font-bold text-blue-700 dark:text-blue-300">
+                                                {{ $mision->estatus ?? 'Desconocido' }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        @endforeach
                     @else
                         <div class="flex flex-col items-center justify-center p-5 rounded bg-gray-50 dark:bg-gray-700">
                             <div class="mb-3">
@@ -152,14 +152,14 @@
 
 @push('scripts')
 <!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js  " crossorigin=""></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js    " crossorigin=""></script>
 <!-- DayJS -->
-<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js  "></script>
-<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/relativeTime.min.js  "></script>
-<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/utc.min.js  "></script>
-<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/timezone.min.js  "></script>
-<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/updateLocale.min.js  "></script>
-<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/locale/es.min.js  "></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js    "></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/relativeTime.min.js    "></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/utc.min.js    "></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/timezone.min.js    "></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/updateLocale.min.js    "></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/locale/es.min.js    "></script>
 
 <script>
 // --- CONFIGURACIÓN DAYJS ---
@@ -194,6 +194,7 @@ let grupoRutasHistorial; // ✅ Nuevo grupo para rutas de historial
 let marcadoresEscolta = {};
 let geocercasActuales = {};
 let todosLosUsuarios = [];
+let animacionActiva = null; // ✅ Para controlar animación
 
 const estadoMapa = {
     inicializado: false
@@ -263,6 +264,7 @@ const crearMarcadorEscolta = (user) => {
     return marker;
 };
 
+// ✅ FUNCIÓN MODIFICADA: Mostrar historial con botón de animación
 const mostrarHistorial = async (userId) => {
     console.log('Mostrando historial para usuario:', userId);
 
@@ -323,11 +325,14 @@ const mostrarHistorial = async (userId) => {
             mapa.fitBounds(polyline.getBounds(), { padding: [50, 50] });
         }
 
-        // ✅ Contenido con scroll y filas clicables
+        // ✅ Contenido con scroll y botón de animación
         let historialHtml = `
             <div style="max-width: 400px;">
                 <h3 class="font-bold mb-2">Historial de ${data.total} ubicaciones (últimas 24 hrs)</h3>
-                <button onclick="limpiarRutaHistorial()" class="text-red-500 underline text-sm mb-2">Ocultar ruta</button>
+                <div class="flex gap-2 mb-2">
+                    <button onclick="limpiarRutaHistorial()" class="text-red-500 underline text-sm">Ocultar ruta</button>
+                    <button onclick="animarTrayecto(${userId})" class="text-green-500 underline text-sm">Ver trayecto animado</button>
+                </div>
                 <div style="
                     max-height: 300px;
                     overflow-y: auto;
@@ -404,6 +409,70 @@ const centrarEnCoordenada = (lat, lng) => {
 const limpiarRutaHistorial = () => {
     console.log('Limpiando rutas de historial...');
     grupoRutasHistorial.clearLayers();
+};
+
+// ✅ FUNCIÓN DE ANIMACIÓN DE TRAYECTO
+const animarTrayecto = async (userId) => {
+    console.log('Animando trayecto para usuario:', userId);
+
+    // Cancelar animación previa si existe
+    if (animacionActiva) {
+        clearInterval(animacionActiva);
+        animacionActiva = null;
+    }
+
+    // Obtener historial de ubicaciones
+    try {
+        const response = await fetch(`/api/realtime-position/user/${userId}/recent`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            credentials: 'include'
+        });
+
+        if (!response.ok) throw new Error('Error al cargar historial');
+
+        const data = await response.json();
+        if (data.positions.length < 2) {
+            alert('No hay suficientes puntos para animar el trayecto.');
+            return;
+        }
+
+        // Coordenadas en orden (más antiguo a más reciente)
+        const coords = data.positions
+            .sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at))
+            .map(pos => [parseFloat(pos.latitude), parseFloat(pos.longitude)]);
+
+        // Crear ícono de animación
+        const animIcon = L.divIcon({
+            html: '<div style="background-color: #ff0000; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 0 8px rgba(255,0,0,0.8);">●</div>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+
+        const markerAnim = L.marker(coords[0], { icon: animIcon }).addTo(mapa);
+        let currentIndex = 0;
+
+        animacionActiva = setInterval(() => {
+            if (currentIndex >= coords.length) {
+                clearInterval(animacionActiva);
+                animacionActiva = null;
+                // Opcional: remover el ícono al final
+                setTimeout(() => mapa.removeLayer(markerAnim), 3000);
+                return;
+            }
+
+            const [lat, lng] = coords[currentIndex];
+            markerAnim.setLatLng([lat, lng]);
+            mapa.setView([lat, lng], 15); // Centrar y hacer zoom
+
+            console.log(`Moviendo a punto ${currentIndex + 1}: ${lat}, ${lng}`);
+
+            currentIndex++;
+        }, 1000); // 1 segundo por punto
+    } catch (err) {
+        console.error('Error en animación:', err);
+        alert('No se pudo iniciar la animación del trayecto.');
+    }
 };
 
 const actualizarOMarcarEscolta = (userId, name, nuevaLat, nuevaLng, nuevoRecordedAt, userData) => {

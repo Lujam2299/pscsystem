@@ -237,97 +237,115 @@ class SupervisorController extends Controller
     }
 
     public function editarInformacionSolicitud(Request $request, $id){
-        try {
-            $validated = $request->validate([
-                'name' => 'nullable|string|max:255',
-                'apellido_paterno' => 'nullable|string|max:255',
-                'apellido_materno' => 'nullable|string|max:255',
-                'fecha_nacimiento' => 'nullable|date',
-                'curp' => 'nullable|string|max:255',
-                'nss' => ['nullable', 'digits:11'],
-                'edo_civil' => 'nullable|string',
-                'rfc' => 'nullable|string|max:255',
-                'telefono' => 'nullable|string|max:255',
-                'calle' => 'nullable|string|max:255',
-                'num_ext' => 'nullable|integer',
-                'colonia' => 'nullable|string|max:255',
-                'ciudad' => 'nullable|string|max:255',
-                'peso' => 'nullable|string|max:255',
-                'estatura' => 'nullable|string|max:255',
-                'cp_fiscal' => 'nullable|string|max:255',
-                'estado' => 'nullable|string|max:255',
-                'domicilio_comprobante' => 'nullable|string|max:255',
-                'fonacot' => 'nullable|string|max:255',
-                'infonavit' => 'nullable|string|max:255',
-                'liga_rfc' => 'nullable|string|max:255',
-                'rol' => 'nullable|string|max:255',
-                'fecha_ingreso' => 'nullable|date',
-                'punto' => 'nullable|string|max:255',
-                'empresa' => 'nullable|string',
-                'sueldo_mensual' => 'nullable|string',
-                'email' => 'nullable|email|unique:solicitud_altas,email,' . $id . ',id',
+    try {
+        $validated = $request->validate([
+            'tipo' => 'required|in:oficina,armado,noarmado',
+            'name' => 'nullable|string|max:255',
+            'apellido_paterno' => 'nullable|string|max:255',
+            'apellido_materno' => 'nullable|string|max:255',
+            'fecha_nacimiento' => 'nullable|date',
+            'curp' => 'nullable|string|max:255',
+            'nss' => ['nullable', 'string', 'size:11'],
+            'edo_civil' => 'nullable|string',
+            'rfc' => 'nullable|string|max:255',
+            'telefono' => 'nullable|string|max:255',
+            'calle' => 'nullable|string|max:255',
+            'num_ext' => 'nullable|string|max:255',
+            'colonia' => 'nullable|string|max:255',
+            'ciudad' => 'nullable|string|max:255',
+            'peso' => 'nullable|string|max:255',
+            'estatura' => 'nullable|string|max:255',
+            'cp_fiscal' => 'nullable|string|max:255',
+            'estado' => 'nullable|string|max:255',
+            'liga_rfc' => 'nullable|string|max:255',
+            'infonavit' => 'nullable|string|max:255',
+            'fonacot' => 'nullable|string|max:255',
+            'domicilio_comprobante' => 'nullable|string|max:255',
+            'departamento' => 'nullable|string|max:255',
+            'rol' => 'nullable|string|max:255',
+            'reingreso' => 'nullable|string',
+            'punto' => 'nullable|string|max:255',
+            'empresa' => 'nullable|string',
+            'sueldo_mensual' => 'nullable|string',
+            'fecha_ingreso' => 'nullable|date',
+            'email' => 'nullable|email|unique:solicitud_altas,email,' . $id . ',id',
+        ]);
 
-            ]);
+        $solicitud = SolicitudAlta::findOrFail($id);
+        $id = $solicitud->id;
 
-            $solicitud = SolicitudAlta::findOrFail($id);
-            $id=$solicitud->id;
-            $solicitud->solicitante = auth()->user()->name;
-            $solicitud->nombre = $request->name;
-            $solicitud->apellido_paterno = $request->apellido_paterno;
-            $solicitud->apellido_materno = $request->apellido_materno;
-            $solicitud->fecha_nacimiento = $request->fecha_nacimiento;
-            $solicitud->curp = $request->curp;
-            $solicitud->nss = $request->nss;
-            $solicitud->estado_civil = $request->edo_civil;
-            $solicitud->rfc = $request->rfc;
-            $solicitud->telefono = $request->telefono;
-            $solicitud->domicilio_calle = $request->calle;
-            $solicitud->domicilio_numero = $request->num_ext;
-            $solicitud->domicilio_colonia = $request->colonia;
-            $solicitud->domicilio_ciudad = $request->ciudad;
-            $solicitud->cp_fiscal = $request->cp_fiscal;
-            $solicitud->domicilio_estado = $request->estado;
-            $solicitud->domicilio_comprobante = $request->domicilio_comprobante;
-            $solicitud->liga_rfc = $request->liga_rfc;
-            $solicitud->fecha_ingreso = $request->fecha_ingreso;
-            $solicitud->peso = $request->peso;
-            $solicitud->estatura = $request->estatura;
-            $solicitud->rol = $request->rol;
-            $solicitud->punto = $request->punto;
-            $solicitud->empresa = $request->empresa;
-            $solicitud->sueldo_mensual = $request->sueldo_mensual;
-            $solicitud->email = $request->email;
-            $solicitud->ultima_edicion = Auth::user()->name . " " . Carbon::now('America/Mexico_City');
+        // Actualizar todos los campos
+        $solicitud->solicitante = auth()->user()->name;
+        $solicitud->nombre = $request->name;
+        $solicitud->apellido_paterno = $request->apellido_paterno;
+        $solicitud->apellido_materno = $request->apellido_materno;
+        $solicitud->fecha_nacimiento = $request->fecha_nacimiento;
+        $solicitud->tipo_empleado = $request->tipo; // Ahora se puede cambiar el tipo
+        $solicitud->curp = $request->curp;
+        $solicitud->nss = $request->nss;
+        $solicitud->estado_civil = $request->edo_civil;
+        $solicitud->rfc = $request->rfc;
+        $solicitud->telefono = $request->telefono;
+        $solicitud->domicilio_calle = $request->calle;
+        $solicitud->domicilio_numero = $request->num_ext;
+        $solicitud->domicilio_colonia = $request->colonia;
+        $solicitud->cp_fiscal = $request->cp_fiscal;
+        $solicitud->domicilio_ciudad = $request->ciudad;
+        $solicitud->peso = $request->peso;
+        $solicitud->estatura = $request->estatura;
+        $solicitud->liga_rfc = $request->liga_rfc;
+        $solicitud->domicilio_estado = $request->estado;
+        $solicitud->infonavit = $request->infonavit;
+        $solicitud->fonacot = $request->fonacot;
+        $solicitud->domicilio_comprobante = $request->domicilio_comprobante;
+        $solicitud->rol = $request->rol;
+        $solicitud->punto = $request->punto;
+        $solicitud->reingreso = $request->reingreso;
+        $solicitud->empresa = $request->empresa;
+        $solicitud->fecha_ingreso = $request->fecha_ingreso;
+        $solicitud->sueldo_mensual = $request->sueldo_mensual;
+        $solicitud->email = $request->email;
+        $solicitud->ultima_edicion = Auth::user()->name . " " . Carbon::now('America/Mexico_City');
 
-            if(Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS'){
-                $solicitud->status = 'Aceptada';
-                $solicitud->observaciones = 'Solicitud Aceptada.';
-            }else{
-                $solicitud->status = 'En Proceso';
-                $solicitud->observaciones = 'Cambios realizados, en espera de revisión.';
-            }
-            $solicitud->save();
-            $user = User::where('sol_alta_id', $id)->first();
-
-            $documentacion = DocumentacionAltas::where('solicitud_id', $id)->first();
-            if(Auth()->user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS'){
-                $user = User::where('sol_alta_id', $id)->first();
-                $user->name = $solicitud->nombre . " " . $solicitud->apellido_paterno . " " . $solicitud->apellido_materno;
-                $user->email = $solicitud->email;
-                $user->punto = $solicitud->punto;
-                $user->rol = $solicitud->rol;
-
-                $user->empresa = $solicitud->empresa;
-
-                $user->save();
-            }
-            $tipo = $solicitud->tipo_empleado;
-            return view('supervisor.editarArchivosForm', compact('solicitud','id' ,'documentacion', 'user', 'tipo'));
-
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error al actualizar la solicitud: ' . $e->getMessage());
+        // Actualizar status según permisos
+        if(Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' ||
+           Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' ||
+           Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' ||
+           Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' ||
+           Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS'){
+            $solicitud->status = 'Aceptada';
+            $solicitud->observaciones = 'Solicitud Aceptada.';
+        }else{
+            $solicitud->status = 'En Proceso';
+            $solicitud->observaciones = 'Cambios realizados, en espera de revisión.';
         }
+
+        $solicitud->save();
+
+        // Actualizar el usuario si tiene permisos
+        $user = User::where('sol_alta_id', $id)->first();
+        if(Auth()->user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' ||
+           Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' ||
+           Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' ||
+           Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' ||
+           Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS'){
+            $user->name = $solicitud->nombre . " " . $solicitud->apellido_paterno . " " . $solicitud->apellido_materno;
+            $user->email = $solicitud->email;
+            $user->punto = $solicitud->punto;
+            $user->rol = $solicitud->rol;
+            $user->empresa = $solicitud->empresa;
+            $user->save();
+        }
+
+        $documentacion = DocumentacionAltas::where('solicitud_id', $id)->first();
+        $tipo = $solicitud->tipo_empleado;
+
+        return view('supervisor.editarArchivosForm', compact('solicitud','id' ,'documentacion', 'user', 'tipo'));
+
+    } catch (\Exception $e) {
+        return redirect()->back()->with('error', 'Error al actualizar la solicitud: ' . $e->getMessage());
     }
+}
 
     public function subirArchivosEditados(Request $request, $id)
     {
