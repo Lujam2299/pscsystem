@@ -231,27 +231,41 @@ public function listaAsistencia(string $punto)
 {
     $punto = urldecode($punto);
 
-    // Buscar usuarios: por código o por nombre
-    $elementos = \App\Models\User::where('estatus', 'Activo')
+    // Crear el punto con padding de 3 dígitos para buscar en BD
+    $puntoConPadding = $punto;
+    if (is_numeric($punto)) {
+        $puntoConPadding = str_pad((int)$punto, 3, '0', STR_PAD_LEFT); // '44' → '044'
+    }
+
+    // Buscar usuarios que tengan el punto exacto (con padding)
+    $elementosCodigo = \App\Models\User::where('estatus', 'Activo')
         ->where('rol', 'GUARDIA')
-        ->where(function($query) use ($punto) {
-            // Buscar por código (el valor que se envía en el select)
-            $query->where('punto', $punto)
-                  // O buscar por nombre del subpunto que tiene este código
-                  ->orWhereExists(function($subQuery) use ($punto) {
-                      $subQuery->select(DB::raw(1))
-                              ->from('subpuntos')
-                              ->whereColumn('subpuntos.nombre', 'users.punto')
-                              ->where('subpuntos.codigo', $punto);
-                  });
-        })
+        ->where('punto', $puntoConPadding)  // Busca por '044'
         ->with('solicitudAlta.documentacion')
         ->orderBy('name')
         ->get();
 
+    // Si el punto es numérico, buscar usuarios por nombre del subpunto correspondiente
+    $elementosNombre = collect();
+    if (is_numeric($punto)) {
+        $subpunto = \App\Models\Subpunto::where('codigo', (int)$punto)->first();
+        if ($subpunto) {
+            $elementosNombre = \App\Models\User::where('estatus', 'Activo')
+                ->where('rol', 'GUARDIA')
+                ->where('punto', $subpunto->nombre)  // Busca por 'OFICINA'
+                ->with('solicitudAlta.documentacion')
+                ->orderBy('name')
+                ->get();
+        }
+    }
+
+    // Combinar ambas colecciones
+    $elementos = $elementosCodigo->concat($elementosNombre)->unique('id');
+
     // Verificar asistencia
-    $yaRegistrado = \App\Models\Asistencia::where(function($query) use ($punto) {
+    $yaRegistrado = \App\Models\Asistencia::where(function($query) use ($punto, $puntoConPadding) {
             $query->where('punto', $punto)
+                  ->orWhere('punto', $puntoConPadding)
                   ->orWhereExists(function($subQuery) use ($punto) {
                       $subQuery->select(DB::raw(1))
                               ->from('subpuntos')
