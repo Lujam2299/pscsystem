@@ -66,5 +66,4 @@
         </div>
     </div>
 
-    @vite(['resources/js/echo.js'])
 </x-app-layout>

@@ -5,27 +5,26 @@
         <div class="container mx-auto max-w-7xl">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
                 @if (session('success'))
-                        <div class="px-4 py-3 text-green-900 bg-green-100 border-t-4 border-green-500 rounded-b shadow-md"
-                            role="alert">
+                    <div class="px-4 py-3 text-green-900 bg-green-100 border-t-4 border-green-500 rounded-b shadow-md" role="alert">
+                        <div class="flex">
+                            <div>
+                                <p class="text-sm">{{ session('success') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    @if(session('error'))
+                        <div class="px-4 py-3 text-red-900 bg-red-100 border-t-4 border-red-500 rounded-b shadow-md" role="alert">
                             <div class="flex">
                                 <div>
-                                    <p class="text-sm">{{ session('success') }}</p>
+                                    <p class="text-sm">{{ session('error') }}</p>
                                 </div>
                             </div>
                         </div>
                     @else
-                        @if(session('error'))
-                            <div class="px-4 py-3 text-red-900 bg-red-100 border-t-4 border-red-500 rounded-b shadow-md"
-                                role="alert">
-                                <div class="flex">
-                                    <div>
-                                        <p class="text-sm">{{ session('error') }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        @else
-                        @endif
                     @endif
+                @endif
+
                 <div class="text-center mb-8">
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-3">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -49,36 +48,21 @@
                             class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3"
                             required
                         >
-                            <option value="">Selecciona un punto</option>
+                            <option value="">Seleccione un subpunto</option>
 
                             @foreach ($subpuntosMap as $puntoGeneral => $subpuntos)
                                 <optgroup label="{{ $puntoGeneral }}">
-                                    <option value="{{ $puntoGeneral }}">
-                                        (Todos) {{ $puntoGeneral }}
-                                        @if (in_array(trim($puntoGeneral), array_map('trim', $puntosConAsistenciaHoy)))
-                                            <span class="ml-1 text-green-600 font-bold">✔️</span>
-                                        @endif
-                                    </option>
-
                                     @foreach ($subpuntos as $subpunto)
-                                        <option value="{{ $subpunto['nombre'] }}">
-                                            {{ $subpunto['nombre'] }}
+                                        <option value="{{ $subpunto['nombre'] }}"
+                                            {{ in_array(trim($subpunto['nombre']), array_map('trim', $puntosConAsistenciaHoy)) ? 'data-asistido="true"' : '' }}>
                                             @if ($subpunto['codigo'])
                                                 ({{ str_pad($subpunto['codigo'], 3, '0', STR_PAD_LEFT) }})
                                             @endif
+                                            {{ $subpunto['nombre'] }}
                                             @if (in_array(trim($subpunto['nombre']), array_map('trim', $puntosConAsistenciaHoy)))
                                                 <span class="ml-1 text-green-600 font-bold">✔️</span>
                                             @endif
                                         </option>
-
-                                        @if ($subpunto['codigo'] && trim($subpunto['codigo']) !== trim($subpunto['nombre']))
-                                            <option value="{{ $subpunto['codigo'] }}">
-                                                {{ str_pad($subpunto['codigo'], 3, '0', STR_PAD_LEFT) }} (Código)
-                                                @if (in_array(trim($subpunto['codigo']), array_map('trim', $puntosConAsistenciaHoy)))
-                                                    <span class="ml-1 text-green-600 font-bold">✔️</span>
-                                                @endif
-                                            </option>
-                                        @endif
                                     @endforeach
                                 </optgroup>
                             @endforeach
@@ -112,6 +96,14 @@
             } else {
                 btn.disabled = true;
                 form.action = '';
+            }
+        });
+
+        // Opcional: Mostrar un mensaje si el punto ya tiene asistencia registrada hoy
+        document.getElementById('punto').addEventListener('change', function() {
+            const option = this.options[this.selectedIndex];
+            if (option && option.dataset.asistido === 'true') {
+                console.log('Este punto ya tiene asistencia registrada hoy');
             }
         });
     </script>
