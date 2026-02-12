@@ -505,7 +505,7 @@ public function finalizarAsistencia(Request $request)
         ['nombre' => 'HOMEDEPOT', 'codigo' => $codigos['HOMEDEPOT'] ?? null],
         ['nombre' => 'AMERICAN AIRLINES', 'codigo' => $codigos['AMERICAN AIRLINES'] ?? null],
         ['nombre' => 'MARY KAY CORPORATIVO', 'codigo' => $codigoMaryKay],
-        ['nombre' => 'KANSAS', 'codigo' => $codigos['KANSAS'] ?? null],
+        ['nombre' => 'KANSAS', 'codigo' => $codigos['MTY'] ?? null],
         ['nombre' => 'CIMARRON', 'codigo' => $codigos['CIMARRON'] ?? null],
         ['nombre' => 'OFICINA', 'codigo' => $codigos['OFICINA'] ?? null],
         ['nombre' => 'ASSET', 'codigo' => $codigos['ASSET'] ?? null],
@@ -531,16 +531,17 @@ public function finalizarAsistencia(Request $request)
             ['nombre' => 'SALAMANCA', 'codigo' => null],
         ],
         'NUEVO LAREDO' => [
-            ['nombre' => 'ZONA DE ABASTOS V', 'codigo' => null],
+            ['nombre' => 'ZONA DE ABASTOS V', 'codigo' => '017'],
         ],
         'MEXICO' => [
             ['nombre' => 'VALLE DE MEXICO', 'codigo' => null],
         ],
         'SLP' => [
-            ['nombre' => 'WATCO', 'codigo' => null],
-            ['nombre' => 'BMW', 'codigo' => null],
-            ['nombre' => 'ZONA DE ABASTOS I', 'codigo' => null],
+            ['nombre' => 'WATCO', 'codigo' => '006'],
+            ['nombre' => 'BMW', 'codigo' => '010'],
+            ['nombre' => 'ZONA DE ABASTOS I', 'codigo' => '018'],
             ['nombre' => 'INTERPUERTO Y TALLER', 'codigo' => null],
+            ['nombre' => 'SAN LUIS POTOSI', 'codigo' => null],
         ],
         'XALAPA' => [
             ['nombre' => 'XALAPA', 'codigo' => null],
