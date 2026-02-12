@@ -231,17 +231,38 @@ public function subirComprobantes(Request $request, $id)
 {
     $punto = urldecode($punto);
 
-
-    $yaRegistrado = \App\Models\Asistencia::where('punto', $punto)
-        ->whereDate('fecha', now()->toDateString())
-        ->exists();
-
+    // Verificar si el punto es un nombre o un código de subpunto
+    // Buscamos usuarios que tengan el punto como nombre de subpunto O como código de subpunto
     $elementos = \App\Models\User::where('estatus', 'Activo')
         ->where('rol', 'GUARDIA')
-        ->where('punto', $punto)
+        ->where(function($query) use ($punto) {
+            // Coincidencia directa con el nombre del subpunto
+            $query->where('punto', $punto)
+                  // O coincidencia con el código del subpunto
+                  ->orWhereExists(function($subQuery) use ($punto) {
+                      $subQuery->select(DB::raw(1))
+                              ->from('subpuntos')
+                              ->whereColumn('subpuntos.nombre', 'users.punto')
+                              ->where('subpuntos.codigo', $punto);
+                  });
+        })
         ->with('solicitudAlta.documentacion')
         ->orderBy('name')
         ->get();
+
+    // Para verificar asistencia, necesitamos considerar ambos casos
+    $yaRegistrado = \App\Models\Asistencia::where(function($query) use ($punto) {
+            $query->where('punto', $punto)
+                  // O verificar si hay asistencia para el nombre del subpunto correspondiente al código
+                  ->orWhereExists(function($subQuery) use ($punto) {
+                      $subQuery->select(DB::raw(1))
+                              ->from('subpuntos')
+                              ->whereColumn('subpuntos.nombre', 'asistencias.punto')
+                              ->where('subpuntos.codigo', $punto);
+                  });
+        })
+        ->whereDate('fecha', now()->toDateString())
+        ->exists();
 
     return view('operaciones.lista-asistencia', compact('elementos', 'punto', 'yaRegistrado'));
 }
