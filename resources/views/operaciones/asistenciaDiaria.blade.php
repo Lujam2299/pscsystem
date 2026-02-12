@@ -53,7 +53,7 @@
                             @foreach ($subpuntosMap as $puntoGeneral => $subpuntos)
                                 <optgroup label="{{ $puntoGeneral }}">
                                     @foreach ($subpuntos as $subpunto)
-                                        <option value="{{ $subpunto['nombre'] }}"
+                                        <option value="{{ $subpunto['codigo'] ?? $subpunto['nombre'] }}"
                                             {{ in_array(trim($subpunto['nombre']), array_map('trim', $puntosConAsistenciaHoy)) ? 'data-asistido="true"' : '' }}>
                                             @if ($subpunto['codigo'])
                                                 ({{ str_pad($subpunto['codigo'], 3, '0', STR_PAD_LEFT) }})

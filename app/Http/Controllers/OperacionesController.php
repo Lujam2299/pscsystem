@@ -227,18 +227,17 @@ public function subirComprobantes(Request $request, $id)
         return view('operaciones.asistenciaDiaria', compact('subpuntosMap', 'puntosConAsistenciaHoy'));
     }
 
-    public function listaAsistencia(string $punto)
+public function listaAsistencia(string $punto)
 {
     $punto = urldecode($punto);
 
-    // Verificar si el punto es un nombre o un código de subpunto
-    // Buscamos usuarios que tengan el punto como nombre de subpunto O como código de subpunto
+    // Buscar usuarios: por código o por nombre
     $elementos = \App\Models\User::where('estatus', 'Activo')
         ->where('rol', 'GUARDIA')
         ->where(function($query) use ($punto) {
-            // Coincidencia directa con el nombre del subpunto
+            // Buscar por código (el valor que se envía en el select)
             $query->where('punto', $punto)
-                  // O coincidencia con el código del subpunto
+                  // O buscar por nombre del subpunto que tiene este código
                   ->orWhereExists(function($subQuery) use ($punto) {
                       $subQuery->select(DB::raw(1))
                               ->from('subpuntos')
@@ -250,10 +249,9 @@ public function subirComprobantes(Request $request, $id)
         ->orderBy('name')
         ->get();
 
-    // Para verificar asistencia, necesitamos considerar ambos casos
+    // Verificar asistencia
     $yaRegistrado = \App\Models\Asistencia::where(function($query) use ($punto) {
             $query->where('punto', $punto)
-                  // O verificar si hay asistencia para el nombre del subpunto correspondiente al código
                   ->orWhereExists(function($subQuery) use ($punto) {
                       $subQuery->select(DB::raw(1))
                               ->from('subpuntos')
@@ -266,7 +264,6 @@ public function subirComprobantes(Request $request, $id)
 
     return view('operaciones.lista-asistencia', compact('elementos', 'punto', 'yaRegistrado'));
 }
-
 public function guardarAsistencias(Request $request)
 {
     $validated = $request->validate([
