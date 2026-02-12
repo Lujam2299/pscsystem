@@ -231,29 +231,33 @@ public function listaAsistencia(string $punto)
 {
     $punto = urldecode($punto);
 
-    // Normalizar: eliminar ceros a la izquierda si es numérico
-    $puntoNormalizado = ltrim($punto, '0');
-    if ($puntoNormalizado === '') {
-        $puntoNormalizado = '0';
-    }
-
-    // Buscar usuarios con punto exacto (el valor enviado)
+    // Buscar usuarios: por código o por nombre
     $elementos = \App\Models\User::where('estatus', 'Activo')
         ->where('rol', 'GUARDIA')
-        ->where(function($query) use ($punto, $puntoNormalizado) {
-            $query->where('punto', $punto)  // caso directo: '044'
-                  ->orWhere('punto', $puntoNormalizado)  // caso normalizado: '44'
-                  ->orWhere('punto', str_pad($puntoNormalizado, 3, '0', STR_PAD_LEFT)); // caso con padding: '044'
+        ->where(function($query) use ($punto) {
+            // Buscar por código (el valor que se envía en el select)
+            $query->where('punto', $punto)
+                  // O buscar por nombre del subpunto que tiene este código
+                  ->orWhereExists(function($subQuery) use ($punto) {
+                      $subQuery->select(DB::raw(1))
+                              ->from('subpuntos')
+                              ->whereColumn('subpuntos.nombre', 'users.punto')
+                              ->where('subpuntos.codigo', $punto);
+                  });
         })
         ->with('solicitudAlta.documentacion')
         ->orderBy('name')
         ->get();
 
-    // Verificar asistencia con los mismos criterios
-    $yaRegistrado = \App\Models\Asistencia::where(function($query) use ($punto, $puntoNormalizado) {
+    // Verificar asistencia
+    $yaRegistrado = \App\Models\Asistencia::where(function($query) use ($punto) {
             $query->where('punto', $punto)
-                  ->orWhere('punto', $puntoNormalizado)
-                  ->orWhere('punto', str_pad($puntoNormalizado, 3, '0', STR_PAD_LEFT));
+                  ->orWhereExists(function($subQuery) use ($punto) {
+                      $subQuery->select(DB::raw(1))
+                              ->from('subpuntos')
+                              ->whereColumn('subpuntos.nombre', 'asistencias.punto')
+                              ->where('subpuntos.codigo', $punto);
+                  });
         })
         ->whereDate('fecha', now()->toDateString())
         ->exists();
