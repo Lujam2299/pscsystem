@@ -382,9 +382,48 @@ public function confirmarFaltas()
             ->with('error', 'No hay datos de asistencia pendientes.');
     }
 
-    $faltantes = \App\Models\User::whereIn('id', $data['faltas'])
-        ->with('solicitudAlta.documentacion')
-        ->get();
+    $puntoSeleccionado = $data['punto'];
+
+    // Buscar usuarios del punto (por nombre o código)
+    $todosUsuarios = collect();
+
+    if (is_numeric($puntoSeleccionado)) {
+        // Convertir a 3 dígitos para buscar en BD
+        $puntoConPadding = str_pad((int)$puntoSeleccionado, 3, '0', STR_PAD_LEFT);
+
+        // Buscar usuarios con código exacto (044)
+        $usuariosCodigo = \App\Models\User::where('estatus', 'Activo')
+            ->where('rol', 'GUARDIA')
+            ->where('punto', $puntoConPadding)
+            ->get();
+
+        // Buscar usuarios con nombre del subpunto correspondiente al código
+        $subpunto = \App\Models\Subpunto::where('codigo', (int)$puntoSeleccionado)->first();
+        if ($subpunto) {
+            $usuariosNombre = \App\Models\User::where('estatus', 'Activo')
+                ->where('rol', 'GUARDIA')
+                ->where('punto', $subpunto->nombre)
+                ->get();
+
+            $todosUsuarios = $usuariosCodigo->concat($usuariosNombre)->unique('id');
+        } else {
+            $todosUsuarios = $usuariosCodigo;
+        }
+    } else {
+        // Buscar directamente si no es numérico
+        $todosUsuarios = \App\Models\User::where('estatus', 'Activo')
+            ->where('rol', 'GUARDIA')
+            ->where('punto', $puntoSeleccionado)
+            ->get();
+    }
+
+    // Obtener IDs de usuarios que ya fueron registrados como asistentes
+    $asistentesIds = $data['asistencias'];
+
+    // Excluir a los que ya están registrados como asistentes
+    $faltantes = $todosUsuarios->reject(function ($usuario) use ($asistentesIds) {
+        return in_array($usuario->id, $asistentesIds);
+    })->values(); // Reiniciar índices
 
     return view('operaciones.confirmar-faltas', compact('faltantes'));
 }
@@ -403,14 +442,72 @@ public function finalizarAsistencia(Request $request)
         $userRegistrador = \App\Models\User::find($data['user_id_registrador']);
         $punto = $data['punto'];
         $descansan = $request->input('descansan', []);
+        $puntoFinal = $punto;
+        if (is_numeric($punto)) {
+            $subpunto = \App\Models\Subpunto::where('codigo', (int)$punto)->first();
+            if ($subpunto) {
+                $puntoFinal = $subpunto->nombre; // Convertir código a nombre
+            }
+        }
 
+
+        // Buscar todos los usuarios del punto (por nombre o código)
+        $todosUsuariosDelPunto = collect();
+
+        if (is_numeric($punto)) {
+            // Convertir a 3 dígitos para buscar en BD
+            $puntoConPadding = str_pad((int)$punto, 3, '0', STR_PAD_LEFT);
+
+            // Buscar usuarios con código exacto (044)
+            $usuariosCodigo = \App\Models\User::where('estatus', 'Activo')
+                ->where('rol', 'GUARDIA')
+                ->where('punto', $puntoConPadding)
+                ->pluck('id')
+                ->toArray();
+
+            // Buscar usuarios con nombre del subpunto correspondiente al código
+            $subpunto = \App\Models\Subpunto::where('codigo', (int)$punto)->first();
+            if ($subpunto) {
+                $usuariosNombre = \App\Models\User::where('estatus', 'Activo')
+                    ->where('rol', 'GUARDIA')
+                    ->where('punto', $subpunto->nombre)
+                    ->pluck('id')
+                    ->toArray();
+
+                $todosUsuariosDelPunto = collect(array_unique(array_merge($usuariosCodigo, $usuariosNombre)));
+            } else {
+                $todosUsuariosDelPunto = collect($usuariosCodigo);
+            }
+        } else {
+            // Buscar directamente si no es numérico
+            $todosUsuariosDelPunto = \App\Models\User::where('estatus', 'Activo')
+                ->where('rol', 'GUARDIA')
+                ->where('punto', $punto)
+                ->pluck('id');
+        }
+
+        // Obtener IDs de usuarios que ya fueron registrados como asistentes
+        $asistentes = collect($data['asistencias']);
+
+        // Combinar asistentes y descansan para saber quiénes NO son faltas
+        $usuariosNoFaltas = $asistentes->merge(collect($descansan))->unique();
+
+        // Encontrar usuarios que están en el punto pero no están en asistentes ni descansan
+        $usuariosQueFaltaron = $todosUsuariosDelPunto->diff($usuariosNoFaltas)->values()->toArray();
+
+        // Combinar faltas originales con las nuevas faltas automáticas
         $faltasOriginales = collect($data['faltas'])
             ->map(fn($id) => \App\Models\User::find($id))
             ->filter(fn($u) => $u && $u->rol === 'GUARDIA')
             ->pluck('id')
             ->toArray();
 
-        $faltasFinales = array_values(array_diff($faltasOriginales, $descansan));
+        // Combinar faltas originales con nuevas faltas automáticas
+        $faltasFinales = array_values(
+            array_unique(
+                array_merge($faltasOriginales, $usuariosQueFaltaron)
+            )
+        );
 
         // Mover archivos temporales a carpeta definitiva
         $rutaDefinitiva = "asistencias/" . \Str::slug($userRegistrador->name) . "/" . $data['fecha'];
@@ -436,7 +533,7 @@ public function finalizarAsistencia(Request $request)
             'descansos' => json_encode($descansan),
             'coberturas' => json_encode($data['coberturas']),
             'observaciones' => $data['observaciones'] ?: 'Ninguna',
-            'punto' => $punto,
+            'punto' => $puntoFinal,
             'empresa' => $userRegistrador->empresa ?? 'PSC',
             'fotos_asistentes' => json_encode($fotosAsistentes),
         ]);
@@ -468,7 +565,7 @@ public function finalizarAsistencia(Request $request)
         session()->forget('asistencias_data');
 
         return redirect()->route('dashboard')
-            ->with('success', "Asistencia registrada exitosamente para el punto {$punto}.");
+            ->with('success', "Asistencia registrada exitosamente para el punto {$punto}. Se registraron " . count($faltasFinales) . " faltas automáticamente.");
 
     } catch (\Exception $e) {
         \DB::rollBack();

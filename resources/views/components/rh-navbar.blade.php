@@ -101,10 +101,17 @@
                     'color' => 'bg-pink-100 dark:bg-pink-700'
                 ],
                 [
+                    'titulo' => 'Reingresos',
+                    'ruta' => route('rh.reingresos'),
+                    'icono' => 'refresh',
+                    'color' => 'bg-yellow-100 dark:bg-yellow-700',
+                    'disabled' => true,
+                ],
+                [
                     'titulo' => 'Archivos',
                     'ruta' => route('rh.archivos'),
                     'icono' => 'folder',
-                    'color' => 'bg-yellow-100 dark:bg-yellow-700'
+                    'color' => 'bg-blue-100 dark:bg-blue-700'
                 ],
                 [
                     'titulo' => 'Mensajes',

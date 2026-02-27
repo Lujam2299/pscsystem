@@ -179,6 +179,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/descargar_ficha/{id}', [RhController::class, 'exportFichaTecnica'])->name('rh.descargarFicha');
     Route::put('/solicitudes/baja/{id}', [RhController::class, 'actualizar'])->name('solicitudes.baja.actualizar');
     Route::get('/listaAsistenciaMontana', [RhController::class, 'listaAsistenciaMontana'])->name('rh.listaAsistencia');
+    Route::get('reingresos', [RhController::class, 'reingresos'])->name('rh.reingresos');
     Route::post('/rh/asistencia-montana/guardar', [RhController::class, 'guardarAsistenciaMontana'])->name('rh.guardarAsistenciaMontana');
     Route::get('/api/usuarios-vacaciones/{fecha}', [RHController::class, 'obtenerUsuariosEnVacaciones'])->name('api.usuarios.vacaciones');
     Route::get('/api/usuarios-permisos/{fecha}', [RHController::class, 'obtenerUsuariosConPermisos'])->name('api.usuarios.permisos');

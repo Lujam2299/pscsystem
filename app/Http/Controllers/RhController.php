@@ -816,7 +816,7 @@ public function guardarArchivosAlta(Request $request, $id)
 
     public function verificarAsistenciaExistente($fecha)
     {
-        $existe = \App\Models\Asistencia::where('punto', 'OFICINA') // O el punto que aplique
+        $existe = \App\Models\Asistencia::where('punto', 'OFICINA')
             ->whereDate('fecha', $fecha)
             ->exists();
 
@@ -824,5 +824,14 @@ public function guardarArchivosAlta(Request $request, $id)
             'existe' => $existe,
             'fecha_formateada' => \Carbon\Carbon::parse($fecha)->format('d/m/Y'),
         ]);
+    }
+
+    public function reingresos(){
+        $reingresos = SolicitudAlta::where('reingreso', '!=' , null)
+            ->orWhere('reingreso', '!=', 'NO')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        return view('rh.reingresos', compact('reingresos'));
     }
 }
