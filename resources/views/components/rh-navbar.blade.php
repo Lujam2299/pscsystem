@@ -105,7 +105,7 @@
                     'ruta' => route('rh.reingresos'),
                     'icono' => 'refresh',
                     'color' => 'bg-yellow-100 dark:bg-yellow-700',
-                    'disabled' => true,
+                    'disabled' => false,
                 ],
                 [
                     'titulo' => 'Archivos',

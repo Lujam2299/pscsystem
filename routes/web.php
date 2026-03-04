@@ -31,6 +31,7 @@ use App\Http\Controllers\AuxcontController;
 use App\Http\Controllers\JuridicoController;
 use App\Http\Controllers\OperacionesController;
 use App\Http\Controllers\RealtimePositionController;
+use App\Http\Controllers\ReingresoController;
 use Illuminate\Http\Request;
 
 
@@ -211,6 +212,8 @@ Route::middleware('auth')->group(function () {
             request('fecha_fin')
         ))->generateFile();
     })->name('exportar.asistencias');
+
+    Route::post('/admin/procesar-reingresos', [ReingresoController::class, 'procesarReingresos'])->name('reingresos.procesar');
 
     //Usuario 'User'
     Route::get('/solicitar_baja', [UserController::class, 'solicitarBajaForm'])->name('user.solicitarBajaForm');
