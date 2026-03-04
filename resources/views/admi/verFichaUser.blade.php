@@ -156,12 +156,6 @@
                                                 {{ $user->estatus }}
                                             </span>
                                         @endif
-
-                                        @if($user->solicitudAlta->reingreso ?? null)
-                                            <span class="inline-flex items-center px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200 rounded-full">
-                                                Reingreso: {{ $user->solicitudAlta->reingreso }}
-                                            </span>
-                                        @endif
                                     </div>
                                 </div>
                             </div>

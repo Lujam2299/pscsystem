@@ -16,6 +16,7 @@ use App\Models\Asistencia;
 use App\Models\BuzonQueja;
 use App\Models\Nomina;
 use App\Models\Punto;
+use App\Models\Reingreso;
 use Carbon\Carbon;
 
 class AdminController extends Controller
@@ -91,28 +92,48 @@ class AdminController extends Controller
         return view ('admi.verBuzon', compact('quejas'));
     }
 
-    public function darReingreso(Request $request, $id){
-        $user = User::find($id);
-        $user->estatus = 'Activo';
-        $fechaReingreso = Carbon::parse($request->query('fecha'))->format('d-m-Y');
-        $user->fecha_ingreso = $request->query('fecha');
-        $user->solicitudAlta->fecha_ingreso = $request->query('fecha');
-        $reingresoTexto = $user->solicitudAlta->reingreso;
+    public function darReingreso(Request $request, $id)
+{
+    $user = User::findOrFail($id);
 
-        if (is_null($reingresoTexto) || trim($reingresoTexto) === '' || $reingresoTexto === 'NO') {
-            $user->solicitudAlta->reingreso = "Reingreso 1: $fechaReingreso";
-        } else {
-            preg_match_all('/Reingreso \d+:/', $reingresoTexto, $coincidencias);
-            $reingresosHechos = count($coincidencias[0]);
+    $user->estatus = 'Activo';
+    $user->fecha_ingreso = $request->query('fecha'); // Asegúrate de que este campo sea DATE en la BD
+    $user->save(); // Guardar el usuario primero
 
-            $nuevoNumero = $reingresosHechos + 1;
-            $user->solicitudAlta->reingreso .= " Reingreso $nuevoNumero: $fechaReingreso";
-        }
-        $user->solicitudAlta->save();
-        $user->save();
+    if ($user->solicitudAlta) { // Verificar que exista la relación antes de acceder
+        $user->solicitudAlta->fecha_ingreso = $request->query('fecha'); // Asegúrate de que este campo sea DATE en la BD
+        $user->solicitudAlta->save(); // Guardar la solicitud
+    } else {
+        // return back()->withErrors(['error' => 'El usuario no tiene una solicitud de alta asociada.']);
 
-        return redirect()->back()->with('success', 'El usuario ha sido dado de alta correctamente.');
     }
+
+    $ultimoReingreso = Reingreso::where('user_id', $user->id)->max('numero_reingreso'); // Obtiene el máximo número de reingreso
+    $nuevoNumeroReingreso = $ultimoReingreso ? $ultimoReingreso + 1 : 1; // Si no hay previos, es el primero
+
+    Reingreso::create([
+        'user_id' => $user->id,
+        'numero_reingreso' => $nuevoNumeroReingreso,
+        'fecha' => $request->query('fecha'), // Asegúrate de que este campo sea DATE en la BD
+    ]);
+
+    // Opcional: Si aún deseas mantener el texto en solicitudAlta->reingreso por compatibilidad,
+    // puedes dejar la lógica anterior comentada o eliminar se usa.
+    // Si decides actualizarlo, asegúrate de que la fecha esté en el formato correcto para el texto.
+    // $fechaReingreso = Carbon::parse($request->query('fecha'))->format('d-m-Y');
+    // $reingresoTexto = $user->solicitudAlta->reingreso ?? 'NO';
+    // if (trim($reingresoTexto) === '' || $reingresoTexto === 'NO') {
+    //     $user->solicitudAlta->reingreso = "Reingreso 1: $fechaReingreso";
+    // } else {
+    //     preg_match_all('/Reingreso \d+:/', $reingresoTexto, $coincidencias);
+    //     $reingresosHechos = count($coincidencias[0]);
+    //     $nuevoNumero = $reingresosHechos + 1;
+    //     $user->solicitudAlta->reingreso .= " Reingreso $nuevoNumero: $fechaReingreso";
+    // }
+    // $user->solicitudAlta->save();
+
+    return redirect()->back()->with('success', 'El usuario ha sido dado de alta como reingreso correctamente.');
+}
 
     public function tableroNominas(){
         return view('admi.tableroNominas');
