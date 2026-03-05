@@ -231,39 +231,51 @@ public function listaAsistencia(string $punto)
 {
     $punto = urldecode($punto);
 
-    // Crear el punto con padding de 3 dígitos para buscar en BD
+    // Grupo de puntos que deben agruparse cuando se selecciona 'MONTERREY'
+    $grupoMty = ['KANSAS', 'MONTERREY', 'MTY'];
     $puntoConPadding = $punto;
-    if (is_numeric($punto)) {
-        $puntoConPadding = str_pad((int)$punto, 3, '0', STR_PAD_LEFT); // '44' → '044'
-    }
-
-    // Buscar usuarios que tengan el punto exacto (con padding)
-    $elementosCodigo = \App\Models\User::where('estatus', 'Activo')
-        ->where('rol', 'GUARDIA')
-        ->where('punto', $puntoConPadding)  // Busca por '044'
-        ->with('solicitudAlta.documentacion')
-        ->orderBy('name')
-        ->get();
-
-    // Si el punto es numérico, buscar usuarios por nombre del subpunto correspondiente
-    $elementosNombre = collect();
-    if (is_numeric($punto)) {
-        $subpunto = \App\Models\Subpunto::where('codigo', (int)$punto)->first();
-        if ($subpunto) {
-            $elementosNombre = \App\Models\User::where('estatus', 'Activo')
-                ->where('rol', 'GUARDIA')
-                ->where('punto', $subpunto->nombre)  // Busca por 'OFICINA'
-                ->with('solicitudAlta.documentacion')
-                ->orderBy('name')
-                ->get();
+    // Si el punto es 'MONTERREY', entonces buscar usuarios de los 3 puntos
+    if ($punto === 'MONTERREY') {
+        $elementos = \App\Models\User::where('estatus', 'Activo')
+                                     ->where('rol', 'GUARDIA')
+                                     ->whereIn('punto', $grupoMty)
+                                     ->with('solicitudAlta.documentacion')
+                                     ->orderBy('name')
+                                     ->get();
+    } else {
+        // Lógica original para otros puntos
+        if (is_numeric($punto)) {
+            $puntoConPadding = str_pad((int)$punto, 3, '0', STR_PAD_LEFT); // '44' → '044'
         }
-    }
 
-    // Combinar ambas colecciones
-    $elementos = $elementosCodigo->concat($elementosNombre)->unique('id');
+        // Buscar usuarios que tengan el punto exacto (con padding)
+        $elementosCodigo = \App\Models\User::where('estatus', 'Activo')
+            ->where('rol', 'GUARDIA')
+            ->where('punto', $puntoConPadding)  // Busca por '044'
+            ->with('solicitudAlta.documentacion')
+            ->orderBy('name')
+            ->get();
+
+        // Si el punto es numérico, buscar usuarios por nombre del subpunto correspondiente
+        $elementosNombre = collect();
+        if (is_numeric($punto)) {
+            $subpunto = \App\Models\Subpunto::where('codigo', (int)$punto)->first();
+            if ($subpunto) {
+                $elementosNombre = \App\Models\User::where('estatus', 'Activo')
+                    ->where('rol', 'GUARDIA')
+                    ->where('punto', $subpunto->nombre)
+                    ->with('solicitudAlta.documentacion')
+                    ->orderBy('name')
+                    ->get();
+            }
+        }
+
+        // Combinar ambas colecciones
+        $elementos = $elementosCodigo->concat($elementosNombre)->unique('id');
+    }
 
     // Verificar asistencia
-    $yaRegistrado = \App\Models\Asistencia::where(function($query) use ($punto, $puntoConPadding) {
+    $yaRegistrado = \App\Models\Asistencia::where(function($query) use ($punto, $puntoConPadding, $grupoMty) {
             $query->where('punto', $punto)
                   ->orWhere('punto', $puntoConPadding)
                   ->orWhereExists(function($subQuery) use ($punto) {
@@ -272,6 +284,11 @@ public function listaAsistencia(string $punto)
                               ->whereColumn('subpuntos.nombre', 'asistencias.punto')
                               ->where('subpuntos.codigo', $punto);
                   });
+
+            // Agregar verificación para agrupación de Monterrey
+            if ($punto === 'MONTERREY') {
+                $query->orWhereIn('punto', $grupoMty);
+            }
         })
         ->whereDate('fecha', now()->toDateString())
         ->exists();
@@ -591,9 +608,9 @@ public function finalizarAsistencia(Request $request)
     }
 
     $codigoMaryKay = $codigos['MARY KAY CORPORATIVO'] ?? $codigos['MARYKAY CORPORATIVO'] ?? $codigos['MAR KAY CORPORATIVO'] ?? null;
-
+    $codigoKansas = $codigos['KANSAS'] ?? $codigos['MTY'] ?? $codigos['MONTERREY'] ?? null;
     $monterreySubpuntos = [
-        ['nombre' => 'MONTERREY', 'codigo' => $codigos['MONTERREY'] ?? null],
+        ['nombre' => 'MONTERREY', 'codigo' => $codigoKansas],
         ['nombre' => 'CUSTODIO', 'codigo' => $codigos['CUSTODIO'] ?? null],
         ['nombre' => 'DALTILE', 'codigo' => $codigos['DALTILE'] ?? null],
         ['nombre' => 'TORRENOVO', 'codigo' => $codigos['TORRENOVO'] ?? null],
@@ -602,7 +619,6 @@ public function finalizarAsistencia(Request $request)
         ['nombre' => 'HOMEDEPOT', 'codigo' => $codigos['HOMEDEPOT'] ?? null],
         ['nombre' => 'AMERICAN AIRLINES', 'codigo' => $codigos['AMERICAN AIRLINES'] ?? null],
         ['nombre' => 'MARY KAY CORPORATIVO', 'codigo' => $codigoMaryKay],
-        ['nombre' => 'KANSAS', 'codigo' => $codigos['MTY'] ?? null],
         ['nombre' => 'CIMARRON', 'codigo' => $codigos['CIMARRON'] ?? null],
         ['nombre' => 'OFICINA', 'codigo' => $codigos['OFICINA'] ?? null],
         ['nombre' => 'ASSET', 'codigo' => $codigos['ASSET'] ?? null],
@@ -660,9 +676,6 @@ public function finalizarAsistencia(Request $request)
         ],
         'DRONES' => [
             ['nombre' => 'DRONES', 'codigo' => null],
-        ],
-        'KANSAS' => [
-            ['nombre' => 'KANSAS', 'codigo' => null],
         ],
     ];
 }
