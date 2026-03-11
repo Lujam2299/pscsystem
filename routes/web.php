@@ -32,6 +32,8 @@ use App\Http\Controllers\JuridicoController;
 use App\Http\Controllers\OperacionesController;
 use App\Http\Controllers\RealtimePositionController;
 use App\Http\Controllers\ReingresoController;
+use App\Models\Unidades;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 
@@ -263,6 +265,29 @@ Route::middleware('auth')->group(function () {
     Route::get('/gastos', \App\Livewire\GastosCrud::class)->name('gastos.index');
     // Detalle del Gasto (Livewire)
     Route::get('/gastos/{id}', \App\Livewire\GastoDetalle::class)->name('gastos.detalle');
+
+    Route::get('/gasolinas', [MonitoreoController::class, 'gasolinasIndex'])->name('gasolinas.index');
+    Route::get('/api/placas', function (\Illuminate\Http\Request $request) {
+    $q = $request->get('q');
+    $placas = Unidades::where('placas', 'like', "%{$q}%")
+        ->limit(10)
+        ->pluck('placas')
+        ->toArray();
+        return response()->json(['placas' => $placas]);
+    });
+
+    Route::get('/api/users', function (\Illuminate\Http\Request $request) {
+        $q = $request->get('q');
+        $users = User::where('name', 'like', "%{$q}%")
+            ->where('estatus', 'Activo')
+            ->limit(10)
+            ->select('id', 'name')
+            ->get()
+            ->map(fn($u) => ['id' => $u->id, 'name' => $u->name])
+            ->toArray();
+
+        return response()->json(['users' => $users]);
+    });
 
     // Compras CRUD (Livewire)
     Route::get('/compras', \App\Livewire\ComprasCrud::class)->name('compras.index');

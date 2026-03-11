@@ -17,4 +17,8 @@ class MonitoreoController extends Controller
     {
         return view('monitoreo.mapa');
     }
+
+    public function gasolinasIndex(){
+        return view('monitoreo.gasolinas');
+    }
 }
