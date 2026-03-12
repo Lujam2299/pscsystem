@@ -1,12 +1,12 @@
-<div class="bg-white min-h-screen p-6 rounded-lg shadow-sm">
+<div class="bg-white min-h-screen p-6 rounded-lg shadow-sm mb-4 mt-4">
     <div class="container mx-auto p-4">
-        <h1 class="text-2xl6">Gestión de Turnos</h1>
+        <h1 class="text-2xl font-bold mb-6">Gestión de Turnos y Gasolina</h1>
     </div>
 
     <div class="bg-white rounded-lg shadow p-4 mb-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-                <label class="block text-sm font-medium00">Punto</label>
+                <label class="block text-sm font-medium text-gray-700">Punto</label>
                 <select wire:model.live="subpunto_id" class="w-full border rounded px-2 py-1 border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                     <option value="">-- Todos --</option>
                     @foreach($puntos as $punto)
@@ -54,27 +54,45 @@
 
     <!-- Tabla -->
     <div class="overflow-x-auto bg-white rounded-lg shadow">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KM</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rayas</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placa</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+        <table class="min-w-full divide-y divide-gray-200 table-fixed">
+            <thead class="bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">
+    <tr>
+        <th colspan="7" class="px-1 py-2 text-center bg-blue-50">Turno</th>
+        <th colspan="3" class="px-1 py-2 text-center bg-green-50">Antes de carga</th>
+        <th colspan="2" class="px-1 py-2 text-center bg-yellow-50">Gasolina</th>
+        <th colspan="1" class="px-1 py-2 text-center bg-purple-50">Después de carga</th>
+    </tr>
+    <tr>
+        <th class="px-1 py-2 w-12">Fecha</th>
+        <th class="px-1 py-2 w-30">Usuario</th>
+        <th class="px-1 py-2 w-16">Tipo</th>
+        <th class="px-1 py-2 w-14">Hora</th>
+        <th class="px-1 py-2 w-20">KM</th>
+        <th class="px-1 py-2 w-10">Rayas</th>
+        <th class="px-1 py-2 w-20">Placa</th>
+
+        <th class="px-1 py-2 w-18">Hora Carga</th>
+        <th class="px-1 py-2 w-12">Rayas (Antes)</th>
+        <th class="px-1 py-2 w-20">KM Carga</th>
+
+        <th class="px-1 py-2 w-16">KMR Entre</th>
+        <th class="px-1 py-2 w-16">Dinero $</th>
+        <th class="px-1 py-2 w-10">Litros</th>
+        <th class="px-1 py-2 w-12">Rayas (Desp.)</th>
+    </tr>
+</thead>
+            <tbody class="bg-white divide-y divide-gray-200 text-sm">
                 @foreach($registros as $i => $r)
                     <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-2">
-                            <input type="date" wire:model="registros.{{ $i }}.fecha" class="w-full border rounded px-2 py-1" {{ $r['id'] ? 'readonly' : '' }}>
+                        <!-- Turnos -->
+                        <td class="px-1 py-1.5">
+                            <input type="date" wire:model="registros.{{ $i }}.fecha"
+                                   class="w-4/5 min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                   {{ $r['id'] ? 'readonly' : '' }}>
                         </td>
-                        <td class="px-4 py-2">
+                        <td class="px-1 py-1.5">
                             @if($r['id'])
-                                <span class="block">{{ $r['nombre_elemento'] }}</span>
+                                <span class="block truncate text-xs">{{ $r['nombre_elemento'] }}</span>
                             @else
                                 <div x-data="userAutocomplete({{ $i }}, '{{ $r['nombre_elemento'] ?? '' }}')" x-init="init()">
                                     <input
@@ -84,14 +102,14 @@
                                         @keydown.arrow-down.prevent="highlightNext()"
                                         @keydown.arrow-up.prevent="highlightPrev()"
                                         @keydown.enter.prevent="selectHighlighted()"
-                                        class="w-full border rounded px-2 py-1"
-                                        placeholder="Buscar usuario..."
+                                        class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="Buscar..."
                                     />
-                                    <ul x-show="isOpen" class="absolute bg-white border rounded shadow mt-1 z-10 max-h-40 overflow-y-auto w-64">
+                                    <ul x-show="isOpen" class="absolute bg-white border rounded shadow mt-1 z-10 max-h-40 overflow-y-auto w-40">
                                         <template x-for="(u, index) in suggestions" :key="index">
                                             <li
                                                 x-text="u.name"
-                                                class="px-3 py-1 hover:bg-gray-100 cursor-pointer text-gray-700"
+                                                class="px-2 py-1.5 hover:bg-gray-100 cursor-pointer text-gray-700 text-xs"
                                                 :class="{ 'bg-blue-100': index === highlightedIndex }"
                                                 @click="selectSuggestion(u)"
                                             ></li>
@@ -100,20 +118,59 @@
                                 </div>
                             @endif
                         </td>
-                        <td class="px-4 py-2">
-                            <input type="text" wire:model="registros.{{ $i }}.tipo" class="w-full border rounded px-2 py-1" {{ $r['id'] ? 'readonly' : '' }}>
+                        <td class="px-1 py-1.5">
+                            <input type="text" wire:model="registros.{{ $i }}.tipo"
+                                   class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                   {{ $r['id'] ? 'readonly' : '' }}>
                         </td>
-                        <td class="px-4 py-2">
-                            <input type="time" wire:model="registros.{{ $i }}.hora_inicio" class="w-full border rounded px-2 py-1" {{ $r['id'] ? 'readonly' : '' }}>
+                        <td class="px-1 py-1.5">
+                            <input type="time" wire:model="registros.{{ $i }}.hora_inicio"
+                                   class="w-17 min-h-[32px] px-1 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                   {{ $r['id'] ? 'readonly' : '' }}>
                         </td>
-                        <td class="px-4 py-2">
-                            <input type="number" step="0.01" wire:model="registros.{{ $i }}.km_inicio" class="w-full border rounded px-2 py-1" {{ $r['id'] ? 'readonly' : '' }}>
+                        <td class="px-1 py-1.5">
+                            <input type="number" step="1" wire:model="registros.{{ $i }}.km_inicio"
+                                   class="w-full min-h-[32px] px-0.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                   {{ $r['id'] ? 'readonly' : '' }}>
                         </td>
-                        <td class="px-4 py-2">
-                            <input type="number" step="0.01" wire:model="registros.{{ $i }}.rayas_inicio" class="w-full border rounded px-2 py-1" {{ $r['id'] ? 'readonly' : '' }}>
+                        <td class="px-1 py-1.5">
+                            <input type="number" step="0.5" wire:model="registros.{{ $i }}.rayas_inicio"
+                                   class="w-16 min-h-[32px] px-0.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                   {{ $r['id'] ? 'readonly' : '' }}>
                         </td>
-                        <td class="px-4 py-2">
-                            <input type="text" wire:model="registros.{{ $i }}.placas" class="w-full border rounded px-2 py-1" {{ $r['id'] ? 'readonly' : '' }}>
+                        <td class="px-1 py-1.5">
+                            <input type="text" wire:model="registros.{{ $i }}.placas"
+                                   class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                   {{ $r['id'] ? 'readonly' : '' }}>
+                        </td>
+
+                        <!-- Carga -->
+                        <td class="px-1 py-1.5">
+                            <input type="time" wire:model="registros.{{ $i }}.hora_carga"
+                                   class="w-21 min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+                        </td>
+                        <td class="px-1 py-1.5">
+                            <input type="number" step="0.5" wire:model="registros.{{ $i }}.gasolina_antes_carga"
+                                   class="w-16 min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+                        </td>
+                        <td class="px-1 py-1.5">
+                            <input type="number" step="0.01" wire:model="registros.{{ $i }}.km_carga"
+                                   class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+                        </td>
+                        <td class="px-1 py-1.5">
+                            <span class="block text-xs truncate">{{ $r['kmr_entre_cargas'] ?: 0 }}</span>
+                        </td>
+                        <td class="px-1 py-1.5">
+                            <input type="number" step="0.01" wire:model="registros.{{ $i }}.monto"
+                                   class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+                        </td>
+                        <td class="px-1 py-1.5">
+                            <input type="number" step="0.5" wire:model="registros.{{ $i }}.litros"
+                                   class="w-10 min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+                        </td>
+                        <td class="px-1 py-1.5">
+                            <input type="number" step="0.5" wire:model="registros.{{ $i }}.gasolina_despues_carga"
+                                   class="w-16 min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         </td>
                     </tr>
                 @endforeach
@@ -122,27 +179,27 @@
     </div>
 
     <div class="my-4 flex space-x-4">
-    <button
-        wire:click="addRow"
-        {{ empty($placa) ? 'disabled' : '' }}
-        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition flex items-center gap-2 {{ empty($placa) ? 'opacity-50 cursor-not-allowed' : '' }}"
-    >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-        </svg>
-        Agregar Fila
-    </button>
-    <button
-        wire:click="guardarTodos"
-        {{ empty($placa) ? 'disabled' : '' }}
-        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2 {{ empty($placa) ? 'opacity-50 cursor-not-allowed' : '' }}"
-    >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-        </svg>
-        Guardar Todos
-    </button>
-</div>
+        <button
+            wire:click="addRow"
+            {{ empty($placa) ? 'disabled' : '' }}
+            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition flex items-center gap-2 {{ empty($placa) ? 'opacity-50 cursor-not-allowed' : '' }}"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+            </svg>
+            Agregar Fila
+        </button>
+        <button
+            wire:click="guardarTodos"
+            {{ empty($placa) ? 'disabled' : '' }}
+            class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2 {{ empty($placa) ? 'opacity-50 cursor-not-allowed' : '' }}"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+            </svg>
+            Guardar Todos
+        </button>
+    </div>
 
     <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
         <strong class="text-blue-800">Rendimiento: </strong>

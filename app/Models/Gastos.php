@@ -82,6 +82,7 @@ class Gastos extends Model
     'user_name',
     'Monto',
     'Fecha',
+    'Litros',
     'Hora',
     'Evidencia',
     'Tipo',
