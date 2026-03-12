@@ -40,14 +40,22 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700">Días atrás</label>
-                <input
-                    type="number"
-                    wire:model.live="dias_atras"
-                    min="1"
-                    max="365"
-                    class="w-full border rounded px-2 py-1 border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                />
+                <label class="block text-sm font-medium text-gray-700">Rango de Fechas</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <input
+                        type="date"
+                        wire:model.live="fecha_desde"
+                        class="w-full border rounded px-2 py-1 border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <input
+                        type="date"
+                        wire:model.live="fecha_hasta"
+                        class="w-full border rounded px-2 py-1 border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                    Desde: {{ $fecha_desde ?? 'No definido' }} | Hasta: {{ $fecha_hasta ?? 'Hoy' }}
+                </div>
             </div>
         </div>
     </div>
@@ -58,7 +66,7 @@
             <thead class="bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">
     <tr>
         <th colspan="7" class="px-1 py-2 text-center bg-blue-50">Turno</th>
-        <th colspan="3" class="px-1 py-2 text-center bg-green-50">Antes de carga</th>
+        <th colspan="4" class="px-1 py-2 text-center bg-green-50">Antes de carga</th>
         <th colspan="2" class="px-1 py-2 text-center bg-yellow-50">Gasolina</th>
         <th colspan="1" class="px-1 py-2 text-center bg-purple-50">Después de carga</th>
     </tr>
@@ -75,7 +83,7 @@
         <th class="px-1 py-2 w-12">Rayas (Antes)</th>
         <th class="px-1 py-2 w-20">KM Carga</th>
 
-        <th class="px-1 py-2 w-16">KMR Entre</th>
+        <th class="px-1 py-2 w-16">KMR Entre Cargas</th>
         <th class="px-1 py-2 w-16">Dinero $</th>
         <th class="px-1 py-2 w-10">Litros</th>
         <th class="px-1 py-2 w-12">Rayas (Desp.)</th>
@@ -158,7 +166,7 @@
                                    class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         </td>
                         <td class="px-1 py-1.5">
-                            <span class="block text-xs truncate">{{ $r['kmr_entre_cargas'] ?: 0 }}</span>
+<span class="block text-xs truncate">{{ number_format($r['kmr_entre_cargas']) }}</span>
                         </td>
                         <td class="px-1 py-1.5">
                             <input type="number" step="0.01" wire:model="registros.{{ $i }}.monto"
@@ -356,6 +364,51 @@ function userAutocomplete(rowIndex, initialValue) {
             this.highlightedIndex = -1;
             @this.set(`registros.${rowIndex}.nombre_elemento`, user.name);
             @this.set(`registros.${rowIndex}.user_id`, user.id);
+        }
+    };
+}
+function kmrCalculator() {
+    return {
+        kmrResult: 0,
+
+        calculateKmr(currentIndex, registros) {
+            const current = registros[currentIndex];
+
+            // Validar km_carga
+            if (!current.km_carga || isNaN(parseFloat(current.km_carga)) || parseFloat(current.km_carga) <= 0) {
+                this.kmrResult = 0;
+                return;
+            }
+
+            const currentKm = parseFloat(current.km_carga);
+
+            // Verificar si es el primer registro con km_carga > 0 en la lista
+            let isFirstValidKm = true;
+            for (let i = 0; i < currentIndex; i++) {
+                const r = registros[i];
+                if (r.km_carga && !isNaN(parseFloat(r.km_carga)) && parseFloat(r.km_carga) > 0) {
+                    isFirstValidKm = false;
+                    break;
+                }
+            }
+
+            if (isFirstValidKm) {
+                this.kmrResult = 0;
+                return;
+            }
+
+            // Buscar el registro anterior con km_carga > 0 (dentro de la lista)
+            let previousKm = 0;
+            for (let i = currentIndex - 1; i >= 0; i--) {
+                const prev = registros[i];
+                if (prev.km_carga && !isNaN(parseFloat(prev.km_carga)) && parseFloat(prev.km_carga) > 0) {
+                    previousKm = parseFloat(prev.km_carga);
+                    break;
+                }
+            }
+
+            const kmr = currentKm - previousKm;
+            this.kmrResult = kmr > 0 ? Math.round(kmr * 100) / 100 : 0;
         }
     };
 }
