@@ -22,15 +22,36 @@ class Gasolinas extends Component
     }
 
     public function render()
-    {
-        $puntos = Punto::all();
+{
+    $puntos = Punto::all();
 
-        return view('livewire.gasolinas', [
-            'puntos' => $puntos,
-            'total_km' => collect($this->registros)->sum('km_inicio'),
-            'total_litros' => 0,
-        ]);
-    }
+    // Filtrar registros activos (solo los que tienen placa o son nuevos)
+    $registrosFiltrados = collect($this->registros)->filter(function ($r) {
+        return !empty($r['placas']);
+    });
+
+    // KM inicial: primer registro (ordenado por fecha ASC)
+    $kmInicial = $registrosFiltrados->first() ? $registrosFiltrados->first()['km_inicio'] : 0;
+
+    // KM final: último registro con km_carga > 0 (es decir, con carga registrada)
+    $ultimoConCarga = $registrosFiltrados->filter(fn($r) => $r['km_carga'] > 0)->last();
+    $kmFinal = $ultimoConCarga ? $ultimoConCarga['km_carga'] : $kmInicial;
+
+    $diferenciaKm = $kmFinal - $kmInicial;
+
+    $totalDinero = $registrosFiltrados->sum('monto');
+    $totalLitros = $registrosFiltrados->sum('litros');
+
+    $rendimiento = $totalLitros > 0 ? round($diferenciaKm / $totalLitros, 2) : 0;
+
+    return view('livewire.gasolinas', [
+        'puntos' => $puntos,
+        'total_km' => $diferenciaKm,
+        'total_litros' => $totalLitros,
+        'total_dinero' => $totalDinero,
+        'rendimiento' => $rendimiento,
+    ]);
+}
 
     public function updatedPlaca($value)
     {
@@ -49,8 +70,8 @@ class Gasolinas extends Component
         $query = Turno::query()
             ->when($this->subpunto_id, fn($q) => $q->where('subpunto_id', $this->subpunto_id))
             ->when($this->placa, fn($q) => $q->where('Placas_unidad', 'like', "%{$this->placa}%"))
-            ->whereDate('created_at', '>=', now()->subDays($this->dias_atras)->toDateString())
-            ->orderBy('created_at', 'asc');
+            ->whereDate('Fecha', '>=', now()->subDays($this->dias_atras)->toDateString())
+            ->orderBy('Fecha', 'asc');
 
         $turnos = $query->get();
 
@@ -62,7 +83,7 @@ class Gasolinas extends Component
 
             return [
                 'id' => $t->id,
-                'fecha' => $t->created_at->format('Y-m-d'),
+                'fecha' => $t->Fecha ? $t->Fecha->format('Y-m-d') : $t->created_at->format('Y-m-d'),
                 'user_id' => $t->User_id,
                 'nombre_elemento' => $t->Nombre_elemento,
                 'tipo' => $t->Tipo,
@@ -125,7 +146,7 @@ class Gasolinas extends Component
             $turno = $dato['id'] ? Turno::find($dato['id']) : new Turno;
 
             $turno->fill([
-                'created_at' => $dato['fecha'],
+                'Fecha' => $dato['fecha'],
                 'User_id' => $dato['user_id'],
                 'Nombre_elemento' => $dato['nombre_elemento'],
                 'Tipo' => $dato['tipo'],

@@ -37,6 +37,7 @@ class Turno extends Model
     'User_id',
     'Nombre_elemento',
     'Tipo',
+    'Fecha',
     'Hora_inicio',
     'Hora_final',
     'Km_inicio',
@@ -67,6 +68,7 @@ class Turno extends Model
   protected $casts = [
     'Hora_inicio' => 'datetime:H:i',
     'Hora_final' => 'datetime:H:i',
+    'Fecha' => 'date',
     'Km_inicio' => 'decimal:2',
     'Km_final' => 'decimal:2',
     'Rayas_gasolina_inicio' => 'decimal:2',

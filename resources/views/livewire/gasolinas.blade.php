@@ -202,9 +202,33 @@
     </div>
 
     <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
-        <strong class="text-blue-800">Rendimiento: </strong>
-        <span class="text-blue-900 font-medium">{{ $total_litros > 0 ? number_format($total_km / $total_litros, 2) : 'N/A' }} km/L</span>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div class="bg-white p-3 rounded border">
+            <span class="text-gray-600">Dif. KM</span><br>
+            <span class="font-bold text-lg">{{ number_format($total_km, 0) }} km</span>
+        </div>
+        <div class="bg-white p-3 rounded border">
+            <span class="text-gray-6">Gasto Total</span><br>
+            <span class="font-bold text-lg">${{ number_format($total_dinero, 2) }}</span>
+        </div>
+        <div class="bg-white p-3 rounded border">
+            <span class="text-gray-600">Litros</span><br>
+            <span class="font-bold text-lg">{{ number_format($total_litros, 2) }} L</span>
+        </div>
     </div>
+    <div class="mt-3 pt-3 border-t border-gray-200">
+        <div class="flex justify-between items-center">
+            <span class="text-blue-800 font-semibold">Rendimiento:</span>
+            <span class="text-yellow-600 font-bold text-xl">
+                @if($total_litros > 0)
+                    {{ number_format($rendimiento, 2) }} km/L
+                @else
+                    N/A
+                @endif
+            </span>
+        </div>
+    </div>
+</div>
 </div>
 
 <script>
