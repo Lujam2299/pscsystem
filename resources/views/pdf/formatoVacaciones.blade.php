@@ -85,19 +85,19 @@
     </table>
 
 
-    <p style="margin-top: 50px;"><strong>NOMBRE:</strong> <span class="subrayado">{{ $user->name }}</span></p><br>
-    <p><strong>FECHA DE INGRESO:</strong> {{ \Carbon\Carbon::parse($user->fecha_ingreso)->translatedFormat('d \\d\\e F \\d\\e\\l Y') }}</p>
-
-    <p>
-        <strong>SOLICITADAS PARA EL PERIODO Nº{{ $solicitud->periodo }} COMPRENDIDO DEL</strong>
-        {{ $inicioPeriodoSolicitado->translatedFormat('d \\d\\e F \\d\\e\\l Y') }}
-        <strong>AL</strong>
-        {{ $finPeriodoSolicitado->translatedFormat('d \\d\\e F \\d\\e\\l Y') }}
-    </p>
+    <p style="margin-top: 50px;"><strong>NOMBRE: <span class="subrayado">{{ strtoupper($user->name) }}</span></strong></p><br>
+    <p class="subrayado"><strong>FECHA DE INGRESO:</strong> {{ strtoupper(\Carbon\Carbon::parse($user->fecha_ingreso)->translatedFormat('d \\d\\e F \\d\\e\\l Y')) }}</p>
+    <br>
+    <p class="subrayado">
+        SOLICITADAS PARA EL PERIODO Nº{{ $solicitud->periodo }} COMPRENDIDO DEL
+        <strong>{{ strtoupper($inicioPeriodoSolicitado->translatedFormat('d \\d\\e F \\d\\e\\l Y')) }}
+        AL
+        {{ strtoupper($finPeriodoSolicitado->translatedFormat('d \\d\\e F \\d\\e\\l Y')) }}</strong>
+    </p><br>
 
     <div class="seccion">
         <p><strong>OBSERVACIONES:</strong></p>
-        <p style="text-align: justify;">
+        <p style="text-align: justify;" class="subrayado">
             TRABAJADOR DISFRUTARÁ {{ $solicitud->dias_solicitados }}
             @if($solicitud->dias_solicitados == 1)
                 DÍA
@@ -117,7 +117,7 @@
             @else
                 DÍAS
             @endif
-            ) (DEL {{ \Carbon\Carbon::parse($solicitud->fecha_inicio)->translatedFormat('d \\d\\e F') }} AL {{ \Carbon\Carbon::parse($solicitud->fecha_fin)->translatedFormat('d \\d\\e F \\d\\e\\l Y') }}) @if($solicitud->turno_doble !== null) <strong>(Turno Doble)</strong> @endif,
+            ) (DEL {{ strtoupper(\Carbon\Carbon::parse($solicitud->fecha_inicio)->translatedFormat('d \\d\\e F')) }} AL {{ strtoupper(\Carbon\Carbon::parse($solicitud->fecha_fin)->translatedFormat('d \\d\\e F \\d\\e\\l Y')) }}) @if($solicitud->turno_doble == 'true') <strong>(Turno Doble)</strong> @endif,
             @if($solicitud->dias_disponibles - $solicitud->dias_solicitados >1)
                 QUEDANDO {{ $solicitud->dias_disponibles - $solicitud->dias_solicitados}} DÍAS DISPONIBLES DE LAS VACACIONES DEL MISMO PERIODO
             @elseif($solicitud -> dias_disponibles - $solicitud->dias_solicitados == 1)
@@ -130,11 +130,11 @@
     </div>
 
     <div class="firma">
-        <p><strong>EL SOLICITANTE</strong></p>
+        <p><strong>EL SOLICITANTE</strong></p><br><br><br>
     </div>
 
     <div class="bloque">
-        <p><strong>PARA USO EXCLUSIVO DE RECURSOS HUMANOS</strong></p>
+        <p style="margin-left: 125px;"><strong>PARA USO EXCLUSIVO DE RECURSOS HUMANOS</strong></p>
         <p style="margin-top: 40px; text-decoration: underline;"><strong>ANTIGÜEDAD:</strong> {{ $antiguedad }}</p><br><br><br>
     </div>
 

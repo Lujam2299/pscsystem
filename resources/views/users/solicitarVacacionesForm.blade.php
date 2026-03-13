@@ -199,7 +199,7 @@
                                             <input type="number" name="dias_solicitados" id="dias_solicitados" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 cursor-not-allowed" readonly>
                                         </div>
 
-                                        @if (str_contains(strtoupper($user->punto), 'MARY KAY') || str_contains(strtoupper($user->punto), 'MARYKAY'))
+                                        @if (str_contains(strtoupper($user->punto), 'MARY KAY') || str_contains(strtoupper($user->punto), 'MARYKAY') || $user->punto == '011')
             <div class="md:col-span-2">
                 <label class="flex items-center">
                     <input type="checkbox" name="turno_doble" id="turno_doble" value="1" class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600">
