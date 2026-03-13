@@ -15,7 +15,10 @@ class DocumentacionAltas extends Model
         'arch_ine',
         'arch_comprobante_domicilio',
         'arch_rfc',
+        'arch_nss',
         'arch_modificacion_salario',
+        'arch_acuse_imss',
+        'arch_retencion_infonavit',
         'arch_comprobante_estudios',
         'arch_carta_rec_laboral',
         'arch_carta_rec_personal',
@@ -26,6 +29,10 @@ class DocumentacionAltas extends Model
         'arch_carta_no_penales',
         'arch_acuse_alta',
         'arch_foto',
+        'arch_contrato',
+        'arch_solicitud_empleo',
+        'arch_antidoping',
+        'arch_acuse_alta',
         'visa',
         'pasaporte'
     ];
