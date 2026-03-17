@@ -227,71 +227,65 @@ public function subirComprobantes(Request $request, $id)
         return view('operaciones.asistenciaDiaria', compact('subpuntosMap', 'puntosConAsistenciaHoy'));
     }
 
-public function listaAsistencia(string $punto)
+public function listaAsistencia(string $puntoInput)
 {
-    $punto = urldecode($punto);
-
-    // Grupo de puntos que deben agruparse cuando se selecciona 'MONTERREY'
+    $punto = urldecode($puntoInput);
     $grupoMty = ['KANSAS', 'MONTERREY', 'MTY'];
-    $puntoConPadding = $punto;
-    // Si el punto es 'MONTERREY', entonces buscar usuarios de los 3 puntos
+
+    // 1. Identificar el Subpunto y sus roles
+    $subpuntoData = null;
+    $rolesPermitidos = ['GUARDIA']; // Valor por defecto si algo falla
+    $puntosBusqueda = []; // Array de nombres/códigos a buscar en la tabla users
+
+    // Caso Especial: MONTERREY (Agrupación)
     if ($punto === 'MONTERREY') {
-        $elementos = \App\Models\User::where('estatus', 'Activo')
-                                     ->where('rol', 'GUARDIA')
-                                     ->whereIn('punto', $grupoMty)
-                                     ->with('solicitudAlta.documentacion')
-                                     ->orderBy('name')
-                                     ->get();
+        // Para Monterrey, definimos los roles manualmente o podrías crear un registro 'MONTERREY' en subpuntos
+        $rolesPermitidos = ['SUPERVISOR', 'APOYO SUPERVISOR', 'K9', 'CORTADOR', 'GUARDIA', 'RECEPCIONISTA'];
+        $puntosBusqueda = $grupoMty;
     } else {
-        // Lógica original para otros puntos
-        if (is_numeric($punto)) {
-            $puntoConPadding = str_pad((int)$punto, 3, '0', STR_PAD_LEFT); // '44' → '044'
-        }
+        // Buscar en la tabla subpuntos por Nombre O por Código
+        $subpuntoData = Subpunto::where('nombre', $punto)
+                        ->orWhere('codigo', $punto) // Funciona si $puntoInput es "029" o 29
+                        ->first();
 
-        // Buscar usuarios que tengan el punto exacto (con padding)
-        $elementosCodigo = \App\Models\User::where('estatus', 'Activo')
-            ->where('rol', 'GUARDIA')
-            ->where('punto', $puntoConPadding)  // Busca por '044'
-            ->with('solicitudAlta.documentacion')
-            ->orderBy('name')
-            ->get();
+        if ($subpuntoData) {
+            // Si encontramos configuración, usamos sus roles
+            $rolesPermitidos = $subpuntoData->roles ?? ['GUARDIA'];
 
-        // Si el punto es numérico, buscar usuarios por nombre del subpunto correspondiente
-        $elementosNombre = collect();
-        if (is_numeric($punto)) {
-            $subpunto = \App\Models\Subpunto::where('codigo', (int)$punto)->first();
-            if ($subpunto) {
-                $elementosNombre = \App\Models\User::where('estatus', 'Activo')
-                    ->where('rol', 'GUARDIA')
-                    ->where('punto', $subpunto->nombre)
-                    ->with('solicitudAlta.documentacion')
-                    ->orderBy('name')
-                    ->get();
+            // Definimos dónde buscar usuarios: por el nombre del punto Y/O por su código formateado
+            $puntosBusqueda[] = $subpuntoData->nombre;
+
+            if ($subpuntoData->codigo) {
+                $codigoFormateado = str_pad($subpuntoData->codigo, 3, '0', STR_PAD_LEFT);
+                $puntosBusqueda[] = $codigoFormateado;
+            }
+        } else {
+            // Fallback si no existe en subpuntos (seguridad)
+            // Intentamos tratar el input como código directo si es numérico
+            if (is_numeric($punto)) {
+                $codigoFormateado = str_pad((int)$punto, 3, '0', STR_PAD_LEFT);
+                $puntosBusqueda[] = $punto;
+                $puntosBusqueda[] = $codigoFormateado;
+            } else {
+                $puntosBusqueda[] = $punto;
             }
         }
-
-        // Combinar ambas colecciones
-        $elementos = $elementosCodigo->concat($elementosNombre)->unique('id');
     }
 
-    // Verificar asistencia
-    $yaRegistrado = \App\Models\Asistencia::where(function($query) use ($punto, $puntoConPadding, $grupoMty) {
-            $query->where('punto', $punto)
-                  ->orWhere('punto', $puntoConPadding)
-                  ->orWhereExists(function($subQuery) use ($punto) {
-                      $subQuery->select(DB::raw(1))
-                              ->from('subpuntos')
-                              ->whereColumn('subpuntos.nombre', 'asistencias.punto')
-                              ->where('subpuntos.codigo', $punto);
-                  });
+    // 2. Consultar Usuarios
+    $query = User::where('estatus', 'Activo')
+                 ->whereIn('rol', $rolesPermitidos) // ¡Aquí está la magia dinámica!
+                 ->whereIn('punto', $puntosBusqueda) // Busca coincidencia con nombre o código (ej: '029' o 'TORRE DELTA')
+                 ->with('solicitudAlta.documentacion')
+                 ->orderBy('name');
 
-            // Agregar verificación para agrupación de Monterrey
-            if ($punto === 'MONTERREY') {
-                $query->orWhereIn('punto', $grupoMty);
-            }
-        })
-        ->whereDate('fecha', now()->toDateString())
-        ->exists();
+    $elementos = $query->get();
+
+    // 3. Verificar si ya hay asistencia registrada hoy para este punto
+    // La lógica de verificación también debe ser flexible con los nombres/códigos
+    $yaRegistrado = Asistencia::whereIn('punto', $puntosBusqueda)
+                    ->whereDate('fecha', now()->toDateString())
+                    ->exists();
 
     return view('operaciones.lista-asistencia', compact('elementos', 'punto', 'yaRegistrado'));
 }
