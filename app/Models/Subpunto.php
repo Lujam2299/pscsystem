@@ -10,6 +10,12 @@ class Subpunto extends Model
         'punto_id',
         'nombre',
         'codigo',
+        'roles',
+    ];
+
+    protected $casts = [
+        'roles' => 'array',
+        'codigo' => 'integer',
     ];
 
     public function punto() {
