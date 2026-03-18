@@ -43,7 +43,6 @@
                         @csrf
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             @foreach ($faltantes as $elemento)
-                                @if ($elemento->rol == 'GUARDIA')
                                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-5 border border-gray-200 dark:border-gray-700 flex flex-col justify-between">
                                         <div>
                                             <div class="flex items-center space-x-4 mb-4">
@@ -79,7 +78,6 @@
                                             </div>
                                         </div>
                                     </div>
-                                @endif
                             @endforeach
                         </div>
 

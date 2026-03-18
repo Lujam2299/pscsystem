@@ -308,7 +308,7 @@ public function guardarAsistencias(Request $request)
         'tiempo_extra_obs' => 'nullable|array',
         'tiempo_extra_obs.*' => 'nullable|string|max:255',
         'minutos_retardo' => 'nullable|array',
-        'minutos_retardo.*' => 'nullable|integer|min:1|max:599', // Solo se guarda si > 0
+        'minutos_retardo.*' => 'nullable|integer|min:1|max:599',
         'punto_seleccionado' => 'required|string',
     ]);
 
@@ -317,14 +317,52 @@ public function guardarAsistencias(Request $request)
     $fechaRegistro = $request->input('fecha_registro');
     $horaRegistro = now('America/Mexico_City')->toTimeString();
 
-    $todosUsuarios = \App\Models\User::where('estatus', 'Activo')
-        ->where('rol', 'GUARDIA')
-        ->where('punto', $puntoSeleccionado)
+    // --- INICIO CAMBIO DINÁMICO ---
+
+    $rolesPermitidos = ['GUARDIA']; // Default
+    $valoresPosiblesPunto = [];
+
+    // Manejo especial para MONTERREY si aplica aquí también
+    if ($puntoSeleccionado === 'MONTERREY') {
+        $rolesPermitidos = ['SUPERVISOR', 'APOYO SUPERVISOR', 'K9', 'CORTADOR', 'GUARDIA', 'RECEPCIONISTA'];
+        $valoresPosiblesPunto = ['KANSAS', 'MONTERREY', 'MTY'];
+    } else {
+        // Buscar configuración en subpuntos
+        $subpuntoData = \App\Models\Subpunto::where('nombre', $puntoSeleccionado)
+                                ->orWhere('codigo', $puntoSeleccionado)
+                                ->first();
+
+        if ($subpuntoData) {
+            $rolesPermitidos = $subpuntoData->roles ?? ['GUARDIA'];
+
+            $valoresPosiblesPunto[] = $subpuntoData->nombre;
+            if (!is_null($subpuntoData->codigo)) {
+                $valoresPosiblesPunto[] = str_pad((string)$subpuntoData->codigo, 3, '0', STR_PAD_LEFT);
+            }
+        } else {
+            // Fallback si no encuentra config
+            $valoresPosiblesPunto[] = $puntoSeleccionado;
+            if (is_numeric($puntoSeleccionado)) {
+                $valoresPosiblesPunto[] = str_pad((string)(int)$puntoSeleccionado, 3, '0', STR_PAD_LEFT);
+            }
+        }
+    }
+
+    $valoresPosiblesPunto = array_unique($valoresPosiblesPunto);
+
+    // Obtener IDs de TODOS los usuarios activos del punto con los roles permitidos
+    $todosUsuariosIds = \App\Models\User::where('estatus', 'Activo')
+        ->whereIn('rol', $rolesPermitidos)
+        ->whereIn('punto', $valoresPosiblesPunto)
         ->pluck('id')
         ->toArray();
 
+    // --- FIN CAMBIO DINÁMICO ---
+
     $asistencias = $request->input('asistencias', []);
-    $faltas = array_values(array_diff($todosUsuarios, $asistencias));
+
+    // Calculamos las faltas restando los que asistieron del total esperado
+    $faltas = array_values(array_diff($todosUsuariosIds, $asistencias));
 
     $coberturasRaw = $request->input('coberturas', []);
     $coberturas = array_map(function ($item) {
@@ -369,7 +407,7 @@ public function guardarAsistencias(Request $request)
             'asistencias' => $asistencias,
             'turnos' => $turnos,
             'tiempos_extra' => $tiemposExtra,
-            'retardos' => $retardosFiltrados, // 👈 Nuevo
+            'retardos' => $retardosFiltrados,
             'fotos_temporales' => $rutasTemporales,
             'observaciones' => $request->input('observaciones'),
             'coberturas' => $coberturas,
@@ -378,6 +416,9 @@ public function guardarAsistencias(Request $request)
             'hora' => $horaRegistro,
             'punto' => $puntoSeleccionado,
             'user_id_registrador' => $user->id,
+            // Guardamos también los roles y puntos buscados por si necesitamos depurar o usarlo después
+            'roles_usados' => $rolesPermitidos,
+            'puntos_busqueda' => $valoresPosiblesPunto
         ]
     ]);
 
@@ -395,48 +436,81 @@ public function confirmarFaltas()
 
     $puntoSeleccionado = $data['punto'];
 
-    // Buscar usuarios del punto (por nombre o código)
-    $todosUsuarios = collect();
+    // --- DEBUG: Imprime qué estamos recibiendo ---
+    \Log::info('--- DEBUG CONFIRMAR FALTAS ---');
+    \Log::info('Punto recibido de sesión: ' . $puntoSeleccionado);
+    \Log::info('Tipo de dato: ' . gettype($puntoSeleccionado));
+    // -------------------------------------------
 
-    if (is_numeric($puntoSeleccionado)) {
-        // Convertir a 3 dígitos para buscar en BD
-        $puntoConPadding = str_pad((int)$puntoSeleccionado, 3, '0', STR_PAD_LEFT);
+    $asistentesIds = $data['asistencias'];
+    $rolesPermitidos = ['GUARDIA'];
+    $valoresPosiblesPunto = [];
 
-        // Buscar usuarios con código exacto (044)
-        $usuariosCodigo = \App\Models\User::where('estatus', 'Activo')
-            ->where('rol', 'GUARDIA')
-            ->where('punto', $puntoConPadding)
-            ->get();
-
-        // Buscar usuarios con nombre del subpunto correspondiente al código
-        $subpunto = \App\Models\Subpunto::where('codigo', (int)$puntoSeleccionado)->first();
-        if ($subpunto) {
-            $usuariosNombre = \App\Models\User::where('estatus', 'Activo')
-                ->where('rol', 'GUARDIA')
-                ->where('punto', $subpunto->nombre)
-                ->get();
-
-            $todosUsuarios = $usuariosCodigo->concat($usuariosNombre)->unique('id');
-        } else {
-            $todosUsuarios = $usuariosCodigo;
-        }
+    // Lógica de búsqueda robustecida
+    if ($puntoSeleccionado === 'MONTERREY') {
+        $rolesPermitidos = ['SUPERVISOR', 'APOYO SUPERVISOR', 'K9', 'CORTADOR', 'GUARDIA', 'RECEPCIONISTA'];
+        $valoresPosiblesPunto = ['KANSAS', 'MONTERREY', 'MTY'];
     } else {
-        // Buscar directamente si no es numérico
-        $todosUsuarios = \App\Models\User::where('estatus', 'Activo')
-            ->where('rol', 'GUARDIA')
-            ->where('punto', $puntoSeleccionado)
-            ->get();
+        // Intentamos buscar de varias formas para asegurar éxito
+        $subpuntoData = null;
+
+        // 1. Búsqueda directa por nombre (trim para quitar espacios accidentales)
+        $subpuntoData = \App\Models\Subpunto::where('nombre', trim($puntoSeleccionado))->first();
+
+        // 2. Si no encontró y parece número, intentar por código
+        if (!$subpuntoData && is_numeric($puntoSeleccionado)) {
+            $subpuntoData = \App\Models\Subpunto::where('codigo', (int)$puntoSeleccionado)->first();
+
+            // 3. Intentar con el string formateado si el código en BD fuera string (por seguridad)
+            if (!$subpuntoData) {
+                 $subpuntoData = \App\Models\Subpunto::where('codigo', str_pad((int)$puntoSeleccionado, 3, '0', STR_PAD_LEFT))->first();
+            }
+        }
+
+        // 4. Búsqueda inversa: ¿Y si el punto seleccionado es el código con ceros "029"?
+        if (!$subpuntoData && strlen($puntoSeleccionado) === 3 && ctype_digit($puntoSeleccionado)) {
+             $subpuntoData = \App\Models\Subpunto::where('codigo', (int)$puntoSeleccionado)->first();
+        }
+
+        if ($subpuntoData) {
+            \Log::info('Subpunto ENCONTRADO: ' . $subpuntoData->nombre . ' | Código: ' . $subpuntoData->codigo);
+            \Log::info('Roles encontrados: ' . json_encode($subpuntoData->roles));
+
+            $rolesPermitidos = $subpuntoData->roles ?? ['GUARDIA'];
+
+            $valoresPosiblesPunto[] = $subpuntoData->nombre;
+            if (!is_null($subpuntoData->codigo)) {
+                $valoresPosiblesPunto[] = str_pad((string)$subpuntoData->codigo, 3, '0', STR_PAD_LEFT);
+            }
+        } else {
+            \Log::warning('Subpunto NO ENCONTRADO para: ' . $puntoSeleccionado);
+            // Fallback
+            $valoresPosiblesPunto[] = $puntoSeleccionado;
+            if (is_numeric($puntoSeleccionado)) {
+                $valoresPosiblesPunto[] = str_pad((string)(int)$puntoSeleccionado, 3, '0', STR_PAD_LEFT);
+            }
+        }
     }
 
-    // Obtener IDs de usuarios que ya fueron registrados como asistentes
-    $asistentesIds = $data['asistencias'];
+    $valoresPosiblesPunto = array_unique($valoresPosiblesPunto);
 
-    // Excluir a los que ya están registrados como asistentes
+    // Consulta final
+    $todosUsuarios = \App\Models\User::where('estatus', 'Activo')
+        ->whereIn('rol', $rolesPermitidos)
+        ->whereIn('punto', $valoresPosiblesPunto)
+        ->orderBy('rol', 'asc')
+        ->orderBy('name', 'asc')
+        ->get();
+
+    \Log::info('Total usuarios encontrados: ' . $todosUsuarios->count());
+    \Log::info('Roles usados en query: ' . json_encode($rolesPermitidos));
+    \Log::info('Puntos buscados en query: ' . json_encode($valoresPosiblesPunto));
+
     $faltantes = $todosUsuarios->reject(function ($usuario) use ($asistentesIds) {
         return in_array($usuario->id, $asistentesIds);
-    })->values(); // Reiniciar índices
+    })->values();
 
-    return view('operaciones.confirmar-faltas', compact('faltantes'));
+    return view('operaciones.confirmar-faltas', compact('faltantes', 'data'));
 }
 
 public function finalizarAsistencia(Request $request)
