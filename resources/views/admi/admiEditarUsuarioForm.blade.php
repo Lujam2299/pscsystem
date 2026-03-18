@@ -158,21 +158,19 @@
                         <input type="text" id="estatura" name="estatura" placeholder="Estatura" value="{{ old('estatura', $solicitud->estatura) }}" class="w-full px-4 py-2 border border-gray-300 rounded-md mt-2">
                     </div>
 
-                    @if (Auth::user()->rol != 'Supervisor' && $tipoSeleccionado == 'oficina')
-                        <div class="form-group mb-6">
-                            <label for="departamento" class="block text-sm font-semibold text-gray-600">Departamento</label>
-                            <select id="departamento" name="departamento" class="w-full px-4 py-2 border border-gray-300 rounded-md mt-2">
-                                <option value="" disabled selected>Selecciona una opción</option>
-                                <option value="Recursos Humanos" {{ old('departamento', $solicitud->departamento) === 'Recursos Humanos' ? 'selected' : '' }}>Recursos Humanos</option>
-                                <option value="Nóminas" {{ old('departamento', $solicitud->departamento) === 'Nóminas' ? 'selected' : '' }}>Nóminas</option>
-                                <option value="Jurídico" {{ old('departamento', $solicitud->departamento) === 'Jurídico' ? 'selected' : '' }}>Jurídico</option>
-                                <option value="IMSS" {{ old('departamento', $solicitud->departamento) === 'IMSS' ? 'selected' : '' }}>IMSS</option>
-                                <option value="Monitoreo" {{ old('departamento', $solicitud->departamento) === 'Monitoreo' ? 'selected' : '' }}>Monitoreo</option>
-                                <option value="Custodios" {{ old('departamento', $solicitud->departamento) === 'Custodios' ? 'selected' : '' }}>Custodios</option>
-                                <option value="Compras" {{ old('departamento', $solicitud->departamento) === 'Compras' ? 'selected' : '' }}>Compras</option>
-                            </select>
-                        </div>
-                    @endif
+                    <div class="form-group mb-6" id="departamento_group" style="{{ $solicitud->tipo_empleado !== 'oficina' ? 'display:none;' : '' }}">
+    <label for="departamento" class="block text-sm font-semibold text-gray-600">Departamento</label>
+    <select id="departamento" name="departamento" class="w-full px-4 py-2 border border-gray-300 rounded-md mt-2">
+        <option value="" disabled selected>Selecciona una opción</option>
+        <option value="Recursos Humanos" {{ old('departamento', $solicitud->departamento) === 'Recursos Humanos' ? 'selected' : '' }}>Recursos Humanos</option>
+        <option value="Nóminas" {{ old('departamento', $solicitud->departamento) === 'Nóminas' ? 'selected' : '' }}>Nóminas</option>
+        <option value="Jurídico" {{ old('departamento', $solicitud->departamento) === 'Jurídico' ? 'selected' : '' }}>Jurídico</option>
+        <option value="IMSS" {{ old('departamento', $solicitud->departamento) === 'IMSS' ? 'selected' : '' }}>IMSS</option>
+        <option value="Monitoreo" {{ old('departamento', $solicitud->departamento) === 'Monitoreo' ? 'selected' : '' }}>Monitoreo</option>
+        <option value="Custodios" {{ old('departamento', $solicitud->departamento) === 'Custodios' ? 'selected' : '' }}>Custodios</option>
+        <option value="Compras" {{ old('departamento', $solicitud->departamento) === 'Compras' ? 'selected' : '' }}>Compras</option>
+    </select>
+</div>
 
                     <div class="form-group mb-6">
                         <label for="rol" class="block text-sm font-semibold text-gray-600">Rol/Puesto</label>
@@ -199,18 +197,6 @@
                     <div class="form-group mb-6">
                         <label for="reingreso" class="block text-sm font-semibold text-gray-600">Reingreso</label>
                         <input type="text" id="reingreso" name="reingreso" placeholder="Reingreso" value="{{ old('reingreso', $solicitud->reingreso) }}" class="w-full px-4 py-2 border border-gray-300 rounded-md mt-2">
-                    </div>
-
-                    <div class="form-group mb-6">
-                        <label for="empresa" class="block text-sm font-semibold text-gray-600">Empresa</label>
-                        <select id="empresa" name="empresa" class="w-full px-4 py-2 border border-gray-300 rounded-md mt-2">
-                            <option value="" disabled {{ is_null(old('empresa', $solicitud->empresa)) ? 'selected' : '' }}>Selecciona una empresa</option>
-                            <option value="CPKC" {{ old('empresa', $solicitud->empresa) === 'CPKC' ? 'selected' : '' }}>CPKC</option>
-                            <option value="SPYT" {{ old('empresa', $solicitud->empresa) === 'SPYT' ? 'selected' : '' }}>SPYT</option>
-                            <option value="Montana" {{ old('empresa', $solicitud->empresa) === 'Montana' ? 'selected' : '' }}>Montana</option>
-                            <option value="PSC" {{ old('empresa', $solicitud->empresa) === 'PSC' ? 'selected' : '' }}>PSC</option>
-                        </select>
-                        @error('empresa') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
 
                     <div class="form-group mb-6">
@@ -245,14 +231,45 @@
     </div>
 
     <script>
-        function cambiarTipo(tipo) {
-            document.getElementById('tipo_hidden').value = tipo;
-            document.getElementById('tipo_actual').value = tipo;
+function cambiarTipo(tipo) {
+    console.log('Cambiando tipo a:', tipo); // Para depuración
 
-            // Actualizar la clase visual de las pestañas
-            const tabs = document.querySelectorAll('[onclick*="cambiarTipo"]');
-            tabs.forEach(tab => {
-                const tabTipo = tab.getAttribute('onclick').match(/'([^']+)'/)[1];
+    try {
+        // Actualizar los campos ocultos
+        const tipoHidden = document.getElementById('tipo_hidden');
+        const tipoActualInput = document.getElementById('tipo_actual');
+
+        if (tipoHidden) {
+            tipoHidden.value = tipo;
+        }
+        if (tipoActualInput) {
+            tipoActualInput.value = tipo;
+        }
+
+        // Obtener el rol del usuario (asegúrate que esto se renderiza bien)
+        const rolUsuario = '{{ Auth::user()->rol ?? "" }}';
+        console.log('Rol del usuario:', rolUsuario); // Para depuración
+
+        // Mostrar/ocultar campo departamento
+        const departamentoGroup = document.getElementById('departamento_group');
+        if (departamentoGroup) {
+            if (rolUsuario !== 'Supervisor' && tipo === 'oficina') {
+                departamentoGroup.style.display = 'block';
+                console.log('Mostrando departamento'); // Para depuración
+            } else {
+                departamentoGroup.style.display = 'none';
+                console.log('Ocultando departamento'); // Para depuración
+            }
+        } else {
+            console.error('No se encontró el elemento departamento_group');
+        }
+
+        // Actualizar la clase visual de las pestañas
+        const tabs = document.querySelectorAll('[onclick*="cambiarTipo"]');
+        tabs.forEach(tab => {
+            const match = tab.getAttribute('onclick').match(/'([^']+)'/);
+            if (match) {
+                const tabTipo = match[1];
                 if (tabTipo === tipo) {
                     tab.classList.remove('border-transparent', 'text-gray-500');
                     tab.classList.add('border-blue-600', 'text-blue-600', 'font-semibold');
@@ -260,13 +277,20 @@
                     tab.classList.remove('border-blue-600', 'text-blue-600', 'font-semibold');
                     tab.classList.add('border-transparent', 'text-gray-500');
                 }
-            });
-        }
-
-        // Actualizar visualmente la pestaña seleccionada al cargar
-        document.addEventListener('DOMContentLoaded', function() {
-            const tipoActual = document.getElementById('tipo_actual').value;
-            cambiarTipo(tipoActual);
+            }
         });
-    </script>
+    } catch (error) {
+        console.error('Error en cambiarTipo:', error);
+    }
+}
+
+// Ejecutar al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoActual = document.getElementById('tipo_actual');
+    if (tipoActual) {
+        console.log('Tipo actual al cargar:', tipoActual.value); // Para depuración
+        cambiarTipo(tipoActual.value);
+    }
+});
+</script>
 </x-app-layout>
