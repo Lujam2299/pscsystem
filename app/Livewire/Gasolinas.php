@@ -6,29 +6,31 @@ use Livewire\Component;
 use App\Models\Punto;
 use App\Models\Unidades;
 use App\Models\Turno;
-use Carbon\Carbon; // Asegúrate de tener esta línea
+use Carbon\Carbon;
 
 class Gasolinas extends Component
 {
     public $subpunto_id = null;
     public $placa = '';
     public $zona_seleccionada = '';
-
-    // Cambiamos dias_atras por filtros de rango
     public $fecha_desde;
     public $fecha_hasta;
 
     public $registros = [];
 
+    // Variables para el modal de usuarios
+    public $showUserModal = false;
+    public $currentRowIndex = null;
+    public $userSearchQuery = '';
+    public $usersSuggestion = [];
+
     public function mount()
     {
         $this->registros = [];
-        // Configurar valores por defecto: últimos 10 días
         $this->fecha_hasta = now()->format('Y-m-d');
         $this->fecha_desde = now()->subDays(10)->format('Y-m-d');
     }
 
-    // Método que se ejecuta cuando cambian las fechas
     public function updatedFechaDesde()
     {
         if ($this->placa) {
@@ -43,38 +45,6 @@ class Gasolinas extends Component
         }
     }
 
-    public function render()
-    {
-        $puntos = Punto::all();
-
-        // Filtrar registros activos (solo los que tienen placa o son nuevos)
-        $registrosFiltrados = collect($this->registros)->filter(function ($r) {
-            return !empty($r['placas']);
-        });
-
-        // KM inicial: primer registro (ordenado por fecha ASC)
-        $kmInicial = $registrosFiltrados->first() ? $registrosFiltrados->first()['km_inicio'] : 0;
-
-        // KM final: último registro con km_carga > 0 (es decir, con carga registrada)
-        $ultimoConCarga = $registrosFiltrados->filter(fn($r) => $r['km_carga'] > 0)->last();
-        $kmFinal = $ultimoConCarga ? $ultimoConCarga['km_carga'] : $kmInicial;
-
-        $diferenciaKm = $kmFinal - $kmInicial;
-
-        $totalDinero = $registrosFiltrados->sum('monto');
-        $totalLitros = $registrosFiltrados->sum('litros');
-
-        $rendimiento = $totalLitros > 0 ? round($diferenciaKm / $totalLitros, 2) : 0;
-
-        return view('livewire.gasolinas', [
-            'puntos' => $puntos,
-            'total_km' => $diferenciaKm,
-            'total_litros' => $totalLitros,
-            'total_dinero' => $totalDinero,
-            'rendimiento' => $rendimiento,
-        ]);
-    }
-
     public function updatedPlaca($value)
     {
         if ($value) {
@@ -87,75 +57,96 @@ class Gasolinas extends Component
         }
     }
 
+    public function render()
+    {
+        $puntos = Punto::all();
+
+        $registrosFiltrados = collect($this->registros)->filter(function ($r) {
+            return !empty($r['placas']);
+        });
+
+        $kmInicial = $registrosFiltrados->first() ? $registrosFiltrados->first()['km_inicio'] : 0;
+        $ultimoConCarga = $registrosFiltrados->filter(fn($r) => $r['km_carga'] > 0)->last();
+        $kmFinal = $ultimoConCarga ? $ultimoConCarga['km_carga'] : $kmInicial;
+        $diferenciaKm = $kmFinal - $kmInicial;
+        $totalDinero = $registrosFiltrados->sum('monto');
+        $totalLitros = $registrosFiltrados->sum('litros');
+        $rendimiento = $totalLitros > 0 ? round($diferenciaKm / $totalLitros, 2) : 0;
+
+        return view('livewire.gasolinas', [
+            'puntos' => $puntos,
+            'total_km' => $diferenciaKm,
+            'total_litros' => $totalLitros,
+            'total_dinero' => $totalDinero,
+            'rendimiento' => $rendimiento,
+        ]);
+    }
+
     public function loadRegistros()
-{
-    $fechaDesde = $this->fecha_desde ? Carbon::parse($this->fecha_desde) : now()->subDays(10);
-    $fechaHasta = $this->fecha_hasta ? Carbon::parse($this->fecha_hasta) : now();
+    {
+        $fechaDesde = Carbon::parse($this->fecha_desde);
+        $fechaHasta = Carbon::parse($this->fecha_hasta);
 
-    // 1. Obtener último km_carga ANTES del rango (para referencia)
-    $ultimo_km_antes = 0;
-    if ($this->placa) {
-        $ultimoAntes = \App\Models\Gastos::join('turno', 'gastos.Turno_id', '=', 'turno.id')
-            ->where('turno.Placas_unidad', 'like', "%{$this->placa}%")
-            ->where('turno.Fecha', '<', $fechaDesde->toDateString())
-            ->where('gastos.Km', '>', 0)
-            ->orderBy('turno.Fecha', 'desc')
-            ->limit(1)
-            ->value('gastos.Km');
+        $query = Turno::query()
+            ->when($this->subpunto_id, fn($q) => $q->where('subpunto_id', $this->subpunto_id))
+            ->when($this->placa, fn($q) => $q->where('Placas_unidad', 'like', "%{$this->placa}%"))
+            ->where(function ($q) use ($fechaDesde, $fechaHasta) {
+                $q->where(function ($sub) use ($fechaDesde, $fechaHasta) {
+                    $sub->whereNotNull('Fecha')
+                         ->whereDate('Fecha', '>=', $fechaDesde->toDateString())
+                         ->whereDate('Fecha', '<=', $fechaHasta->toDateString());
+                })->orWhere(function ($sub) use ($fechaDesde, $fechaHasta) {
+                    $sub->whereNull('Fecha')
+                         ->whereDate('created_at', '>=', $fechaDesde->toDateString())
+                         ->whereDate('created_at', '<=', $fechaHasta->toDateString());
+                });
+            })
+            ->orderBy('Fecha', 'asc')
+            ->orderBy('created_at', 'asc');
 
-        $ultimo_km_antes = $ultimoAntes ?? 0;
-    }
+        $turnos = $query->get()->unique('id');
+        $gastos = \App\Models\Gastos::whereIn('Turno_id', $turnos->pluck('id'))->get()->keyBy('Turno_id');
 
-    // 2. Cargar turnos dentro del rango
-    $query = Turno::query()
-        ->when($this->subpunto_id, fn($q) => $q->where('subpunto_id', $this->subpunto_id))
-        ->when($this->placa, fn($q) => $q->where('Placas_unidad', 'like', "%{$this->placa}%"))
-        ->whereBetween('Fecha', [$fechaDesde->toDateString(), $fechaHasta->toDateString()])
-        ->orderBy('Fecha', 'asc');
+        $registros = [];
+        $lastKm = 0;
 
-    $turnos = $query->get();
-    $gastos = \App\Models\Gastos::whereIn('Turno_id', $turnos->pluck('id'))->get()->keyBy('Turno_id');
+        foreach ($turnos as $t) {
+            $gasto = $gastos[$t->id] ?? null;
 
-    // 3. Construir registros
-    $registros = $turnos->map(function ($t) use ($gastos, $ultimo_km_antes) {
-        $gasto = $gastos[$t->id] ?? null;
-
-        return [
-            'id' => $t->id,
-            'fecha' => $t->Fecha ? $t->Fecha->format('Y-m-d') : $t->created_at->format('Y-m-d'),
-            'user_id' => $t->User_id,
-            'nombre_elemento' => $t->Nombre_elemento,
-            'tipo' => $t->Tipo,
-            'hora_inicio' => $t->Hora_inicio ? $t->Hora_inicio->format('H:i') : '',
-            'km_inicio' => $t->Km_inicio,
-            'rayas_inicio' => $t->Rayas_gasolina_inicio,
-            'placas' => $t->Placas_unidad,
-            'subpunto_id' => $t->subpunto_id,
-            'punto' => $t->Punto ?? '',
-
-            'hora_carga' => $gasto ? $gasto->Hora : '',
-            'gasolina_antes_carga' => $gasto ? $gasto->Gasolina_antes_carga : 0,
-            'km_carga' => $gasto ? $gasto->Km : 0,
-            'kmr_entre_cargas' => 0,
-            'monto' => $gasto ? $gasto->Monto : 0,
-            'litros' => $gasto ? $gasto->Litros : 0,
-            'gasolina_despues_carga' => $gasto ? $gasto->Gasolina_despues_carga : 0,
-        ];
-    })->values()->toArray();
-
-    // 4. Calcular KMR para cada registro (backend)
-    $lastKm = $ultimo_km_antes; // Iniciar con el último km fuera del rango
-    foreach ($registros as &$r) {
-        if ($r['km_carga'] > 0) {
-            if ($lastKm > 0) {
-                $r['kmr_entre_cargas'] = $r['km_carga'] - $lastKm;
+            $kmCarga = $gasto ? $gasto->Km : 0;
+            $kmr = 0;
+            if ($kmCarga > 0) {
+                if ($lastKm > 0) {
+                    $kmr = $kmCarga - $lastKm;
+                }
+                $lastKm = $kmCarga;
             }
-            $lastKm = $r['km_carga']; // Actualizar para el siguiente
-        }
-    }
 
-    $this->registros = $registros;
-}
+            $registros[] = [
+                'id' => $t->id,
+                'fecha' => $t->Fecha ? $t->Fecha->format('Y-m-d') : $t->created_at->format('Y-m-d'),
+                'user_id' => $t->User_id,
+                'nombre_elemento' => $t->Nombre_elemento,
+                'tipo' => $t->Tipo,
+                'hora_inicio' => $t->Hora_inicio ? $t->Hora_inicio->format('H:i') : '',
+                'km_inicio' => $t->Km_inicio,
+                'rayas_inicio' => $t->Rayas_gasolina_inicio,
+                'placas' => $t->Placas_unidad,
+                'subpunto_id' => $t->subpunto_id,
+                'punto' => $t->Punto ?? '',
+
+                'hora_carga' => $gasto ? $gasto->Hora : '',
+                'gasolina_antes_carga' => $gasto ? $gasto->Gasolina_antes_carga : 0,
+                'km_carga' => $kmCarga,
+                'kmr_entre_cargas' => $kmr,
+                'monto' => $gasto ? $gasto->Monto : 0,
+                'litros' => $gasto ? $gasto->Litros : 0,
+                'gasolina_despues_carga' => $gasto ? $gasto->Gasolina_despues_carga : 0,
+            ];
+        }
+
+        $this->registros = $registros;
+    }
 
     public function addRow()
     {
@@ -172,7 +163,6 @@ class Gasolinas extends Component
             'subpunto_id' => $this->subpunto_id,
             'punto' => $this->zona_seleccionada,
 
-            // Carga (vacía por defecto)
             'hora_carga' => '',
             'gasolina_antes_carga' => 0,
             'km_carga' => 0,
@@ -183,10 +173,40 @@ class Gasolinas extends Component
         ];
     }
 
+    public function openUserModal($rowIndex)
+    {
+        $this->currentRowIndex = $rowIndex;
+        $this->userSearchQuery = $this->registros[$rowIndex]['nombre_elemento'] ?? '';
+        $this->searchUsers();
+        $this->showUserModal = true;
+    }
+
+    public function searchUsers()
+    {
+        if (strlen($this->userSearchQuery) < 2) {
+            $this->usersSuggestion = [];
+            return;
+        }
+
+        $this->usersSuggestion = \App\Models\User::where('estatus', 'Activo')
+            ->where('name', 'like', "%{$this->userSearchQuery}%")
+            ->limit(5)
+            ->select('id', 'name')
+            ->get()
+            ->toArray();
+    }
+
+    public function selectUser($userId, $userName)
+    {
+        $this->registros[$this->currentRowIndex]['nombre_elemento'] = $userName;
+        $this->registros[$this->currentRowIndex]['user_id'] = $userId;
+        $this->showUserModal = false;
+        $this->userSearchQuery = '';
+    }
+
     public function guardarTodos()
     {
         foreach ($this->registros as $dato) {
-            // Guardar turno
             if (empty(trim($dato['nombre_elemento']))) continue;
 
             if (!$dato['user_id']) {
@@ -209,7 +229,6 @@ class Gasolinas extends Component
                 'Punto' => $dato['punto'],
             ])->save();
 
-            // Guardar gasto si hay datos de carga
             $tiene_carga = (
                 $dato['km_carga'] > 0 ||
                 $dato['monto'] > 0 ||
@@ -220,7 +239,7 @@ class Gasolinas extends Component
             if ($tiene_carga) {
                 $gasto = \App\Models\Gastos::firstOrNew(['Turno_id' => $turno->id]);
                 $gasto->Turno_id = $turno->id;
-                $gasto->user_name = $turno->Nombre_elemento;
+                $gasto->user_name = $dato['nombre_elemento'];
 
                 $gasto->fill([
                     'user_id' => $dato['user_id'],

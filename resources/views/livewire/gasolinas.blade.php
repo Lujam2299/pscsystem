@@ -5,16 +5,6 @@
 
     <div class="bg-white rounded-lg shadow p-4 mb-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Punto</label>
-                <select wire:model.live="subpunto_id" class="w-full border rounded px-2 py-1 border-gray-300 focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">-- Todos --</option>
-                    @foreach($puntos as $punto)
-                        <option value="{{ $punto->id }}">{{ $punto->nombre }}</option>
-                    @endforeach
-                </select>
-            </div>
-
             <div x-data="placaAutocomplete()" x-init="init()">
                 <label class="block text-sm font-medium text-gray-700">Placa</label>
                 <input
@@ -64,92 +54,102 @@
     <div class="overflow-x-auto bg-white rounded-lg shadow">
         <table class="min-w-full divide-y divide-gray-200 table-fixed">
             <thead class="bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">
-    <tr>
-        <th colspan="7" class="px-1 py-2 text-center bg-blue-50">Turno</th>
-        <th colspan="4" class="px-1 py-2 text-center bg-green-50">Antes de carga</th>
-        <th colspan="2" class="px-1 py-2 text-center bg-yellow-50">Gasolina</th>
-        <th colspan="1" class="px-1 py-2 text-center bg-purple-50">Después de carga</th>
-    </tr>
-    <tr>
-        <th class="px-1 py-2 w-12">Fecha</th>
-        <th class="px-1 py-2 w-30">Usuario</th>
-        <th class="px-1 py-2 w-16">Tipo</th>
-        <th class="px-1 py-2 w-14">Hora</th>
-        <th class="px-1 py-2 w-20">KM</th>
-        <th class="px-1 py-2 w-10">Rayas</th>
-        <th class="px-1 py-2 w-20">Placa</th>
-
-        <th class="px-1 py-2 w-18">Hora Carga</th>
-        <th class="px-1 py-2 w-12">Rayas (Antes)</th>
-        <th class="px-1 py-2 w-20">KM Carga</th>
-
-        <th class="px-1 py-2 w-16">KMR Entre Cargas</th>
-        <th class="px-1 py-2 w-16">Dinero $</th>
-        <th class="px-1 py-2 w-10">Litros</th>
-        <th class="px-1 py-2 w-12">Rayas (Desp.)</th>
-    </tr>
-</thead>
+                <tr>
+                    <th colspan="7" class="px-1 py-2 text-center bg-blue-50">Turno</th>
+                    <th colspan="4" class="px-1 py-2 text-center bg-green-50">Antes de carga</th>
+                    <th colspan="2" class="px-1 py-2 text-center bg-yellow-50">Gasolina</th>
+                    <th colspan="1" class="px-1 py-2 text-center bg-purple-50">Después de carga</th>
+                </tr>
+                <tr>
+                    <th class="px-1 py-2 w-12">Fecha</th>
+                    <th class="px-1 py-2 w-30">Usuario</th>
+                    <th class="px-1 py-2 w-16">Tipo</th>
+                    <th class="px-1 py-2 w-14">Hora</th>
+                    <th class="px-1 py-2 w-20">KM</th>
+                    <th class="px-1 py-2 w-10">Rayas</th>
+                    <th class="px-1 py-2 w-20">Placa</th>
+                    <th class="px-1 py-2 w-18">Hora Carga</th>
+                    <th class="px-1 py-2 w-12">Rayas (Antes)</th>
+                    <th class="px-1 py-2 w-20">KM Carga</th>
+                    <th class="px-1 py-2 w-16">KMR Entre Cargas</th>
+                    <th class="px-1 py-2 w-16">Dinero $</th>
+                    <th class="px-1 py-2 w-10">Litros</th>
+                    <th class="px-1 py-2 w-12">Rayas (Desp.)</th>
+                </tr>
+            </thead>
             <tbody class="bg-white divide-y divide-gray-200 text-sm">
                 @foreach($registros as $i => $r)
-                    <tr class="hover:bg-gray-50">
+                    <tr class="hover:bg-gray-50" wire:key="row-{{ $i }}">
                         <!-- Turnos -->
                         <td class="px-1 py-1.5">
                             <input type="date" wire:model="registros.{{ $i }}.fecha"
-                                   class="w-4/5 min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                                   {{ $r['id'] ? 'readonly' : '' }}>
+                                   class="w-4/5 min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         </td>
                         <td class="px-1 py-1.5">
-                            @if($r['id'])
-                                <span class="block truncate text-xs">{{ $r['nombre_elemento'] }}</span>
-                            @else
-                                <div x-data="userAutocomplete({{ $i }}, '{{ $r['nombre_elemento'] ?? '' }}')" x-init="init()">
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    wire:model="registros.{{ $i }}.nombre_elemento"
+
+                                    class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                                    placeholder="Buscar usuario..."
+                                    wire:click="openUserModal({{ $i }})"
+                                />
+                            </div>
+
+                            <!-- Modal -->
+                            @if($showUserModal && $currentRowIndex === $i)
+                                <div class="absolute z-50 bg-white border rounded shadow-lg w-40 mt-1">
                                     <input
                                         type="text"
-                                        x-model="term"
-                                        @input="debouncedFetchSuggestions"
-                                        @keydown.arrow-down.prevent="highlightNext()"
-                                        @keydown.arrow-up.prevent="highlightPrev()"
-                                        @keydown.enter.prevent="selectHighlighted()"
-                                        class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                        wire:model.live="userSearchQuery"
+                                        wire:keydown.escape="$set('showUserModal', false)"
+                                        class="w-full px-2 py-1 text-xs border-b border-gray-200 focus:outline-none"
                                         placeholder="Buscar..."
                                     />
-                                    <ul x-show="isOpen" class="absolute bg-white border rounded shadow mt-1 z-10 max-h-40 overflow-y-auto w-40">
-                                        <template x-for="(u, index) in suggestions" :key="index">
+                                    <ul class="max-h-40 overflow-y-auto">
+                                        @foreach($usersSuggestion as $u)
                                             <li
-                                                x-text="u.name"
-                                                class="px-2 py-1.5 hover:bg-gray-100 cursor-pointer text-gray-700 text-xs"
-                                                :class="{ 'bg-blue-100': index === highlightedIndex }"
-                                                @click="selectSuggestion(u)"
-                                            ></li>
-                                        </template>
+                                                class="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer"
+                                                wire:click="selectUser({{ $u['id'] }}, '{{ $u['name'] }}')"
+                                            >
+                                                {{ $u['name'] }}
+                                            </li>
+                                        @endforeach
+                                        @if(empty($usersSuggestion))
+                                            <li class="px-2 py-1.5 text-xs text-gray-500">No hay coincidencias</li>
+                                        @endif
                                     </ul>
+                                    <div class="p-1 text-right">
+                                        <button
+                                            wire:click="$set('showUserModal', false)"
+                                            class="text-xs text-red-500 hover:text-red-700"
+                                        >
+                                            Cerrar
+                                        </button>
+                                    </div>
                                 </div>
                             @endif
                         </td>
                         <td class="px-1 py-1.5">
                             <input type="text" wire:model="registros.{{ $i }}.tipo"
-                                   class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                                   {{ $r['id'] ? 'readonly' : '' }}>
+                                   class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         </td>
                         <td class="px-1 py-1.5">
                             <input type="time" wire:model="registros.{{ $i }}.hora_inicio"
-                                   class="w-17 min-h-[32px] px-1 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                                   {{ $r['id'] ? 'readonly' : '' }}>
+                                   class="w-17 min-h-[32px] px-1 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         </td>
                         <td class="px-1 py-1.5">
                             <input type="number" step="1" wire:model="registros.{{ $i }}.km_inicio"
-                                   class="w-full min-h-[32px] px-0.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                                   {{ $r['id'] ? 'readonly' : '' }}>
+                                   class="w-full min-h-[32px] px-0.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         </td>
                         <td class="px-1 py-1.5">
                             <input type="number" step="0.5" wire:model="registros.{{ $i }}.rayas_inicio"
-                                   class="w-16 min-h-[32px] px-0.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                                   {{ $r['id'] ? 'readonly' : '' }}>
+                                   class="w-16 min-h-[32px] px-0.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         </td>
                         <td class="px-1 py-1.5">
                             <input type="text" wire:model="registros.{{ $i }}.placas"
-                                   class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                                   {{ $r['id'] ? 'readonly' : '' }}>
+                                   class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         </td>
 
                         <!-- Carga -->
@@ -166,7 +166,7 @@
                                    class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         </td>
                         <td class="px-1 py-1.5">
-<span class="block text-xs truncate">{{ number_format($r['kmr_entre_cargas']) }}</span>
+                            <span class="block text-xs truncate">{{ number_format($r['kmr_entre_cargas']) }}</span>
                         </td>
                         <td class="px-1 py-1.5">
                             <input type="number" step="0.01" wire:model="registros.{{ $i }}.monto"
@@ -210,33 +210,33 @@
     </div>
 
     <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-        <div class="bg-white p-3 rounded border">
-            <span class="text-gray-600">Dif. KM</span><br>
-            <span class="font-bold text-lg">{{ number_format($total_km, 0) }} km</span>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div class="bg-white p-3 rounded border">
+                <span class="text-gray-600">Dif. KM</span><br>
+                <span class="font-bold text-lg">{{ number_format($total_km, 0) }} km</span>
+            </div>
+            <div class="bg-white p-3 rounded border">
+                <span class="text-gray-6">Gasto Total</span><br>
+                <span class="font-bold text-lg">${{ number_format($total_dinero, 2) }}</span>
+            </div>
+            <div class="bg-white p-3 rounded border">
+                <span class="text-gray-600">Litros</span><br>
+                <span class="font-bold text-lg">{{ number_format($total_litros, 2) }} L</span>
+            </div>
         </div>
-        <div class="bg-white p-3 rounded border">
-            <span class="text-gray-6">Gasto Total</span><br>
-            <span class="font-bold text-lg">${{ number_format($total_dinero, 2) }}</span>
-        </div>
-        <div class="bg-white p-3 rounded border">
-            <span class="text-gray-600">Litros</span><br>
-            <span class="font-bold text-lg">{{ number_format($total_litros, 2) }} L</span>
+        <div class="mt-3 pt-3 border-t border-gray-200">
+            <div class="flex justify-between items-center">
+                <span class="text-blue-800 font-semibold">Rendimiento:</span>
+                <span class="text-yellow-600 font-bold text-xl">
+                    @if($total_litros > 0)
+                        {{ number_format($rendimiento, 2) }} km/L
+                    @else
+                        N/A
+                    @endif
+                </span>
+            </div>
         </div>
     </div>
-    <div class="mt-3 pt-3 border-t border-gray-200">
-        <div class="flex justify-between items-center">
-            <span class="text-blue-800 font-semibold">Rendimiento:</span>
-            <span class="text-yellow-600 font-bold text-xl">
-                @if($total_litros > 0)
-                    {{ number_format($rendimiento, 2) }} km/L
-                @else
-                    N/A
-                @endif
-            </span>
-        </div>
-    </div>
-</div>
 </div>
 
 <script>
@@ -276,7 +276,7 @@ function placaAutocomplete() {
                 this.isOpen = this.suggestions.length > 0;
                 this.highlightedIndex = -1;
             } catch (error) {
-                console.error("Error fetching suggestions:", error);
+                console.error("Error:", error);
             }
         },
 
@@ -300,115 +300,6 @@ function placaAutocomplete() {
             this.isOpen = false;
             this.highlightedIndex = -1;
             @this.set('placa', placa);
-        }
-    };
-}
-
-function userAutocomplete(rowIndex, initialValue) {
-    return {
-        term: initialValue || '',
-        suggestions: [],
-        isOpen: false,
-        highlightedIndex: -1,
-        debounceTimer: null,
-
-        init() {
-            $watch('term', value => {
-                @this.set(`registros.${rowIndex}.nombre_elemento`, value);
-            });
-        },
-
-        debouncedFetchSuggestions() {
-            clearTimeout(this.debounceTimer);
-            this.debounceTimer = setTimeout(() => {
-                this.fetchSuggestions();
-            }, 300);
-        },
-
-        async fetchSuggestions() {
-            if (this.term.length < 2) {
-                this.suggestions = [];
-                this.isOpen = false;
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/users?q=${encodeURIComponent(this.term)}`);
-                const data = await response.json();
-                this.suggestions = data.users || [];
-                this.isOpen = this.suggestions.length > 0;
-                this.highlightedIndex = -1;
-            } catch (error) {
-                console.error("Error fetching user suggestions:", error);
-            }
-        },
-
-        highlightNext() {
-            if (this.highlightedIndex < this.suggestions.length - 1) {
-                this.highlightedIndex++;
-            }
-        },
-        highlightPrev() {
-            if (this.highlightedIndex > 0) {
-                this.highlightedIndex--;
-            }
-        },
-        selectHighlighted() {
-            if (this.highlightedIndex >= 0 && this.suggestions[this.highlightedIndex]) {
-                this.selectSuggestion(this.suggestions[this.highlightedIndex]);
-            }
-        },
-        selectSuggestion(user) {
-            this.term = user.name;
-            this.isOpen = false;
-            this.highlightedIndex = -1;
-            @this.set(`registros.${rowIndex}.nombre_elemento`, user.name);
-            @this.set(`registros.${rowIndex}.user_id`, user.id);
-        }
-    };
-}
-function kmrCalculator() {
-    return {
-        kmrResult: 0,
-
-        calculateKmr(currentIndex, registros) {
-            const current = registros[currentIndex];
-
-            // Validar km_carga
-            if (!current.km_carga || isNaN(parseFloat(current.km_carga)) || parseFloat(current.km_carga) <= 0) {
-                this.kmrResult = 0;
-                return;
-            }
-
-            const currentKm = parseFloat(current.km_carga);
-
-            // Verificar si es el primer registro con km_carga > 0 en la lista
-            let isFirstValidKm = true;
-            for (let i = 0; i < currentIndex; i++) {
-                const r = registros[i];
-                if (r.km_carga && !isNaN(parseFloat(r.km_carga)) && parseFloat(r.km_carga) > 0) {
-                    isFirstValidKm = false;
-                    break;
-                }
-            }
-
-            if (isFirstValidKm) {
-                this.kmrResult = 0;
-                return;
-            }
-
-            // Buscar el registro anterior con km_carga > 0 (dentro de la lista)
-            let previousKm = 0;
-            for (let i = currentIndex - 1; i >= 0; i--) {
-                const prev = registros[i];
-                if (prev.km_carga && !isNaN(parseFloat(prev.km_carga)) && parseFloat(prev.km_carga) > 0) {
-                    previousKm = parseFloat(prev.km_carga);
-                    break;
-                }
-            }
-
-            const kmr = currentKm - previousKm;
-            this.kmrResult = kmr > 0 ? Math.round(kmr * 100) / 100 : 0;
         }
     };
 }
