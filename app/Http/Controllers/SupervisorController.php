@@ -309,10 +309,10 @@ class SupervisorController extends Controller
 
         // Actualizar status según permisos
         if(Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' ||
-           Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' ||
-           Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' ||
-           Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' ||
-           Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS'){
+            Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' ||
+            Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' ||
+            Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' ||
+            Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS'){
             $solicitud->status = 'Aceptada';
             $solicitud->observaciones = 'Solicitud Aceptada.';
         }else{
@@ -325,10 +325,10 @@ class SupervisorController extends Controller
         // Actualizar el usuario si tiene permisos
         $user = User::where('sol_alta_id', $id)->first();
         if(Auth()->user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' ||
-           Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' ||
-           Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' ||
-           Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' ||
-           Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS'){
+            Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' ||
+            Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' ||
+            Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' ||
+            Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS'){
             $user->name = $solicitud->nombre . " " . $solicitud->apellido_paterno . " " . $solicitud->apellido_materno;
             $user->email = $solicitud->email;
             $user->punto = $solicitud->punto;

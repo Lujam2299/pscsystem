@@ -118,7 +118,11 @@
 
                                 <div class="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
                                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Empresa</p>
-                                    <p class="text-gray-900 dark:text-white">{{ $solicitud?->empresa }}</p>
+                                    @if($solicitud?->empresa)
+                                        <p class="text-gray-900 dark:text-white">{{ $solicitud?->empresa }}</p>
+                                    @else
+                                        <p class="text-gray-900 dark:text-white">{$user?->empresa}</p>
+                                    @endif
                                 </div>
 
                                 <div class="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">

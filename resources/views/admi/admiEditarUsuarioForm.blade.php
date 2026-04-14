@@ -159,18 +159,18 @@
                     </div>
 
                     <div class="form-group mb-6" id="departamento_group" style="{{ $solicitud->tipo_empleado !== 'oficina' ? 'display:none;' : '' }}">
-    <label for="departamento" class="block text-sm font-semibold text-gray-600">Departamento</label>
-    <select id="departamento" name="departamento" class="w-full px-4 py-2 border border-gray-300 rounded-md mt-2">
-        <option value="" disabled selected>Selecciona una opción</option>
-        <option value="Recursos Humanos" {{ old('departamento', $solicitud->departamento) === 'Recursos Humanos' ? 'selected' : '' }}>Recursos Humanos</option>
-        <option value="Nóminas" {{ old('departamento', $solicitud->departamento) === 'Nóminas' ? 'selected' : '' }}>Nóminas</option>
-        <option value="Jurídico" {{ old('departamento', $solicitud->departamento) === 'Jurídico' ? 'selected' : '' }}>Jurídico</option>
-        <option value="IMSS" {{ old('departamento', $solicitud->departamento) === 'IMSS' ? 'selected' : '' }}>IMSS</option>
-        <option value="Monitoreo" {{ old('departamento', $solicitud->departamento) === 'Monitoreo' ? 'selected' : '' }}>Monitoreo</option>
-        <option value="Custodios" {{ old('departamento', $solicitud->departamento) === 'Custodios' ? 'selected' : '' }}>Custodios</option>
-        <option value="Compras" {{ old('departamento', $solicitud->departamento) === 'Compras' ? 'selected' : '' }}>Compras</option>
-    </select>
-</div>
+                        <label for="departamento" class="block text-sm font-semibold text-gray-600">Departamento</label>
+                        <select id="departamento" name="departamento" class="w-full px-4 py-2 border border-gray-300 rounded-md mt-2">
+                            <option value="" disabled selected>Selecciona una opción</option>
+                            <option value="Recursos Humanos" {{ old('departamento', $solicitud->departamento) === 'Recursos Humanos' ? 'selected' : '' }}>Recursos Humanos</option>
+                            <option value="Nóminas" {{ old('departamento', $solicitud->departamento) === 'Nóminas' ? 'selected' : '' }}>Nóminas</option>
+                            <option value="Jurídico" {{ old('departamento', $solicitud->departamento) === 'Jurídico' ? 'selected' : '' }}>Jurídico</option>
+                            <option value="IMSS" {{ old('departamento', $solicitud->departamento) === 'IMSS' ? 'selected' : '' }}>IMSS</option>
+                            <option value="Monitoreo" {{ old('departamento', $solicitud->departamento) === 'Monitoreo' ? 'selected' : '' }}>Monitoreo</option>
+                            <option value="Custodios" {{ old('departamento', $solicitud->departamento) === 'Custodios' ? 'selected' : '' }}>Custodios</option>
+                            <option value="Compras" {{ old('departamento', $solicitud->departamento) === 'Compras' ? 'selected' : '' }}>Compras</option>
+                        </select>
+                    </div>
 
                     <div class="form-group mb-6">
                         <label for="rol" class="block text-sm font-semibold text-gray-600">Rol/Puesto</label>
