@@ -23,6 +23,9 @@ class AsistenciasTabla extends Component
     protected $puntosAsignadosMap = [];
     public $tipoFiltro = '';
     public $usuariosConAlerta = [];
+    public $showModal = false;
+    public $detalleNomina = null;
+    public $userIdModal = null;
 
     private CalculoNominaService $calculoService;
 
@@ -32,6 +35,40 @@ class AsistenciasTabla extends Component
     {
         $this->calculoService = app(CalculoNominaService::class);
     }
+    public function mostrarDetalleNomina(int $userId)
+{
+    $user = User::find($userId);
+    if (!$user) {
+        session()->flash('error', 'Usuario no encontrado');
+        return;
+    }
+
+    $datosAsistencias = $this->obtenerDatos();
+    $resultado = $this->calculoService->calcularPercepciones(
+        $user,
+        $this->fecha_inicio,
+        $this->fecha_fin,
+        [
+            'vacacionesPorUsuario' => $datosAsistencias['vacacionesPorUsuario'],
+            'asistenciasIndexadas' => $datosAsistencias['asistenciasIndexadas'],
+            'horasExtrasPorUsuario' => $datosAsistencias['horasExtrasPorUsuario'],
+            'permisosPorUsuario' => $datosAsistencias['permisosPorUsuario'],
+            'faltasJustificadas' => $datosAsistencias['faltasJustificadas'],
+            'retardosPorUsuario' => $datosAsistencias['retardosPorUsuario'],
+        ]
+    );
+
+    $this->detalleNomina = $resultado;
+    $this->userIdModal = $userId;
+    $this->showModal = true;
+}
+
+public function cerrarModal()
+{
+    $this->showModal = false;
+    $this->detalleNomina = null;
+    $this->userIdModal = null;
+}
 
     private function calcularAlertas($usuarios)
     {
@@ -59,31 +96,34 @@ class AsistenciasTabla extends Component
     }
 
     public function render()
-    {
-        $datos = $this->obtenerDatos();
+{
+    $datos = $this->obtenerDatos();
 
-        $subpuntosMap = $this->getSubpuntosPorPunto();
-        $rol = Auth::user()?->rol;
+    $subpuntosMap = $this->getSubpuntosPorPunto();
+    $rol = Auth::user()?->rol;
 
-        if ($rol === 'AUXILIAR OPERACIONES') {
-            $subpuntosMap = [
-                'MONTERREY' => $subpuntosMap['MONTERREY'] ?? []
-            ];
-        }
-
-        return view('livewire.asistencias-tabla', [
-            'usuarios' => $datos['usuarios'],
-            'fechas' => $datos['fechas'],
-            'vacacionesPorUsuario' => $datos['vacacionesPorUsuario'],
-            'asistenciasIndexadas' => $datos['asistenciasIndexadas'],
-            'horasExtrasPorUsuario' => $datos['horasExtrasPorUsuario'],
-            'permisosPorUsuario' => $datos['permisosPorUsuario'],
-            'faltasJustificadas' => $datos['faltasJustificadas'],
-            'retardosPorUsuario' => $datos['retardosPorUsuario'],
-            'subpuntosMap' => $subpuntosMap,
-            'nominaPorUsuario' => $datos['nominaPorUsuario'], // 👈 Nuevo
-        ]);
+    if ($rol === 'AUXILIAR OPERACIONES') {
+        $subpuntosMap = [
+            'MONTERREY' => $subpuntosMap['MONTERREY'] ?? []
+        ];
     }
+
+    return view('livewire.asistencias-tabla', [
+        'usuarios' => $datos['usuarios'],
+        'fechas' => $datos['fechas'],
+        'vacacionesPorUsuario' => $datos['vacacionesPorUsuario'],
+        'asistenciasIndexadas' => $datos['asistenciasIndexadas'],
+        'horasExtrasPorUsuario' => $datos['horasExtrasPorUsuario'],
+        'permisosPorUsuario' => $datos['permisosPorUsuario'],
+        'faltasJustificadas' => $datos['faltasJustificadas'],
+        'retardosPorUsuario' => $datos['retardosPorUsuario'],
+        'subpuntosMap' => $subpuntosMap,
+        'nominaPorUsuario' => $datos['nominaPorUsuario'],
+        'showModal' => $this->showModal,
+        'detalleNomina' => $this->detalleNomina,
+        'userIdModal' => $this->userIdModal,
+    ]);
+}
 
     public function updated($property)
     {
