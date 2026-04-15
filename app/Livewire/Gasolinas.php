@@ -18,15 +18,13 @@ class Gasolinas extends Component
 
     public $registros = [];
 
-    // Variables para el modal de usuarios
-    public $showUserModal = false;
-    public $currentRowIndex = null;
-    public $userSearchQuery = '';
-    public $usersSuggestion = [];
+    // Array temporal para almacenar sugerencias
+    public $tempSuggestions = [];
 
     public function mount()
     {
         $this->registros = [];
+        $this->tempSuggestions = [];
         $this->fecha_hasta = now()->format('Y-m-d');
         $this->fecha_desde = now()->subDays(10)->format('Y-m-d');
     }
@@ -148,6 +146,28 @@ class Gasolinas extends Component
         $this->registros = $registros;
     }
 
+    public function updatedRegistrosNombreElemento($value, $fullPath)
+    {
+        preg_match('/registros\.(\d+)\.nombre_elemento/', $fullPath, $matches);
+        if (!isset($matches[1])) return;
+
+        $index = (int)$matches[1];
+
+        if (strlen($value) < 2) {
+            $this->tempSuggestions = [];
+            return;
+        }
+
+        $users = \App\Models\User::where('estatus', 'Activo')
+            ->where('name', 'like', "%{$value}%")
+            ->limit(5)
+            ->select('id', 'name')
+            ->get()
+            ->toArray();
+
+        $this->tempSuggestions = $users;
+    }
+
     public function addRow()
     {
         $this->registros[] = [
@@ -173,35 +193,25 @@ class Gasolinas extends Component
         ];
     }
 
-    public function openUserModal($rowIndex)
+    public function selectUser($userId, $userName, $rowIndex)
     {
-        $this->currentRowIndex = $rowIndex;
-        $this->userSearchQuery = $this->registros[$rowIndex]['nombre_elemento'] ?? '';
-        $this->searchUsers();
-        $this->showUserModal = true;
+        $this->registros[$rowIndex]['nombre_elemento'] = $userName;
+        $this->registros[$rowIndex]['user_id'] = $userId;
+        $this->tempSuggestions = []; // Limpiar sugerencias
     }
 
-    public function searchUsers()
+    public function selectUserFromInput($rowIndex)
     {
-        if (strlen($this->userSearchQuery) < 2) {
-            $this->usersSuggestion = [];
-            return;
+        $nombre = $this->registros[$rowIndex]['nombre_elemento'];
+        if (empty($nombre)) return;
+
+        $user = \App\Models\User::where('estatus', 'Activo')
+            ->where('name', $nombre)
+            ->first();
+
+        if ($user) {
+            $this->registros[$rowIndex]['user_id'] = $user->id;
         }
-
-        $this->usersSuggestion = \App\Models\User::where('estatus', 'Activo')
-            ->where('name', 'like', "%{$this->userSearchQuery}%")
-            ->limit(5)
-            ->select('id', 'name')
-            ->get()
-            ->toArray();
-    }
-
-    public function selectUser($userId, $userName)
-    {
-        $this->registros[$this->currentRowIndex]['nombre_elemento'] = $userName;
-        $this->registros[$this->currentRowIndex]['user_id'] = $userId;
-        $this->showUserModal = false;
-        $this->userSearchQuery = '';
     }
 
     public function guardarTodos()

@@ -86,51 +86,30 @@
                                    class="w-4/5 min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         </td>
                         <td class="px-1 py-1.5">
-                            <div class="relative">
-                                <input
-                                    type="text"
-                                    wire:model="registros.{{ $i }}.nombre_elemento"
+    <div class="relative">
+        <input
+            type="text"
+            wire:model.live.debounce.300ms="registros.{{ $i }}.nombre_elemento"
+            wire:keydown.enter="selectUserFromInput({{ $i }})"
+            class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Buscar usuario..."
+        />
 
-                                    class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
-                                    placeholder="Buscar usuario..."
-                                    wire:click="openUserModal({{ $i }})"
-                                />
-                            </div>
-
-                            <!-- Modal -->
-                            @if($showUserModal && $currentRowIndex === $i)
-                                <div class="absolute z-50 bg-white border rounded shadow-lg w-40 mt-1">
-                                    <input
-                                        type="text"
-                                        wire:model.live="userSearchQuery"
-                                        wire:keydown.escape="$set('showUserModal', false)"
-                                        class="w-full px-2 py-1 text-xs border-b border-gray-200 focus:outline-none"
-                                        placeholder="Buscar..."
-                                    />
-                                    <ul class="max-h-40 overflow-y-auto">
-                                        @foreach($usersSuggestion as $u)
-                                            <li
-                                                class="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer"
-                                                wire:click="selectUser({{ $u['id'] }}, '{{ $u['name'] }}')"
-                                            >
-                                                {{ $u['name'] }}
-                                            </li>
-                                        @endforeach
-                                        @if(empty($usersSuggestion))
-                                            <li class="px-2 py-1.5 text-xs text-gray-500">No hay coincidencias</li>
-                                        @endif
-                                    </ul>
-                                    <div class="p-1 text-right">
-                                        <button
-                                            wire:click="$set('showUserModal', false)"
-                                            class="text-xs text-red-500 hover:text-red-700"
-                                        >
-                                            Cerrar
-                                        </button>
-                                    </div>
-                                </div>
-                            @endif
-                        </td>
+        <!-- Dropdown de sugerencias -->
+        @if(!empty($tempSuggestions))
+            <div class="absolute z-50 bg-white border rounded shadow-lg w-full mt-1 max-h-40 overflow-y-auto">
+                @foreach($tempSuggestions as $u)
+                    <div
+                        class="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer"
+                        wire:click="selectUser({{ $u['id'] }}, '{{ $u['name'] }}', {{ $i }})"
+                    >
+                        {{ $u['name'] }}
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </div>
+</td>
                         <td class="px-1 py-1.5">
                             <input type="text" wire:model="registros.{{ $i }}.tipo"
                                    class="w-full min-h-[32px] px-1.5 py-1 text-xs border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
