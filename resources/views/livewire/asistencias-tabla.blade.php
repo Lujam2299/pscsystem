@@ -163,6 +163,14 @@
                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">VACACI</th>
                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">Punto</th>
 
+                        <!-- Nuevas columnas de nómina -->
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">Sueldo Diario</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">Días Pagados</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">Bono Asist.</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">Bono Punt.</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">Hrs Extra</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">Subtotal</th>
+
                         @foreach($fechas as $fecha)
                             @php
                                 $diaEspanol = [
@@ -182,7 +190,7 @@
                         @endforeach
                     </tr>
                     <tr class="bg-gray-100 dark:bg-gray-700">
-                        @for($i = 0; $i < 15; $i++)
+                        @for($i = 0; $i < 21; $i++)
                             <th class="border-r border-gray-300 dark:border-gray-600"></th>
                         @endfor
                         @foreach($fechas as $fecha)
@@ -273,6 +281,9 @@
                             $sueldoBase = $this->normalize($user->rol) === 'guardia' ? 5500 : 5500;
                             $totalHorasExtra = array_sum($horasExtrasPorUsuario[$user->id] ?? []);
                             $pagoHorasExtra = $totalHorasExtra > 0 ? (940 / 24) * $totalHorasExtra : 0;
+
+                            // Datos de nómina para este usuario
+                            $nomina = $nominaPorUsuario[$user->id] ?? null;
                         @endphp
                         <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50
                         @if(in_array($user->id, $usuariosConAlerta))
@@ -336,6 +347,34 @@
                                 }
                             @endphp
                             <td class="px-3 py-2 text-sm border-r border-gray-300 dark:border-gray-600">{{ $puntoMostrar }}</td>
+
+                            <!-- Nuevas columnas de nómina -->
+                            <td class="px-3 py-2 text-sm border-r border-gray-300 dark:border-gray-600">
+                                ${{ number_format($nomina['sueldo_diario'] ?? 0, 2) }}
+                            </td>
+                            <td class="px-3 py-2 text-sm border-r border-gray-300 dark:border-gray-600">
+                                {{ $nomina['dias_pagados']['total'] ?? 0 }}
+                            </td>
+                            <td class="px-3 py-2 text-sm border-r border-gray-300 dark:border-gray-600">
+                                @if(($nomina['bonos']['asistencia']['aplica'] ?? false))
+                                    +${{ number_format($nomina['bonos']['asistencia']['monto'] ?? 0, 2) }}
+                                @else
+                                    —
+                                @endif
+                            </td>
+                            <td class="px-3 py-2 text-sm border-r border-gray-300 dark:border-gray-600">
+                                @if(($nomina['bonos']['puntualidad']['aplica'] ?? false))
+                                    +${{ number_format($nomina['bonos']['puntualidad']['monto'] ?? 0, 2) }}
+                                @else
+                                    —
+                                @endif
+                            </td>
+                            <td class="px-3 py-2 text-sm border-r border-gray-300 dark:border-gray-600">
+                                ${{ number_format($nomina['horas_extra']['monto'] ?? 0, 2) }}
+                            </td>
+                            <td class="px-3 py-2 text-sm font-bold bg-green-50 dark:bg-green-900/20 border-r border-gray-300 dark:border-gray-600">
+                                ${{ number_format($nomina['subtotal_percepciones'] ?? 0, 2) }}
+                            </td>
 
                             @foreach($fechas as $f)
                                 @php

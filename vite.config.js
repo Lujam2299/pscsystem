@@ -40,10 +40,10 @@ export default defineConfig({
         host: '0.0.0.0',
         port: 5173,
         hmr: {
-            host: '192.168.1.18',
+            host: 'localhost',
         },
         cors: {
-            origin: ['http://192.168.1.18:8001'],
+            origin: ['http://localhost:8000'],
             credentials: true,
         },
     },

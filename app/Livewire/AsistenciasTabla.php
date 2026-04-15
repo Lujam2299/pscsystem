@@ -10,6 +10,7 @@ use App\Models\Asistencia;
 use App\Models\TiemposExtra;
 use App\Models\FaltaJustificada;
 use App\Models\Retardo;
+use App\Services\CalculoNominaService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -23,7 +24,14 @@ class AsistenciasTabla extends Component
     public $tipoFiltro = '';
     public $usuariosConAlerta = [];
 
+    private CalculoNominaService $calculoService;
+
     protected $queryString = ['punto', 'fecha_inicio', 'fecha_fin'];
+
+    public function __construct()
+    {
+        $this->calculoService = app(CalculoNominaService::class);
+    }
 
     private function calcularAlertas($usuarios)
     {
@@ -71,8 +79,9 @@ class AsistenciasTabla extends Component
             'horasExtrasPorUsuario' => $datos['horasExtrasPorUsuario'],
             'permisosPorUsuario' => $datos['permisosPorUsuario'],
             'faltasJustificadas' => $datos['faltasJustificadas'],
-            'retardosPorUsuario' => $datos['retardosPorUsuario'], // 👈 Nuevo
+            'retardosPorUsuario' => $datos['retardosPorUsuario'],
             'subpuntosMap' => $subpuntosMap,
+            'nominaPorUsuario' => $datos['nominaPorUsuario'], // 👈 Nuevo
         ]);
     }
 
@@ -93,7 +102,8 @@ class AsistenciasTabla extends Component
                 'horasExtrasPorUsuario' => [],
                 'permisosPorUsuario' => [],
                 'faltasJustificadas' => [],
-                'retardosPorUsuario' => [], // 👈 Nuevo
+                'retardosPorUsuario' => [],
+                'nominaPorUsuario' => [], // 👈 Nuevo
             ];
         }
 
@@ -173,7 +183,8 @@ class AsistenciasTabla extends Component
                             $q->whereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%']);
                         }
                         if ($nombre === 'MARY KAY CORPORATIVO') {
-                            $q->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
+                            $q->orWhereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%'])
+                              ->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
                               ->orWhereRaw('LOWER(punto) LIKE ?', ['%mar kay corporativo%']);
                         }
                         if ($codigo && $puntoGeneral === 'MONTERREY') {
@@ -329,6 +340,42 @@ class AsistenciasTabla extends Component
             $retardosPorUsuario[$userId][$fecha] = $minutos;
         }
 
+        // Calcular nómina para cada usuario 👇 Nuevo
+        $nominaPorUsuario = [];
+        foreach ($usuarios as $user) {
+            try {
+                $resultado = $this->calculoService->calcularPercepciones(
+                    $user,
+                    $this->fecha_inicio,
+                    $this->fecha_fin,
+                    [
+                        'vacacionesPorUsuario' => $vacacionesPorUsuario,
+                        'asistenciasIndexadas' => $asistenciasIndexadas,
+                        'horasExtrasPorUsuario' => $horasExtrasPorUsuario,
+                        'permisosPorUsuario' => $permisosPorUsuario,
+                        'faltasJustificadas' => $faltasJustificadas,
+                        'retardosPorUsuario' => $retardosPorUsuario,
+                    ]
+                );
+
+                if ($resultado['success']) {
+                    $nominaPorUsuario[$user->id] = $resultado;
+                } else {
+                    $nominaPorUsuario[$user->id] = [
+                        'success' => false,
+                        'error' => $resultado['error'] ?? 'Error desconocido',
+                        'subtotal_percepciones' => 0,
+                    ];
+                }
+            } catch (\Exception $e) {
+                $nominaPorUsuario[$user->id] = [
+                    'success' => false,
+                    'error' => 'Excepción: ' . $e->getMessage(),
+                    'subtotal_percepciones' => 0,
+                ];
+            }
+        }
+
         return [
             'usuarios' => $usuarios,
             'fechas' => $fechas,
@@ -337,7 +384,8 @@ class AsistenciasTabla extends Component
             'horasExtrasPorUsuario' => $horasExtrasPorUsuario,
             'permisosPorUsuario' => $permisosPorUsuario,
             'faltasJustificadas' => $faltasJustificadas,
-            'retardosPorUsuario' => $retardosPorUsuario, // 👈 Nuevo
+            'retardosPorUsuario' => $retardosPorUsuario,
+            'nominaPorUsuario' => $nominaPorUsuario, // 👈 Nuevo
         ];
     }
 
