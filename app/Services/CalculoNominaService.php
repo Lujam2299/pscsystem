@@ -331,33 +331,94 @@ protected function calcularBonos(
 }
 
     /**
-     * Calcula el pago de horas extra
-     */
-    protected function calcularHorasExtra(
-        int $userId,
-        string $fechaInicio,
-        string $fechaFin,
-        array $datosAsistencias,
-        float $sueldoDiario
-    ): array {
-        $horasExtrasPorUsuario = $datosAsistencias['horasExtrasPorUsuario'][$userId] ?? [];
-        $totalHoras = array_sum($horasExtrasPorUsuario);
+ * Calcula el pago de horas extra
+ */
+protected function calcularHorasExtra(
+    int $userId,
+    string $fechaInicio,
+    string $fechaFin,
+    array $datosAsistencias,
+    float $sueldoDiario
+): array {
+    $horasExtrasPorUsuario = $datosAsistencias['horasExtrasPorUsuario'][$userId] ?? [];
+    $totalHoras = array_sum($horasExtrasPorUsuario);
 
-        // Valor hora normal = sueldo diario / 8 horas (jornada estándar)
-        $valorHoraNormal = $sueldoDiario / 8;
+    // Obtener zona del usuario (resolver punto → zona)
+    $zona = $this->resolverZonaUsuario($userId);
 
-        // Hora extra = 2x valor hora normal (ajustar según política de la empresa)
-        $valorHoraExtra = $valorHoraNormal * 2;
-
-        $monto = $totalHoras * $valorHoraExtra;
-
+    if (!$zona) {
+        // Zona no registrada, no aplica pago de horas extra
         return [
             'total_horas' => $totalHoras,
-            'valor_hora' => round($valorHoraExtra, 2),
-            'monto' => round($monto, 2),
+            'valor_hora' => 0,
+            'monto' => 0,
             'desglose_diario' => $horasExtrasPorUsuario,
+            'zona' => null,
+            'costo_12h' => 0,
         ];
     }
+
+    // Buscar costo de 12 horas para esta zona
+    $costoModel = \App\Models\TiempoExtraCosto::where('zona', $zona)->first();
+
+    if (!$costoModel) {
+        // Zona no tiene costo registrado
+        return [
+            'total_horas' => $totalHoras,
+            'valor_hora' => 0,
+            'monto' => 0,
+            'desglose_diario' => $horasExtrasPorUsuario,
+            'zona' => $zona,
+            'costo_12h' => 0,
+        ];
+    }
+
+    $costo12Horas = floatval($costoModel->costo_12_horas);
+
+    // Calcular valor por hora (basado en costo de 12 horas)
+    $valorPorHora = $costo12Horas / 12;
+
+    // Calcular monto total
+    $monto = $totalHoras * $valorPorHora;
+
+    return [
+        'total_horas' => $totalHoras,
+        'valor_hora' => round($valorPorHora, 2),
+        'monto' => round($monto, 2),
+        'desglose_diario' => $horasExtrasPorUsuario,
+        'zona' => $zona,
+        'costo_12h' => $costo12Horas,
+    ];
+}
+
+/**
+ * Resuelve la zona principal (punto) a partir del punto/código del usuario
+ */
+protected function resolverZonaUsuario(int $userId): ?string
+{
+    $user = \App\Models\User::find($userId);
+    if (!$user) {
+        return null;
+    }
+
+    // Si el punto es código numérico, resolver a nombre
+    $puntoNombre = $this->resolverPuntoNombre($user->punto) ?? $user->punto;
+
+    // Buscar en subpuntos para obtener el punto_id (zona)
+    $subpunto = \App\Models\Subpunto::where(function($q) use ($puntoNombre, $user) {
+        $q->where('nombre', $puntoNombre)
+          ->orWhere('codigo', (int)$user->punto);
+    })->first();
+
+    if ($subpunto) {
+        // Obtener el nombre del punto/zona principal
+        $punto = \App\Models\Punto::find($subpunto->punto_id);
+        return $punto?->nombre;
+    }
+
+    // Si no es subpunto, podría ser un punto directo
+    return $puntoNombre;
+}
 
     /**
      * Genera un array de fechas entre inicio y fin
