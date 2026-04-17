@@ -154,7 +154,7 @@ class AsistenciasTabla extends Component
     private function obtenerTodasPermisosSinGoceUsuario(int $userId, string $inicio, string $fin): array
     {
         $permisos = \App\Models\PermisoEspecial::where('user_id', $userId)
-            ->where('con_goce', false)
+            ->where('con_goce', 0) // ✅ Filtrar directamente por 0 (tinyint)
             ->where(function ($q) use ($inicio, $fin) {
                 $q->whereBetween('fecha_inicio', [$inicio, $fin])
                   ->orWhereBetween('fecha_fin', [$inicio, $fin])
@@ -421,7 +421,7 @@ class AsistenciasTabla extends Component
             $horasExtrasPorUsuario[$user->id] = $porDia;
         }
 
-        // Cargar permisos especiales
+        // Cargar permisos especiales ✅ CORREGIDO: convertir con_goce a bool
         $permisosPorUsuario = [];
         $permisos = \App\Models\PermisoEspecial::whereBetween('fecha_inicio', [$this->fecha_inicio, $this->fecha_fin])
             ->orWhereBetween('fecha_fin', [$this->fecha_inicio, $this->fecha_fin])
@@ -436,9 +436,10 @@ class AsistenciasTabla extends Component
             $fin = Carbon::parse($permiso->fecha_fin);
             for ($d = $inicio->copy(); $d->lte($fin); $d->addDay()) {
                 $fecha = $d->format('Y-m-d');
+                // ✅ Corrección crítica: convertir tinyint a booleano explícito
                 $permisosPorUsuario[$permiso->user_id][$fecha] = [
                     'tipo' => $permiso->tipo,
-                    'con_goce' => $permiso->con_goce,
+                    'con_goce' => (int) $permiso->con_goce === 1, // ← Esto era el problema
                 ];
             }
         }

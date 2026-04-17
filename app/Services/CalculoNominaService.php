@@ -61,6 +61,18 @@ class CalculoNominaService
         // Subtotal percepciones
         $subtotal = ($diasPagados['total'] * $sueldoDiario) + $bonos['total'] + $horasExtra['monto'];
 
+        // Calcular ISR
+        $gravable = $subtotal; // En tu caso, el gravable es el subtotal de percepciones
+        $anio = Carbon::parse($fechaInicio)->year;
+        $isr = $this->calcularIsrBruto($gravable, $anio);
+
+        // Si necesitas deducciones personales (ej. dependientes), aquí iría lógica adicional
+        // Por ahora, usamos ISR bruto (como en tu ejemplo de $175.54 para ~$1,710.16)
+
+        // Actualiza el resultado:
+        $result['isr'] = $isr;
+        $result['total_neto'] = round($subtotal - $isr, 2);
+
         return [
             'success' => true,
             'user_id' => $user->id,
@@ -73,6 +85,8 @@ class CalculoNominaService
             'bonos' => $bonos,
             'horas_extra' => $horasExtra,
             'subtotal_percepciones' => round($subtotal, 2),
+            'isr' => $isr,
+            'total_neto' => round($subtotal - $isr, 2),
             'desglose' => [
                 'concepto_base' => round($diasPagados['total'] * $sueldoDiario, 2),
                 'concepto_bonos' => round($bonos['total'], 2),
@@ -87,7 +101,7 @@ class CalculoNominaService
     protected function obtenerSueldoUsuario(User $user): ?object
     {
         // Primero intenta con rol + punto tal cual
-        $sueldo = Sueldo::where('puesto', $user->rol)
+        $sueldo = Sueldo::where('puesto', $user->rol)  // ✅ rol → puesto
             ->where('punto', $user->punto)
             ->first();
 
@@ -99,7 +113,7 @@ class CalculoNominaService
         $puntoNombre = $this->resolverPuntoNombre($user->punto);
 
         if ($puntoNombre) {
-            $sueldo = Sueldo::where('puesto', $user->rol)
+            $sueldo = Sueldo::where('puesto', $user->rol)  // ✅ aún rol
                 ->where('punto', $puntoNombre)
                 ->first();
 
@@ -135,7 +149,10 @@ class CalculoNominaService
     {
         // Caso 1: Si es un código numérico (con o sin ceros adelante)
         if (preg_match('/^\d+$/', $valor)) {
+            // Convertir a int para eliminar ceros adelante, luego formatear como 3 dígitos para comparar con DB
             $codigoInt = (int) $valor;
+
+            // Buscar en Subpunto por código (como int, ya que en DB es int)
             $subpunto = \App\Models\Subpunto::where('codigo', $codigoInt)->first();
             if ($subpunto) {
                 return $subpunto->nombre;
@@ -166,7 +183,7 @@ class CalculoNominaService
         string $fechaFin,
         array $datosAsistencias
     ): array {
-        $fechas = $this::generarFechas($fechaInicio, $fechaFin);
+        $fechas = $this->generarFechas($fechaInicio, $fechaFin);
 
         $asistencias = 0;
         $descansos = 0;
@@ -201,7 +218,8 @@ class CalculoNominaService
             // Permiso especial (prioridad máxima después de incapacidad)
             $permiso = $permisosPorUsuario[$fecha] ?? null;
             if ($permiso) {
-                if ($permiso['con_goce']) {
+                $esConGoce = (int) $permiso['con_goce'] === 1; // ✅ Corrección: tinyint 0/1 → bool
+                if ($esConGoce) {
                     $permisosConGoce++;
                 } else {
                     $permisosSinGoce++;
@@ -293,7 +311,8 @@ class CalculoNominaService
             // Verificar permisos especiales
             $permiso = $permisosPorUsuario[$fecha] ?? null;
             if ($permiso) {
-                if (!$permiso['con_goce']) {
+                $esConGoce = (int) $permiso['con_goce'] === 1; // ✅ Corrección
+                if (!$esConGoce) {
                     $tienePermisoSinGoce = true; // ❗ clave: esto evita bonos
                 }
                 // Si es con goce, no afecta bonos
@@ -318,7 +337,7 @@ class CalculoNominaService
         // Calcular subtotal base
         $subtotalBase = $diasPagados['total'] * $sueldoDiario;
 
-        // Calcular montos de bonos
+        // Calcular montos de bonos (10% del subtotal base cada uno)
         $bonoAsistencia = $aplicaBonoAsistencia ? $subtotalBase * self::BONO_ASISTENCIA : 0;
         $bonoPuntualidad = $aplicaBonoPuntualidad ? $subtotalBase * self::BONO_PUNTUALIDAD : 0;
 
@@ -396,6 +415,26 @@ class CalculoNominaService
     }
 
     /**
+     * 🔥 Calcula ISR bruto (antes de deducciones personales)
+     */
+    protected function calcularIsrBruto(float $gravable, int $anio): float
+    {
+        $tarifa = \App\Models\IsrTarifa::where('anio', $anio)
+            ->where('limite_inferior', '<=', $gravable)
+            ->orderByDesc('limite_inferior')
+            ->first();
+
+        if (!$tarifa) {
+            return 0.0;
+        }
+
+        $excedente = max(0, $gravable - $tarifa->limite_inferior);
+        $isr = $tarifa->cuota_fija + ($excedente * ($tarifa->porcentaje_excedente / 100));
+
+        return round($isr, 2);
+    }
+
+    /**
      * Resuelve la zona principal (punto) a partir del punto/código del usuario
      */
     protected function resolverZonaUsuario(int $userId): ?string
@@ -423,7 +462,7 @@ class CalculoNominaService
     /**
      * Genera un array de fechas entre inicio y fin
      */
-    protected static function generarFechas(string $inicio, string $fin): array
+    protected function generarFechas(string $inicio, string $fin): array
     {
         $fechas = [];
         $current = Carbon::parse($inicio);
