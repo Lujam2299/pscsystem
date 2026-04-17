@@ -443,7 +443,8 @@
     @endif
 
     <!-- Modal de detalle de nómina -->
-    @if($showModal && $detalleNomina)
+<!-- Modal de detalle de nómina -->
+@if($showModal && $detalleNomina)
     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
             <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
@@ -503,14 +504,17 @@
                                         ${{ number_format($detalleNomina['bonos']['puntualidad']['monto'] ?? 0, 2) }}
                                     </td>
                                 </tr>
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">OP</td>
-                                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">999 099</td>
-                                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">Ajuste al neto</td>
-                                    <td class="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
-                                        $0.02
-                                    </td>
-                                </tr>
+                                <!-- Nuevo: Ajuste al neto -->
+                                @if(($detalleNomina['ajuste_al_neto']['monto'] ?? 0) !== 0 && ($detalleNomina['ajuste_al_neto']['tipo'] ?? 'ninguno') === 'percepcion')
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">OP</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">999 099</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">Ajuste al neto</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                                            ${{ number_format($detalleNomina['ajuste_al_neto']['monto'], 2) }}
+                                        </td>
+                                    </tr>
+                                @endif
                                 <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
                                     <td colspan="3" class="px-3 py-3 text-right">Total Percepc. más Otros Pagos $</td>
                                     <td class="px-3 py-3 text-right text-lg">
@@ -523,56 +527,81 @@
                 </div>
 
                 <!-- Columna derecha: Deducciones -->
-                <div class="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
-                    <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2">
-                        <h4 class="font-bold text-gray-800 dark:text-white text-center">Deducciones</h4>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-100 dark:bg-gray-700">
-                                <tr>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Agrup. SAT</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No.</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Concepto</th>
-                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">002</td>
-                                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">045</td>
-                                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">I.S.R. mes</td>
-                                    <td class="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
-                                        ${{ number_format($detalleNomina['isr'] ?? 0, 2) }} <!-- 🔥 Aquí se muestra el ISR calculado -->
-                                    </td>
-                                </tr>
-                                <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
-                                    <td colspan="3" class="px-3 py-3 text-right">Subtotal $</td>
-                                    <td class="px-3 py-3 text-right">
-                                        ${{ number_format($detalleNomina['subtotal_percepciones'], 2) }}
-                                    </td>
-                                </tr>
-                                <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
-                                    <td colspan="3" class="px-3 py-3 text-right">Descuentos $</td>
-                                    <td class="px-3 py-3 text-right">0.00</td>
-                                </tr>
-                                <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
-                                    <td colspan="3" class="px-3 py-3 text-right">Retenciones $</td>
-                                    <td class="px-3 py-3 text-right">${{ number_format($detalleNomina['isr'] ?? 0, 2) }}</td> <!-- 🔥 -->
-                                </tr>
-                                <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
-                                    <td colspan="3" class="px-3 py-3 text-right">Total $</td>
-                                    <td class="px-3 py-3 text-right">${{ number_format($detalleNomina['subtotal_percepciones'] - ($detalleNomina['isr'] ?? 0), 2) }}</td> <!-- 🔥 -->
-                                </tr>
-                                <tr class="bg-blue-50 dark:bg-blue-900/20 font-bold text-blue-800 dark:text-blue-200">
-                                    <td colspan="3" class="px-3 py-3 text-right">Neto del recibo $</td>
-                                    <td class="px-3 py-3 text-right text-xl">
-                                        ${{ number_format($detalleNomina['total_neto'] ?? 0, 2) }} <!-- 🔥 Nuevo campo -->
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <!-- Columna derecha: Deducciones -->
+<div class="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+    <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2">
+        <h4 class="font-bold text-gray-800 dark:text-white text-center">Deducciones</h4>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-100 dark:bg-gray-700">
+                <tr>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Agrup. SAT</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No.</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Concepto</th>
+                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">002</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">045</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">I.S.R. mes</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                        ${{ number_format($detalleNomina['isr'], 2) }}
+                    </td>
+                </tr>
+
+                <!-- Ajuste al neto (si es deducción) -->
+                @if(($detalleNomina['ajuste_al_neto']['monto'] ?? 0) !== 0 && ($detalleNomina['ajuste_al_neto']['tipo'] ?? 'ninguno') === 'deduccion')
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">099</td>
+                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">099</td>
+                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">Ajuste al neto</td>
+                        <td class="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                            -$ {{ number_format($detalleNomina['ajuste_al_neto']['monto'], 2) }}
+                        </td>
+                    </tr>
+                @endif
+
+                <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
+                    <td colspan="3" class="px-3 py-3 text-right">Subtotal $</td>
+                    <td class="px-3 py-3 text-right">
+                        ${{ number_format($detalleNomina['subtotal_percepciones'], 2) }}
+                    </td>
+                </tr>
+                <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
+                    <td colspan="3" class="px-3 py-3 text-right">Descuentos $</td>
+                    <td class="px-3 py-3 text-right">0.00</td>
+                </tr>
+                <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
+                    <td colspan="3" class="px-3 py-3 text-right">Retenciones $</td>
+                    <td class="px-3 py-3 text-right">${{ number_format($detalleNomina['isr'], 2) }}</td>
+                </tr>
+                <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
+                    <td colspan="3" class="px-3 py-3 text-right">Total $</td>
+                    <td class="px-3 py-3 text-right">${{ number_format($detalleNomina['subtotal_percepciones'] - $detalleNomina['isr'], 2) }}</td>
+                </tr>
+                <tr class="bg-blue-50 dark:bg-blue-900/20 font-bold text-blue-800 dark:text-blue-200">
+                    <td colspan="3" class="px-3 py-3 text-right">Neto del recibo $</td>
+                    <td class="px-3 py-3 text-right text-xl">
+                        ${{ number_format($detalleNomina['total_neto'], 2) }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+            </div>
+
+            <!-- Pie de modal -->
+            <div class="p-6 bg-gray-50 dark:bg-gray-700/50">
+                <div class="text-sm text-gray-500 dark:text-gray-400 italic mb-4">
+                    Se puso a mi disposición el archivo XML correspondiente y recibí de la empresa arriba mencionada la cantidad neta a que este documento se refiere estando conforme con las percepciones y deducciones que en él aparecen especificados.
+                </div>
+                <div class="text-center text-xs text-gray-500 dark:text-gray-400">
+                    <!-- Mostrar en palabras (eliminado por error NumberFormatter) -->
+                    <span class="italic">cinco mil cuatrocientos noventa y cinco pesos 20/100 M.N.</span>
                 </div>
             </div>
 
