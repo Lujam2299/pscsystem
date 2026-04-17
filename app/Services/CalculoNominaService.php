@@ -87,7 +87,7 @@ class CalculoNominaService
     protected function obtenerSueldoUsuario(User $user): ?object
     {
         // Primero intenta con rol + punto tal cual
-        $sueldo = Sueldo::where('puesto', $user->rol)  // ✅ rol → puesto
+        $sueldo = Sueldo::where('puesto', $user->rol)
             ->where('punto', $user->punto)
             ->first();
 
@@ -99,7 +99,7 @@ class CalculoNominaService
         $puntoNombre = $this->resolverPuntoNombre($user->punto);
 
         if ($puntoNombre) {
-            $sueldo = Sueldo::where('puesto', $user->rol)  // ✅ aún rol
+            $sueldo = Sueldo::where('puesto', $user->rol)
                 ->where('punto', $puntoNombre)
                 ->first();
 
@@ -135,23 +135,20 @@ class CalculoNominaService
     {
         // Caso 1: Si es un código numérico (con o sin ceros adelante)
         if (preg_match('/^\d+$/', $valor)) {
-            // Convertir a int para eliminar ceros adelante, luego formatear como 3 dígitos para comparar con DB
             $codigoInt = (int) $valor;
-
-            // Buscar en Subpunto por código (como int, ya que en DB es int)
             $subpunto = \App\Models\Subpunto::where('codigo', $codigoInt)->first();
             if ($subpunto) {
                 return $subpunto->nombre;
             }
         }
 
-        // Caso 2: Si es un nombre directo (ej. "DALTILE"), verificar si existe
+        // Caso 2: Nombre directo
         $subpuntoPorNombre = \App\Models\Subpunto::where('nombre', $valor)->first();
         if ($subpuntoPorNombre) {
             return $subpuntoPorNombre->nombre;
         }
 
-        // Caso 3: Intentar buscar por nombre ignorando mayúsculas/espacios
+        // Caso 3: Búsqueda insensible a mayúsculas
         $subpuntoFuzzy = \App\Models\Subpunto::whereRaw('LOWER(nombre) = LOWER(?)', [$valor])->first();
         if ($subpuntoFuzzy) {
             return $subpuntoFuzzy->nombre;
@@ -169,7 +166,7 @@ class CalculoNominaService
         string $fechaFin,
         array $datosAsistencias
     ): array {
-        $fechas = $this->generarFechas($fechaInicio, $fechaFin);
+        $fechas = $this::generarFechas($fechaInicio, $fechaFin);
 
         $asistencias = 0;
         $descansos = 0;
@@ -183,12 +180,12 @@ class CalculoNominaService
         $permisosPorUsuario = $datosAsistencias['permisosPorUsuario'][$userId] ?? [];
         $faltasJustificadasData = $datosAsistencias['faltasJustificadas'][$userId] ?? [];
         $asistenciasIndexadas = $datosAsistencias['asistenciasIndexadas'];
-        $incapacidadesDelUsuario = $datosAsistencias['incapacidadesPorUsuario'][$userId] ?? []; // 👈 Nuevo
+        $incapacidadesDelUsuario = $datosAsistencias['incapacidadesPorUsuario'][$userId] ?? [];
 
         foreach ($fechas as $fecha) {
-            // 👇 Nueva lógica: Ignorar días de incapacidad
+            // Ignorar días de incapacidad
             if (in_array($fecha, $incapacidadesDelUsuario)) {
-                continue; // Saltar este día
+                continue;
             }
 
             $asistencia = $asistenciasIndexadas->get($fecha);
@@ -201,32 +198,41 @@ class CalculoNominaService
             $esFalta = in_array($userId, $faltantes);
             $esDescanso = in_array($userId, $descansantes);
 
-            // Verificar permisos especiales primero (tienen prioridad)
-            if (isset($permisosPorUsuario[$fecha])) {
-                if ($permisosPorUsuario[$fecha]['con_goce']) {
+            // Permiso especial (prioridad máxima después de incapacidad)
+            $permiso = $permisosPorUsuario[$fecha] ?? null;
+            if ($permiso) {
+                if ($permiso['con_goce']) {
                     $permisosConGoce++;
                 } else {
                     $permisosSinGoce++;
                 }
+                continue; // Salta el resto: permiso ya lo define
             }
-            // Verificar vacaciones
-            elseif (in_array($fecha, $vacacionesPorUsuario)) {
+
+            // Vacaciones
+            if (in_array($fecha, $vacacionesPorUsuario)) {
                 $vacaciones++;
+                continue;
             }
-            // Verificar descanso
-            elseif ($esDescanso) {
+
+            // Descanso
+            if ($esDescanso) {
                 $descansos++;
+                continue;
             }
-            // Verificar falta
-            elseif ($esFalta) {
+
+            // Falta
+            if ($esFalta) {
                 if (!empty($faltasJustificadasData[$fecha])) {
                     $faltasJustificadas++;
                 } else {
                     $faltasInjustificadas++;
                 }
+                continue;
             }
-            // Si asistió
-            elseif ($esAsistencia) {
+
+            // Asistencia
+            if ($esAsistencia) {
                 $asistencias++;
             }
         }
@@ -270,6 +276,7 @@ class CalculoNominaService
         // Contadores
         $totalMinutosRetardo = 0;
         $tieneFaltaInjustificada = false;
+        $tienePermisoSinGoce = false;
         $tieneIncapacidad = count($incapacidadesDelUsuario) > 0;
 
         foreach ($fechas as $fecha) {
@@ -283,32 +290,35 @@ class CalculoNominaService
             $esFalta = in_array($userId, $faltantes);
             $esDescanso = in_array($userId, $descansantes);
 
-            // Verificar tipo de registro
-            $esAsistenciaDirecta = $esAsistencia && !$esFalta && !$esDescanso;
-            $esDescansoReal = $esDescanso;
-            $esVacacion = in_array($fecha, $vacacionesPorUsuario);
-            $esPermisoConGoce = isset($permisosPorUsuario[$fecha]) && $permisosPorUsuario[$fecha]['con_goce'];
-            $esFaltaJustificada = !empty($faltasJustificadasData[$fecha]);
-            $esIncapacidad = in_array($fecha, $incapacidadesDelUsuario);
+            // Verificar permisos especiales
+            $permiso = $permisosPorUsuario[$fecha] ?? null;
+            if ($permiso) {
+                if (!$permiso['con_goce']) {
+                    $tienePermisoSinGoce = true; // ❗ clave: esto evita bonos
+                }
+                // Si es con goce, no afecta bonos
+            }
+
+            // Detectar falta injustificada (solo si no hay permiso ni incapacidad en esa fecha)
+            if ($esFalta && !isset($permiso) && !in_array($fecha, $incapacidadesDelUsuario)) {
+                $esJustificada = $faltasJustificadasData[$fecha] ?? false;
+                if (!$esJustificada) {
+                    $tieneFaltaInjustificada = true;
+                }
+            }
 
             // Sumar minutos de retardo
             $totalMinutosRetardo += $retardosPorUsuario[$fecha] ?? 0;
-
-            // Detectar si hay alguna falta injustificada
-            if ($esFalta && !$esFaltaJustificada) {
-                $tieneFaltaInjustificada = true;
-            }
         }
 
         // Determinar si aplica bono
-        // ✅ No aplica si hay alguna falta injustificada o incapacidad
-        $aplicaBonoAsistencia = !$tieneFaltaInjustificada && !$tieneIncapacidad;
+        $aplicaBonoAsistencia = !$tieneFaltaInjustificada && !$tienePermisoSinGoce && !$tieneIncapacidad;
         $aplicaBonoPuntualidad = $aplicaBonoAsistencia && $totalMinutosRetardo === 0;
 
-        // Calcular subtotal base (usado para calcular los bonos)
+        // Calcular subtotal base
         $subtotalBase = $diasPagados['total'] * $sueldoDiario;
 
-        // Calcular montos de bonos (10% del subtotal base cada uno)
+        // Calcular montos de bonos
         $bonoAsistencia = $aplicaBonoAsistencia ? $subtotalBase * self::BONO_ASISTENCIA : 0;
         $bonoPuntualidad = $aplicaBonoPuntualidad ? $subtotalBase * self::BONO_PUNTUALIDAD : 0;
 
@@ -326,7 +336,7 @@ class CalculoNominaService
             ],
             'penalizacion_faltas' => [
                 'aplica' => !$aplicaBonoAsistencia,
-                'dias_restantes' => 0, // Ya no aplicamos penalización de días aquí
+                'dias_restantes' => 0,
             ],
             'total' => round($bonoAsistencia + $bonoPuntualidad, 2),
         ];
@@ -345,11 +355,9 @@ class CalculoNominaService
         $horasExtrasPorUsuario = $datosAsistencias['horasExtrasPorUsuario'][$userId] ?? [];
         $totalHoras = array_sum($horasExtrasPorUsuario);
 
-        // Obtener zona del usuario (resolver punto → zona)
         $zona = $this->resolverZonaUsuario($userId);
 
         if (!$zona) {
-            // Zona no registrada, no aplica pago de horas extra
             return [
                 'total_horas' => $totalHoras,
                 'valor_hora' => 0,
@@ -360,11 +368,9 @@ class CalculoNominaService
             ];
         }
 
-        // Buscar costo de 12 horas para esta zona
         $costoModel = \App\Models\TiempoExtraCosto::where('zona', $zona)->first();
 
         if (!$costoModel) {
-            // Zona no tiene costo registrado
             return [
                 'total_horas' => $totalHoras,
                 'valor_hora' => 0,
@@ -376,11 +382,7 @@ class CalculoNominaService
         }
 
         $costo12Horas = floatval($costoModel->costo_12_horas);
-
-        // Calcular valor por hora (basado en costo de 12 horas)
         $valorPorHora = $costo12Horas / 12;
-
-        // Calcular monto total
         $monto = $totalHoras * $valorPorHora;
 
         return [
@@ -403,29 +405,25 @@ class CalculoNominaService
             return null;
         }
 
-        // Si el punto es código numérico, resolver a nombre
         $puntoNombre = $this->resolverPuntoNombre($user->punto) ?? $user->punto;
 
-        // Buscar en subpuntos para obtener el punto_id (zona)
         $subpunto = \App\Models\Subpunto::where(function($q) use ($puntoNombre, $user) {
             $q->where('nombre', $puntoNombre)
               ->orWhere('codigo', (int)$user->punto);
         })->first();
 
         if ($subpunto) {
-            // Obtener el nombre del punto/zona principal
             $punto = \App\Models\Punto::find($subpunto->punto_id);
             return $punto?->nombre;
         }
 
-        // Si no es subpunto, podría ser un punto directo
         return $puntoNombre;
     }
 
     /**
      * Genera un array de fechas entre inicio y fin
      */
-    protected function generarFechas(string $inicio, string $fin): array
+    protected static function generarFechas(string $inicio, string $fin): array
     {
         $fechas = [];
         $current = Carbon::parse($inicio);

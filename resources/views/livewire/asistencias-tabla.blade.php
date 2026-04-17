@@ -218,7 +218,7 @@
                             $totalHorasExtra = 0;
                             $incidencias = [];
 
-                            // 🔴 Nueva lógica: cargar incapacidades del usuario
+                            // 🔴 Cargar incapacidades del usuario
                             $incapacidadesDelUsuario = $incapacidadesPorUsuario[$user->id] ?? [];
 
                             foreach($fechas as $f) {
@@ -245,11 +245,13 @@
                                 $permiso = $permisosPorUsuario[$user->id][$f] ?? null;
 
                                 if ($permiso) {
-                                    $codigo = $permiso['con_goce'] ? 'PE-CG' : 'PE-SG';
+                                    // ✅ Corrección: Forzar conversión a booleano
+                                    $esConGoce = (int) $permiso['con_goce'] === 1;
+                                    $codigo = $esConGoce ? 'PE-CG' : 'PE-SG';
                                     $dia = $codigo;
                                     $tarde = '';
                                     $noche = '';
-                                    if ($permiso['con_goce']) {
+                                    if ($esConGoce) {
                                         $permisosConGoce++;
                                     } else {
                                         $permisosSinGoce++;
@@ -262,8 +264,8 @@
                                     $descansos++;
                                 } elseif ($incapacidad) {
                                     $dia = 'I';
-                                    //$tarde = 'I';
-                                    //$noche = 'I';
+                                    $tarde = '';
+                                    $noche = '';
                                 } elseif ($falto) {
                                     $esJustificada = $faltasJustificadas[$user->id][$f] ?? false;
                                     if ($esJustificada) {

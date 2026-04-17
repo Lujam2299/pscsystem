@@ -91,19 +91,24 @@ class AsistenciasTabla extends Component
                 $faltasPrimera = json_decode($primera->faltas, true) ?? [];
                 $faltasSegunda = json_decode($segunda->faltas, true) ?? [];
 
-                // Verificar si el usuario está incapacitado en esas fechas
+                // Verificar si el usuario está incapacitado o tiene permiso sin goce en esas fechas
                 $fecha1 = Carbon::parse($primera->fecha)->format('Y-m-d');
                 $fecha2 = Carbon::parse($segunda->fecha)->format('Y-m-d');
 
-                // ✅ NUEVO: Obtener TODAS las fechas de incapacidad del usuario en el rango completo
                 $todasIncapacidades = $this->obtenerTodasIncapacidadesUsuario($usuario->id, $this->fecha_inicio, $this->fecha_fin);
+                $todasPermisosSinGoce = $this->obtenerTodasPermisosSinGoceUsuario($usuario->id, $this->fecha_inicio, $this->fecha_fin);
 
-                // Si alguna de las dos fechas tiene incapacidad → NO alerta
-                if (in_array($fecha1, $todasIncapacidades) || in_array($fecha2, $todasIncapacidades)) {
+                // Si alguna fecha tiene incapacidad o permiso sin goce → NO alerta
+                if (
+                    in_array($fecha1, $todasIncapacidades) ||
+                    in_array($fecha2, $todasIncapacidades) ||
+                    in_array($fecha1, $todasPermisosSinGoce) ||
+                    in_array($fecha2, $todasPermisosSinGoce)
+                ) {
                     continue;
                 }
 
-                // Solo si ambas fechas son faltas reales (sin incapacidad), activar alerta
+                // Solo si ambas fechas son faltas reales (sin I ni PE-SG), activar alerta
                 if (in_array($usuario->id, $faltasPrimera) && in_array($usuario->id, $faltasSegunda)) {
                     $this->usuariosConAlerta[] = $usuario->id;
                 }
@@ -112,24 +117,19 @@ class AsistenciasTabla extends Component
     }
 
     /**
-     * Obtiene todas las fechas de incapacidad del usuario en un rango de fechas
+     * Obtiene todas las fechas de incapacidad del usuario en un rango
      */
     private function obtenerTodasIncapacidadesUsuario(int $userId, string $inicio, string $fin): array
     {
         $incapacidades = \App\Models\Incapacidad::where('user_id', $userId)
             ->where(function ($q) use ($inicio, $fin) {
-                // Caso 1: empieza dentro del periodo
-                $q->whereBetween('fecha_inicio', [$inicio, $fin]);
-            })
-            ->orWhere(function ($q) use ($inicio, $fin) {
-                // Caso 2: termina dentro del periodo
-                $q->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>=', $inicio)
-                  ->where('fecha_inicio', '<=', $fin);
-            })
-            ->orWhere(function ($q) use ($inicio, $fin) {
-                // Caso 3: abarca todo el periodo
-                $q->where('fecha_inicio', '<', $inicio)
-                  ->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>', $fin);
+                $q->whereBetween('fecha_inicio', [$inicio, $fin])
+                  ->orWhereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>=', $inicio)
+                  ->where('fecha_inicio', '<=', $fin)
+                  ->orWhere(function ($subq) use ($inicio, $fin) {
+                      $subq->where('fecha_inicio', '<', $inicio)
+                           ->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>', $fin);
+                  });
             })
             ->get();
 
@@ -140,7 +140,38 @@ class AsistenciasTabla extends Component
 
             for ($d = $inicioInc->copy(); $d->lte($finInc); $d->addDay()) {
                 $fecha = $d->format('Y-m-d');
-                // Incluir solo si está dentro del rango global del filtro
+                if (Carbon::parse($fecha)->between(Carbon::parse($inicio), Carbon::parse($fin))) {
+                    $dias[] = $fecha;
+                }
+            }
+        }
+        return array_unique($dias);
+    }
+
+    /**
+     * Obtiene todas las fechas de permisos sin goce del usuario en un rango
+     */
+    private function obtenerTodasPermisosSinGoceUsuario(int $userId, string $inicio, string $fin): array
+    {
+        $permisos = \App\Models\PermisoEspecial::where('user_id', $userId)
+            ->where('con_goce', false)
+            ->where(function ($q) use ($inicio, $fin) {
+                $q->whereBetween('fecha_inicio', [$inicio, $fin])
+                  ->orWhereBetween('fecha_fin', [$inicio, $fin])
+                  ->orWhere(function ($subq) use ($inicio, $fin) {
+                      $subq->where('fecha_inicio', '<', $inicio)
+                           ->where('fecha_fin', '>', $fin);
+                  });
+            })
+            ->get();
+
+        $dias = [];
+        foreach ($permisos as $permiso) {
+            $inicioInc = Carbon::parse($permiso->fecha_inicio);
+            $finInc = Carbon::parse($permiso->fecha_fin);
+
+            for ($d = $inicioInc->copy(); $d->lte($finInc); $d->addDay()) {
+                $fecha = $d->format('Y-m-d');
                 if (Carbon::parse($fecha)->between(Carbon::parse($inicio), Carbon::parse($fin))) {
                     $dias[] = $fecha;
                 }
@@ -439,16 +470,13 @@ class AsistenciasTabla extends Component
         // Cargar incapacidades
         $incapacidadesPorUsuario = [];
         $incapacidades = \App\Models\Incapacidad::where(function ($q) {
-            // Caso 1: Incapacidad empieza dentro del periodo
             $q->whereBetween('fecha_inicio', [$this->fecha_inicio, $this->fecha_fin]);
         })
         ->orWhere(function ($q) {
-            // Caso 2: Incapacidad termina dentro del periodo
             $q->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>=', $this->fecha_inicio)
               ->where('fecha_inicio', '<=', $this->fecha_fin);
         })
         ->orWhere(function ($q) {
-            // Caso 3: Incapacidad abarca todo el periodo
             $q->where('fecha_inicio', '<', $this->fecha_inicio)
               ->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>', $this->fecha_fin);
         })
@@ -456,12 +484,10 @@ class AsistenciasTabla extends Component
 
         foreach ($incapacidades as $incapacidad) {
             $inicio = Carbon::parse($incapacidad->fecha_inicio);
-            // ✅ CORRECCIÓN CRÍTICA: usar copy() para evitar mutación
             $fin = $inicio->copy()->addDays($incapacidad->dias_incapacidad - 1);
 
             for ($d = $inicio->copy(); $d->lte($fin); $d->addDay()) {
                 $fecha = $d->format('Y-m-d');
-                // Solo incluir fechas dentro del rango del filtro
                 if (Carbon::parse($fecha)->between(Carbon::parse($this->fecha_inicio), Carbon::parse($this->fecha_fin))) {
                     $incapacidadesPorUsuario[$incapacidad->user_id][] = $fecha;
                 }
