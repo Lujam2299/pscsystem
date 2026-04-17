@@ -90,7 +90,7 @@
 
     <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
         <h3 class="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">Simbología</h3>
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 text-xs">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 text-xs">
             <div class="flex items-center">
                 <span class="inline-block w-3 h-3 rounded-sm bg-green-200 dark:bg-green-900/40 mr-2"></span>
                 <span class="text-gray-700 dark:text-gray-300">A: Asistió</span>
@@ -131,6 +131,11 @@
             <div class="flex items-center">
                 <span class="inline-block w-3 h-3 rounded-sm bg-yellow-200 dark:bg-yellow-900/40 mr-2"></span>
                 <span class="text-gray-700 dark:text-gray-300">Rxx: Retardo (xx minutos)</span>
+            </div>
+            <!-- Nuevo: Incapacidad -->
+            <div class="flex items-center">
+                <span class="inline-block w-3 h-3 rounded-sm bg-red-200 dark:bg-red-900/40 mr-2"></span>
+                <span class="text-gray-700 dark:text-gray-300">I: Incapacidad</span>
             </div>
         </div>
         <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">
@@ -212,10 +217,15 @@
                             $permisosSinGoce = 0;
                             $totalHorasExtra = 0;
                             $incidencias = [];
+
+                            // 🔴 Nueva lógica: cargar incapacidades del usuario
+                            $incapacidadesDelUsuario = $incapacidadesPorUsuario[$user->id] ?? [];
+
                             foreach($fechas as $f) {
                                 $asistio = false;
                                 $falto = false;
                                 $descanso = false;
+                                $incapacidad = in_array($f, $incapacidadesDelUsuario); // 👈 Nuevo
                                 $asistencia = $asistenciasIndexadas->get($f);
 
                                 if ($asistencia) {
@@ -250,6 +260,10 @@
                                 } elseif ($descanso) {
                                     $dia = 'D';
                                     $descansos++;
+                                } elseif ($incapacidad) {
+                                    $dia = 'I';
+                                    //$tarde = 'I';
+                                    //$noche = 'I';
                                 } elseif ($falto) {
                                     $esJustificada = $faltasJustificadas[$user->id][$f] ?? false;
                                     if ($esJustificada) {
@@ -290,21 +304,21 @@
                         @endif">
                             <td class="sticky-first-col px-3 py-2 text-sm border-r border-gray-300 dark:border-gray-600">{{ $user->id }}</td>
                             <td class="sticky-second-col px-3 py-2 text-sm border-r border-gray-300 dark:border-gray-600 @if(in_array($user->id, $usuariosConAlerta)) bg-red-200 dark:bg-red-900/40 @endif">
-                            {{ $user->name }}
-                            <button
-                                wire:click="mostrarDetalleNomina({{ $user->id }})"
-                                class="ml-2 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-0.5 rounded"
-                                type="button"
-                                title="Ver detalle de nómina"
-                            >
-                                📋
-                            </button>
-                            @if(in_array($user->id, $usuariosConAlerta))
-                                <span class="ml-1 text-red-600 dark:text-red-400" title="Últimas 2 asistencias fueron faltas">
-                                    ⚠️
-                                </span>
-                            @endif
-                        </td>
+                                {{ $user->name }}
+                                <button
+                                    wire:click="mostrarDetalleNomina({{ $user->id }})"
+                                    class="ml-2 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-0.5 rounded"
+                                    type="button"
+                                    title="Ver detalle de nómina"
+                                >
+                                    📋
+                                </button>
+                                @if(in_array($user->id, $usuariosConAlerta))
+                                    <span class="ml-1 text-red-600 dark:text-red-400" title="Últimas 2 asistencias fueron faltas">
+                                        ⚠️
+                                    </span>
+                                @endif
+                            </td>
                             <td class="px-3 py-2 text-sm bg-yellow-100 dark:bg-yellow-900/30 border-r border-gray-300 dark:border-gray-600">${{ number_format($sueldoBase, 2) }}</td>
                             <td class="px-3 py-2 text-sm bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium rounded border-r border-gray-300 dark:border-gray-600">{{ $totalHorasExtra }}</td>
                             <td class="px-3 py-2 text-sm bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium rounded border-r border-gray-300 dark:border-gray-600">
@@ -397,6 +411,7 @@
                                     @elseif($dia === 'A') bg-green-200 dark:bg-green-900/40
                                     @elseif($dia === 'PE-CG') bg-purple-200 dark:bg-purple-900/40
                                     @elseif($dia === 'PE-SG') bg-gray-200 dark:bg-gray-700
+                                    @elseif($dia === 'I') bg-red-200 dark:bg-red-900/40  <!-- 👈 Nuevo: I = rojo como F -->
                                     @else bg-orange-100 dark:bg-orange-900/30 @endif">
                                     {{ $dia }}
                                 </td>
@@ -424,164 +439,172 @@
             </table>
         </div>
     @endif
-    <!-- Modal de detalle de nómina -->
-@if($showModal && $detalleNomina)
-    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                <h3 class="text-xl font-bold text-gray-900 dark:text-white">
-                    Detalle de Nómina
-                </h3>
-                <button
-                    wire:click="cerrarModal"
-                    class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                    aria-label="Cerrar"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
 
-            <div class="p-6">
-                <!-- Tabla de percepciones -->
-                <div class="mb-8">
-                    <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">Percepciones</h4>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Agrup. SAT</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No.</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Concepto</th>
-                                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">P</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">001 001</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">Sueldo</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
-                                        ${{ number_format($detalleNomina['dias_pagados']['total'] * $detalleNomina['sueldo_diario'], 2) }}
-                                    </td>
-                                </tr>
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">P</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">038 014</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">Premios Asistencia</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
-                                        ${{ number_format($detalleNomina['bonos']['asistencia']['monto'] ?? 0, 2) }}
-                                    </td>
-                                </tr>
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">P</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">010 015</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">Premio puntualidad</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
-                                        ${{ number_format($detalleNomina['bonos']['puntualidad']['monto'] ?? 0, 2) }}
-                                    </td>
-                                </tr>
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">OP</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">999 099</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">Ajuste al neto</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
-                                        $0.02
-                                    </td>
-                                </tr>
-                                <tr class="bg-gray-50 dark:bg-gray-700/50 font-bold">
-                                    <td colspan="3" class="px-4 py-3 text-right">Total Percepc. más Otros Pagos $</td>
-                                    <td class="px-4 py-3 text-right text-lg">
-                                        ${{ number_format($detalleNomina['subtotal_percepciones'], 2) }}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+    <!-- Modal de detalle de nómina -->
+    @if($showModal && $detalleNomina)
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                        Detalle de Nómina -
+                    </h3>
+                    <button
+                        wire:click="cerrarModal"
+                        class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                        aria-label="Cerrar"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
 
-                <!-- Tabla de deducciones -->
-                <div>
-                    <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">Deducciones</h4>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Agrup. SAT</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No.</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Concepto</th>
-                                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">002</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">045</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">I.S.R. mes</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
-                                        $175.54
-                                    </td>
-                                </tr>
-                                <tr class="bg-gray-50 dark:bg-gray-700/50 font-bold">
-                                    <td colspan="3" class="px-4 py-3 text-right">Subtotal $</td>
-                                    <td class="px-4 py-3 text-right">
-                                        ${{ number_format($detalleNomina['subtotal_percepciones'], 2) }}
-                                    </td>
-                                </tr>
-                                <tr class="bg-gray-50 dark:bg-gray-700/50 font-bold">
-                                    <td colspan="3" class="px-4 py-3 text-right">Descuentos $</td>
-                                    <td class="px-4 py-3 text-right">0.00</td>
-                                </tr>
-                                <tr class="bg-gray-50 dark:bg-gray-700/50 font-bold">
-                                    <td colspan="3" class="px-4 py-3 text-right">Retenciones $</td>
-                                    <td class="px-4 py-3 text-right">$175.54</td>
-                                </tr>
-                                <tr class="bg-gray-50 dark:bg-gray-700/50 font-bold">
-                                    <td colspan="3" class="px-4 py-3 text-right">Total $</td>
-                                    <td class="px-4 py-3 text-right">$5,495.20</td>
-                                </tr>
-                                <tr class="bg-blue-50 dark:bg-blue-900/20 font-bold text-blue-800 dark:text-blue-200">
-                                    <td colspan="3" class="px-4 py-3 text-right">Neto del recibo $</td>
-                                    <td class="px-4 py-3 text-right text-xl">
-                                        ${{ number_format($detalleNomina['subtotal_percepciones'] - 175.54, 2) }}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <!-- Contenedor principal: 2 columnas -->
+                <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Columna izquierda: Percepciones -->
+                    <div class="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                        <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2">
+                            <h4 class="font-bold text-gray-800 dark:text-white text-center">Percepciones</h4>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-100 dark:bg-gray-700">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Agrup. SAT</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No.</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Concepto</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">P</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">001 001</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">Sueldo</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                                            ${{ number_format($detalleNomina['dias_pagados']['total'] * $detalleNomina['sueldo_diario'], 2) }}
+                                        </td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">P</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">038 014</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">Premios Asistencia</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                                            ${{ number_format($detalleNomina['bonos']['asistencia']['monto'] ?? 0, 2) }}
+                                        </td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">P</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">010 015</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">Premio puntualidad</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                                            ${{ number_format($detalleNomina['bonos']['puntualidad']['monto'] ?? 0, 2) }}
+                                        </td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">OP</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">999 099</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">Ajuste al neto</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                                            $0.02
+                                        </td>
+                                    </tr>
+                                    <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
+                                        <td colspan="3" class="px-3 py-3 text-right">Total Percepc. más Otros Pagos $</td>
+                                        <td class="px-3 py-3 text-right text-lg">
+                                            ${{ number_format($detalleNomina['subtotal_percepciones'], 2) }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Columna derecha: Deducciones -->
+                    <div class="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                        <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2">
+                            <h4 class="font-bold text-gray-800 dark:text-white text-center">Deducciones</h4>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-100 dark:bg-gray-700">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Agrup. SAT</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No.</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Concepto</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">002</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">045</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">I.S.R. mes</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                                            $175.54
+                                        </td>
+                                    </tr>
+                                    <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
+                                        <td colspan="3" class="px-3 py-3 text-right">Subtotal $</td>
+                                        <td class="px-3 py-3 text-right">
+                                            ${{ number_format($detalleNomina['subtotal_percepciones'], 2) }}
+                                        </td>
+                                    </tr>
+                                    <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
+                                        <td colspan="3" class="px-3 py-3 text-right">Descuentos $</td>
+                                        <td class="px-3 py-3 text-right">0.00</td>
+                                    </tr>
+                                    <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
+                                        <td colspan="3" class="px-3 py-3 text-right">Retenciones $</td>
+                                        <td class="px-3 py-3 text-right">$175.54</td>
+                                    </tr>
+                                    <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
+                                        <td colspan="3" class="px-3 py-3 text-right">Total $</td>
+                                        <td class="px-3 py-3 text-right">$5,495.20</td>
+                                    </tr>
+                                    <tr class="bg-blue-50 dark:bg-blue-900/20 font-bold text-blue-800 dark:text-blue-200">
+                                        <td colspan="3" class="px-3 py-3 text-right">Neto del recibo $</td>
+                                        <td class="px-3 py-3 text-right text-xl">
+                                            ${{ number_format($detalleNomina['subtotal_percepciones'] - 175.54, 2) }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Pie de modal -->
-                <div class="mt-6 text-sm text-gray-500 dark:text-gray-400">
-                    <p>Se puso a mi disposición el archivo XML correspondiente y recibí de la empresa arriba mencionada la cantidad neta a que este documento se refiere estando conforme con las percepciones y deducciones que en él aparecen especificados.</p>
+                <div class="p-6 bg-gray-50 dark:bg-gray-700/50">
+                    <div class="text-sm text-gray-500 dark:text-gray-400 italic mb-4">
+                        Se puso a mi disposición el archivo XML correspondiente y recibí de la empresa arriba mencionada la cantidad neta a que este documento se refiere estando conforme con las percepciones y deducciones que en él aparecen especificados.
+                    </div>
+                    <div class="text-center text-xs text-gray-500 dark:text-gray-400">
+                        cinco mil cuatrocientos noventa y cinco pesos 20/100<br>M.N.
+                    </div>
+                </div>
+
+                <div class="p-6 bg-gray-50 dark:bg-gray-700/50 flex justify-end space-x-3">
+                    <button
+                        wire:click="cerrarModal"
+                        class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white rounded-lg"
+                    >
+                        Cerrar
+                    </button>
+                    <button
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                        onclick="printNomina({{ $userIdModal }})"
+                    >
+                        Imprimir
+                    </button>
                 </div>
             </div>
-
-            <div class="p-6 bg-gray-50 dark:bg-gray-700/50 flex justify-end space-x-3">
-                <button
-                    wire:click="cerrarModal"
-                    class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white rounded-lg"
-                >
-                    Cerrar
-                </button>
-                <button
-                    class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
-                    onclick="printNomina({{ $userIdModal }})"
-                >
-                    Imprimir
-                </button>
-            </div>
         </div>
-    </div>
 
-    <!-- Script para imprimir -->
-    <script>
-        function printNomina(userId) {
-            // Aquí podrías generar un PDF o abrir una vista de impresión
-            alert('Función de impresión para usuario ' + userId + ' (próximamente)');
-            // window.print(); // si quieres usar impresión del navegador
-        }
-    </script>
-@endif
+        <script>
+            function printNomina(userId) {
+                alert('Función de impresión para usuario ' + userId + ' (próximamente)');
+            }
+        </script>
+    @endif
 </div>

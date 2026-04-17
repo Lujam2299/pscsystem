@@ -183,8 +183,14 @@ class CalculoNominaService
         $permisosPorUsuario = $datosAsistencias['permisosPorUsuario'][$userId] ?? [];
         $faltasJustificadasData = $datosAsistencias['faltasJustificadas'][$userId] ?? [];
         $asistenciasIndexadas = $datosAsistencias['asistenciasIndexadas'];
+        $incapacidadesDelUsuario = $datosAsistencias['incapacidadesPorUsuario'][$userId] ?? []; // 👈 Nuevo
 
         foreach ($fechas as $fecha) {
+            // 👇 Nueva lógica: Ignorar días de incapacidad
+            if (in_array($fecha, $incapacidadesDelUsuario)) {
+                continue; // Saltar este día
+            }
+
             $asistencia = $asistenciasIndexadas->get($fecha);
 
             $enlistados = json_decode($asistencia?->elementos_enlistados, true) ?? [];
@@ -245,180 +251,176 @@ class CalculoNominaService
     /**
      * Calcula los bonos de asistencia y puntualidad
      */
-    /**
- * Calcula los bonos de asistencia y puntualidad
- */
-protected function calcularBonos(
-    int $userId,
-    string $fechaInicio,
-    string $fechaFin,
-    array $datosAsistencias,
-    array $diasPagados,
-    float $sueldoDiario
-): array {
-    $fechas = $this->generarFechas($fechaInicio, $fechaFin);
-    $asistenciasIndexadas = $datosAsistencias['asistenciasIndexadas'];
-    $retardosPorUsuario = $datosAsistencias['retardosPorUsuario'][$userId] ?? [];
-    $vacacionesPorUsuario = $datosAsistencias['vacacionesPorUsuario'][$userId] ?? [];
-    $permisosPorUsuario = $datosAsistencias['permisosPorUsuario'][$userId] ?? [];
-    $faltasJustificadasData = $datosAsistencias['faltasJustificadas'][$userId] ?? [];
+    protected function calcularBonos(
+        int $userId,
+        string $fechaInicio,
+        string $fechaFin,
+        array $datosAsistencias,
+        array $diasPagados,
+        float $sueldoDiario
+    ): array {
+        $fechas = $this->generarFechas($fechaInicio, $fechaFin);
+        $asistenciasIndexadas = $datosAsistencias['asistenciasIndexadas'];
+        $retardosPorUsuario = $datosAsistencias['retardosPorUsuario'][$userId] ?? [];
+        $vacacionesPorUsuario = $datosAsistencias['vacacionesPorUsuario'][$userId] ?? [];
+        $permisosPorUsuario = $datosAsistencias['permisosPorUsuario'][$userId] ?? [];
+        $faltasJustificadasData = $datosAsistencias['faltasJustificadas'][$userId] ?? [];
+        $incapacidadesDelUsuario = $datosAsistencias['incapacidadesPorUsuario'][$userId] ?? [];
 
-    // Contadores
-    $totalDias = count($fechas);
-    $diasAsistenciaODescanso = 0;
-    $totalMinutosRetardo = 0;
+        // Contadores
+        $totalMinutosRetardo = 0;
+        $tieneFaltaInjustificada = false;
+        $tieneIncapacidad = count($incapacidadesDelUsuario) > 0;
 
-    foreach ($fechas as $fecha) {
-        $asistencia = $asistenciasIndexadas->get($fecha);
+        foreach ($fechas as $fecha) {
+            $asistencia = $asistenciasIndexadas->get($fecha);
 
-        $enlistados = json_decode($asistencia?->elementos_enlistados, true) ?? [];
-        $faltantes = json_decode($asistencia?->faltas, true) ?? [];
-        $descansantes = json_decode($asistencia?->descansos, true) ?? [];
+            $enlistados = json_decode($asistencia?->elementos_enlistados, true) ?? [];
+            $faltantes = json_decode($asistencia?->faltas, true) ?? [];
+            $descansantes = json_decode($asistencia?->descansos, true) ?? [];
 
-        $esAsistencia = in_array($userId, $enlistados);
-        $esFalta = in_array($userId, $faltantes);
-        $esDescanso = in_array($userId, $descansantes);
+            $esAsistencia = in_array($userId, $enlistados);
+            $esFalta = in_array($userId, $faltantes);
+            $esDescanso = in_array($userId, $descansantes);
 
-        // Verificar tipo de registro
-        $esAsistenciaDirecta = $esAsistencia && !$esFalta && !$esDescanso;
-        $esDescansoReal = $esDescanso;
-        $esVacacion = in_array($fecha, $vacacionesPorUsuario);
-        $esPermisoConGoce = isset($permisosPorUsuario[$fecha]) && $permisosPorUsuario[$fecha]['con_goce'];
-        $esFaltaJustificada = !empty($faltasJustificadasData[$fecha]);
+            // Verificar tipo de registro
+            $esAsistenciaDirecta = $esAsistencia && !$esFalta && !$esDescanso;
+            $esDescansoReal = $esDescanso;
+            $esVacacion = in_array($fecha, $vacacionesPorUsuario);
+            $esPermisoConGoce = isset($permisosPorUsuario[$fecha]) && $permisosPorUsuario[$fecha]['con_goce'];
+            $esFaltaJustificada = !empty($faltasJustificadasData[$fecha]);
+            $esIncapacidad = in_array($fecha, $incapacidadesDelUsuario);
 
-        // Sumar minutos de retardo
-        $totalMinutosRetardo += $retardosPorUsuario[$fecha] ?? 0;
+            // Sumar minutos de retardo
+            $totalMinutosRetardo += $retardosPorUsuario[$fecha] ?? 0;
 
-        // Verificar si el día es "asistencia o descanso puro"
-        if ($esAsistenciaDirecta || $esDescansoReal) {
-            $diasAsistenciaODescanso++;
-        } elseif ($esVacacion || $esPermisoConGoce || $esFaltaJustificada) {
-            // Estos también se consideran "buenos", no rompen la regla
-            $diasAsistenciaODescanso++;
+            // Detectar si hay alguna falta injustificada
+            if ($esFalta && !$esFaltaJustificada) {
+                $tieneFaltaInjustificada = true;
+            }
         }
-        // Faltas injustificadas (F) o cualquier otro tipo rompen la regla
-    }
 
-    // Determinar si aplica bono
-    $aplicaBonoAsistencia = ($diasAsistenciaODescanso === $totalDias) && ($totalDias > 0);
-    $aplicaBonoPuntualidad = $aplicaBonoAsistencia && $totalMinutosRetardo === 0;
+        // Determinar si aplica bono
+        // ✅ No aplica si hay alguna falta injustificada o incapacidad
+        $aplicaBonoAsistencia = !$tieneFaltaInjustificada && !$tieneIncapacidad;
+        $aplicaBonoPuntualidad = $aplicaBonoAsistencia && $totalMinutosRetardo === 0;
 
-    // Calcular subtotal base (usado para calcular los bonos)
-    $subtotalBase = $diasPagados['total'] * $sueldoDiario;
+        // Calcular subtotal base (usado para calcular los bonos)
+        $subtotalBase = $diasPagados['total'] * $sueldoDiario;
 
-    // Calcular montos de bonos (10% del subtotal base cada uno)
-    $bonoAsistencia = $aplicaBonoAsistencia ? $subtotalBase * self::BONO_ASISTENCIA : 0;
-    $bonoPuntualidad = $aplicaBonoPuntualidad ? $subtotalBase * self::BONO_PUNTUALIDAD : 0;
+        // Calcular montos de bonos (10% del subtotal base cada uno)
+        $bonoAsistencia = $aplicaBonoAsistencia ? $subtotalBase * self::BONO_ASISTENCIA : 0;
+        $bonoPuntualidad = $aplicaBonoPuntualidad ? $subtotalBase * self::BONO_PUNTUALIDAD : 0;
 
-    return [
-        'asistencia' => [
-            'aplica' => $aplicaBonoAsistencia,
-            'porcentaje' => self::BONO_ASISTENCIA,
-            'monto' => round($bonoAsistencia, 2),
-        ],
-        'puntualidad' => [
-            'aplica' => $aplicaBonoPuntualidad,
-            'porcentaje' => self::BONO_PUNTUALIDAD,
-            'monto' => round($bonoPuntualidad, 2),
-            'minutos_retardo_total' => $totalMinutosRetardo,
-        ],
-        'penalizacion_faltas' => [
-            'aplica' => !$aplicaBonoAsistencia,
-            'dias_restantes' => 0, // Ya no aplicamos penalización de días aquí
-        ],
-        'total' => round($bonoAsistencia + $bonoPuntualidad, 2),
-    ];
-}
-
-    /**
- * Calcula el pago de horas extra
- */
-protected function calcularHorasExtra(
-    int $userId,
-    string $fechaInicio,
-    string $fechaFin,
-    array $datosAsistencias,
-    float $sueldoDiario
-): array {
-    $horasExtrasPorUsuario = $datosAsistencias['horasExtrasPorUsuario'][$userId] ?? [];
-    $totalHoras = array_sum($horasExtrasPorUsuario);
-
-    // Obtener zona del usuario (resolver punto → zona)
-    $zona = $this->resolverZonaUsuario($userId);
-
-    if (!$zona) {
-        // Zona no registrada, no aplica pago de horas extra
         return [
-            'total_horas' => $totalHoras,
-            'valor_hora' => 0,
-            'monto' => 0,
-            'desglose_diario' => $horasExtrasPorUsuario,
-            'zona' => null,
-            'costo_12h' => 0,
+            'asistencia' => [
+                'aplica' => $aplicaBonoAsistencia,
+                'porcentaje' => self::BONO_ASISTENCIA,
+                'monto' => round($bonoAsistencia, 2),
+            ],
+            'puntualidad' => [
+                'aplica' => $aplicaBonoPuntualidad,
+                'porcentaje' => self::BONO_PUNTUALIDAD,
+                'monto' => round($bonoPuntualidad, 2),
+                'minutos_retardo_total' => $totalMinutosRetardo,
+            ],
+            'penalizacion_faltas' => [
+                'aplica' => !$aplicaBonoAsistencia,
+                'dias_restantes' => 0, // Ya no aplicamos penalización de días aquí
+            ],
+            'total' => round($bonoAsistencia + $bonoPuntualidad, 2),
         ];
     }
 
-    // Buscar costo de 12 horas para esta zona
-    $costoModel = \App\Models\TiempoExtraCosto::where('zona', $zona)->first();
+    /**
+     * Calcula el pago de horas extra
+     */
+    protected function calcularHorasExtra(
+        int $userId,
+        string $fechaInicio,
+        string $fechaFin,
+        array $datosAsistencias,
+        float $sueldoDiario
+    ): array {
+        $horasExtrasPorUsuario = $datosAsistencias['horasExtrasPorUsuario'][$userId] ?? [];
+        $totalHoras = array_sum($horasExtrasPorUsuario);
 
-    if (!$costoModel) {
-        // Zona no tiene costo registrado
+        // Obtener zona del usuario (resolver punto → zona)
+        $zona = $this->resolverZonaUsuario($userId);
+
+        if (!$zona) {
+            // Zona no registrada, no aplica pago de horas extra
+            return [
+                'total_horas' => $totalHoras,
+                'valor_hora' => 0,
+                'monto' => 0,
+                'desglose_diario' => $horasExtrasPorUsuario,
+                'zona' => null,
+                'costo_12h' => 0,
+            ];
+        }
+
+        // Buscar costo de 12 horas para esta zona
+        $costoModel = \App\Models\TiempoExtraCosto::where('zona', $zona)->first();
+
+        if (!$costoModel) {
+            // Zona no tiene costo registrado
+            return [
+                'total_horas' => $totalHoras,
+                'valor_hora' => 0,
+                'monto' => 0,
+                'desglose_diario' => $horasExtrasPorUsuario,
+                'zona' => $zona,
+                'costo_12h' => 0,
+            ];
+        }
+
+        $costo12Horas = floatval($costoModel->costo_12_horas);
+
+        // Calcular valor por hora (basado en costo de 12 horas)
+        $valorPorHora = $costo12Horas / 12;
+
+        // Calcular monto total
+        $monto = $totalHoras * $valorPorHora;
+
         return [
             'total_horas' => $totalHoras,
-            'valor_hora' => 0,
-            'monto' => 0,
+            'valor_hora' => round($valorPorHora, 2),
+            'monto' => round($monto, 2),
             'desglose_diario' => $horasExtrasPorUsuario,
             'zona' => $zona,
-            'costo_12h' => 0,
+            'costo_12h' => $costo12Horas,
         ];
     }
 
-    $costo12Horas = floatval($costoModel->costo_12_horas);
+    /**
+     * Resuelve la zona principal (punto) a partir del punto/código del usuario
+     */
+    protected function resolverZonaUsuario(int $userId): ?string
+    {
+        $user = \App\Models\User::find($userId);
+        if (!$user) {
+            return null;
+        }
 
-    // Calcular valor por hora (basado en costo de 12 horas)
-    $valorPorHora = $costo12Horas / 12;
+        // Si el punto es código numérico, resolver a nombre
+        $puntoNombre = $this->resolverPuntoNombre($user->punto) ?? $user->punto;
 
-    // Calcular monto total
-    $monto = $totalHoras * $valorPorHora;
+        // Buscar en subpuntos para obtener el punto_id (zona)
+        $subpunto = \App\Models\Subpunto::where(function($q) use ($puntoNombre, $user) {
+            $q->where('nombre', $puntoNombre)
+              ->orWhere('codigo', (int)$user->punto);
+        })->first();
 
-    return [
-        'total_horas' => $totalHoras,
-        'valor_hora' => round($valorPorHora, 2),
-        'monto' => round($monto, 2),
-        'desglose_diario' => $horasExtrasPorUsuario,
-        'zona' => $zona,
-        'costo_12h' => $costo12Horas,
-    ];
-}
+        if ($subpunto) {
+            // Obtener el nombre del punto/zona principal
+            $punto = \App\Models\Punto::find($subpunto->punto_id);
+            return $punto?->nombre;
+        }
 
-/**
- * Resuelve la zona principal (punto) a partir del punto/código del usuario
- */
-protected function resolverZonaUsuario(int $userId): ?string
-{
-    $user = \App\Models\User::find($userId);
-    if (!$user) {
-        return null;
+        // Si no es subpunto, podría ser un punto directo
+        return $puntoNombre;
     }
-
-    // Si el punto es código numérico, resolver a nombre
-    $puntoNombre = $this->resolverPuntoNombre($user->punto) ?? $user->punto;
-
-    // Buscar en subpuntos para obtener el punto_id (zona)
-    $subpunto = \App\Models\Subpunto::where(function($q) use ($puntoNombre, $user) {
-        $q->where('nombre', $puntoNombre)
-          ->orWhere('codigo', (int)$user->punto);
-    })->first();
-
-    if ($subpunto) {
-        // Obtener el nombre del punto/zona principal
-        $punto = \App\Models\Punto::find($subpunto->punto_id);
-        return $punto?->nombre;
-    }
-
-    // Si no es subpunto, podría ser un punto directo
-    return $puntoNombre;
-}
 
     /**
      * Genera un array de fechas entre inicio y fin

@@ -35,46 +35,49 @@ class AsistenciasTabla extends Component
     {
         $this->calculoService = app(CalculoNominaService::class);
     }
+
     public function mostrarDetalleNomina(int $userId)
-{
-    $user = User::find($userId);
-    if (!$user) {
-        session()->flash('error', 'Usuario no encontrado');
-        return;
+    {
+        $user = User::find($userId);
+        if (!$user) {
+            session()->flash('error', 'Usuario no encontrado');
+            return;
+        }
+
+        $datosAsistencias = $this->obtenerDatos();
+        $resultado = $this->calculoService->calcularPercepciones(
+            $user,
+            $this->fecha_inicio,
+            $this->fecha_fin,
+            [
+                'vacacionesPorUsuario' => $datosAsistencias['vacacionesPorUsuario'],
+                'asistenciasIndexadas' => $datosAsistencias['asistenciasIndexadas'],
+                'horasExtrasPorUsuario' => $datosAsistencias['horasExtrasPorUsuario'],
+                'permisosPorUsuario' => $datosAsistencias['permisosPorUsuario'],
+                'faltasJustificadas' => $datosAsistencias['faltasJustificadas'],
+                'retardosPorUsuario' => $datosAsistencias['retardosPorUsuario'],
+                'incapacidadesPorUsuario' => $datosAsistencias['incapacidadesPorUsuario'],
+            ]
+        );
+
+        $this->detalleNomina = $resultado;
+        $this->userIdModal = $userId;
+        $this->showModal = true;
     }
 
-    $datosAsistencias = $this->obtenerDatos();
-    $resultado = $this->calculoService->calcularPercepciones(
-        $user,
-        $this->fecha_inicio,
-        $this->fecha_fin,
-        [
-            'vacacionesPorUsuario' => $datosAsistencias['vacacionesPorUsuario'],
-            'asistenciasIndexadas' => $datosAsistencias['asistenciasIndexadas'],
-            'horasExtrasPorUsuario' => $datosAsistencias['horasExtrasPorUsuario'],
-            'permisosPorUsuario' => $datosAsistencias['permisosPorUsuario'],
-            'faltasJustificadas' => $datosAsistencias['faltasJustificadas'],
-            'retardosPorUsuario' => $datosAsistencias['retardosPorUsuario'],
-        ]
-    );
-
-    $this->detalleNomina = $resultado;
-    $this->userIdModal = $userId;
-    $this->showModal = true;
-}
-
-public function cerrarModal()
-{
-    $this->showModal = false;
-    $this->detalleNomina = null;
-    $this->userIdModal = null;
-}
+    public function cerrarModal()
+    {
+        $this->showModal = false;
+        $this->detalleNomina = null;
+        $this->userIdModal = null;
+    }
 
     private function calcularAlertas($usuarios)
     {
         $this->usuariosConAlerta = [];
 
         foreach ($usuarios as $usuario) {
+            // Obtener las últimas 2 asistencias con falta (ordenadas por fecha descendente)
             $ultimasAsistencias = Asistencia::whereJsonContains('faltas', $usuario->id)
                 ->where('fecha', '<=', $this->fecha_fin)
                 ->orderBy('fecha', 'desc')
@@ -88,6 +91,19 @@ public function cerrarModal()
                 $faltasPrimera = json_decode($primera->faltas, true) ?? [];
                 $faltasSegunda = json_decode($segunda->faltas, true) ?? [];
 
+                // Verificar si el usuario está incapacitado en esas fechas
+                $fecha1 = Carbon::parse($primera->fecha)->format('Y-m-d');
+                $fecha2 = Carbon::parse($segunda->fecha)->format('Y-m-d');
+
+                // ✅ NUEVO: Obtener TODAS las fechas de incapacidad del usuario en el rango completo
+                $todasIncapacidades = $this->obtenerTodasIncapacidadesUsuario($usuario->id, $this->fecha_inicio, $this->fecha_fin);
+
+                // Si alguna de las dos fechas tiene incapacidad → NO alerta
+                if (in_array($fecha1, $todasIncapacidades) || in_array($fecha2, $todasIncapacidades)) {
+                    continue;
+                }
+
+                // Solo si ambas fechas son faltas reales (sin incapacidad), activar alerta
                 if (in_array($usuario->id, $faltasPrimera) && in_array($usuario->id, $faltasSegunda)) {
                     $this->usuariosConAlerta[] = $usuario->id;
                 }
@@ -95,35 +111,74 @@ public function cerrarModal()
         }
     }
 
-    public function render()
-{
-    $datos = $this->obtenerDatos();
+    /**
+     * Obtiene todas las fechas de incapacidad del usuario en un rango de fechas
+     */
+    private function obtenerTodasIncapacidadesUsuario(int $userId, string $inicio, string $fin): array
+    {
+        $incapacidades = \App\Models\Incapacidad::where('user_id', $userId)
+            ->where(function ($q) use ($inicio, $fin) {
+                // Caso 1: empieza dentro del periodo
+                $q->whereBetween('fecha_inicio', [$inicio, $fin]);
+            })
+            ->orWhere(function ($q) use ($inicio, $fin) {
+                // Caso 2: termina dentro del periodo
+                $q->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>=', $inicio)
+                  ->where('fecha_inicio', '<=', $fin);
+            })
+            ->orWhere(function ($q) use ($inicio, $fin) {
+                // Caso 3: abarca todo el periodo
+                $q->where('fecha_inicio', '<', $inicio)
+                  ->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>', $fin);
+            })
+            ->get();
 
-    $subpuntosMap = $this->getSubpuntosPorPunto();
-    $rol = Auth::user()?->rol;
+        $dias = [];
+        foreach ($incapacidades as $incap) {
+            $inicioInc = Carbon::parse($incap->fecha_inicio);
+            $finInc = $inicioInc->copy()->addDays($incap->dias_incapacidad - 1);
 
-    if ($rol === 'AUXILIAR OPERACIONES') {
-        $subpuntosMap = [
-            'MONTERREY' => $subpuntosMap['MONTERREY'] ?? []
-        ];
+            for ($d = $inicioInc->copy(); $d->lte($finInc); $d->addDay()) {
+                $fecha = $d->format('Y-m-d');
+                // Incluir solo si está dentro del rango global del filtro
+                if (Carbon::parse($fecha)->between(Carbon::parse($inicio), Carbon::parse($fin))) {
+                    $dias[] = $fecha;
+                }
+            }
+        }
+        return array_unique($dias);
     }
 
-    return view('livewire.asistencias-tabla', [
-        'usuarios' => $datos['usuarios'],
-        'fechas' => $datos['fechas'],
-        'vacacionesPorUsuario' => $datos['vacacionesPorUsuario'],
-        'asistenciasIndexadas' => $datos['asistenciasIndexadas'],
-        'horasExtrasPorUsuario' => $datos['horasExtrasPorUsuario'],
-        'permisosPorUsuario' => $datos['permisosPorUsuario'],
-        'faltasJustificadas' => $datos['faltasJustificadas'],
-        'retardosPorUsuario' => $datos['retardosPorUsuario'],
-        'subpuntosMap' => $subpuntosMap,
-        'nominaPorUsuario' => $datos['nominaPorUsuario'],
-        'showModal' => $this->showModal,
-        'detalleNomina' => $this->detalleNomina,
-        'userIdModal' => $this->userIdModal,
-    ]);
-}
+    public function render()
+    {
+        $datos = $this->obtenerDatos();
+
+        $subpuntosMap = $this->getSubpuntosPorPunto();
+        $rol = Auth::user()?->rol;
+
+        if ($rol === 'AUXILIAR OPERACIONES') {
+            $subpuntosMap = [
+                'MONTERREY' => $subpuntosMap['MONTERREY'] ?? []
+            ];
+        }
+
+        return view('livewire.asistencias-tabla', [
+            'usuarios' => $datos['usuarios'],
+            'fechas' => $datos['fechas'],
+            'vacacionesPorUsuario' => $datos['vacacionesPorUsuario'],
+            'asistenciasIndexadas' => $datos['asistenciasIndexadas'],
+            'horasExtrasPorUsuario' => $datos['horasExtrasPorUsuario'],
+            'permisosPorUsuario' => $datos['permisosPorUsuario'],
+            'faltasJustificadas' => $datos['faltasJustificadas'],
+            'retardosPorUsuario' => $datos['retardosPorUsuario'],
+            'incapacidadesPorUsuario' => $datos['incapacidadesPorUsuario'],
+            'subpuntosMap' => $subpuntosMap,
+            'nominaPorUsuario' => $datos['nominaPorUsuario'],
+            'showModal' => $this->showModal,
+            'detalleNomina' => $this->detalleNomina,
+            'userIdModal' => $this->userIdModal,
+        ]);
+    }
 
     public function updated($property)
     {
@@ -143,7 +198,8 @@ public function cerrarModal()
                 'permisosPorUsuario' => [],
                 'faltasJustificadas' => [],
                 'retardosPorUsuario' => [],
-                'nominaPorUsuario' => [], // 👈 Nuevo
+                'incapacidadesPorUsuario' => [],
+                'nominaPorUsuario' => [],
             ];
         }
 
@@ -380,7 +436,39 @@ public function cerrarModal()
             $retardosPorUsuario[$userId][$fecha] = $minutos;
         }
 
-        // Calcular nómina para cada usuario 👇 Nuevo
+        // Cargar incapacidades
+        $incapacidadesPorUsuario = [];
+        $incapacidades = \App\Models\Incapacidad::where(function ($q) {
+            // Caso 1: Incapacidad empieza dentro del periodo
+            $q->whereBetween('fecha_inicio', [$this->fecha_inicio, $this->fecha_fin]);
+        })
+        ->orWhere(function ($q) {
+            // Caso 2: Incapacidad termina dentro del periodo
+            $q->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>=', $this->fecha_inicio)
+              ->where('fecha_inicio', '<=', $this->fecha_fin);
+        })
+        ->orWhere(function ($q) {
+            // Caso 3: Incapacidad abarca todo el periodo
+            $q->where('fecha_inicio', '<', $this->fecha_inicio)
+              ->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>', $this->fecha_fin);
+        })
+        ->get();
+
+        foreach ($incapacidades as $incapacidad) {
+            $inicio = Carbon::parse($incapacidad->fecha_inicio);
+            // ✅ CORRECCIÓN CRÍTICA: usar copy() para evitar mutación
+            $fin = $inicio->copy()->addDays($incapacidad->dias_incapacidad - 1);
+
+            for ($d = $inicio->copy(); $d->lte($fin); $d->addDay()) {
+                $fecha = $d->format('Y-m-d');
+                // Solo incluir fechas dentro del rango del filtro
+                if (Carbon::parse($fecha)->between(Carbon::parse($this->fecha_inicio), Carbon::parse($this->fecha_fin))) {
+                    $incapacidadesPorUsuario[$incapacidad->user_id][] = $fecha;
+                }
+            }
+        }
+
+        // Calcular nómina para cada usuario
         $nominaPorUsuario = [];
         foreach ($usuarios as $user) {
             try {
@@ -395,6 +483,7 @@ public function cerrarModal()
                         'permisosPorUsuario' => $permisosPorUsuario,
                         'faltasJustificadas' => $faltasJustificadas,
                         'retardosPorUsuario' => $retardosPorUsuario,
+                        'incapacidadesPorUsuario' => $incapacidadesPorUsuario,
                     ]
                 );
 
@@ -425,7 +514,8 @@ public function cerrarModal()
             'permisosPorUsuario' => $permisosPorUsuario,
             'faltasJustificadas' => $faltasJustificadas,
             'retardosPorUsuario' => $retardosPorUsuario,
-            'nominaPorUsuario' => $nominaPorUsuario, // 👈 Nuevo
+            'incapacidadesPorUsuario' => $incapacidadesPorUsuario,
+            'nominaPorUsuario' => $nominaPorUsuario,
         ];
     }
 
