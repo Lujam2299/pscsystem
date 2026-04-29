@@ -191,6 +191,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/verificar-asistencia/{fecha}', [RHController::class, 'verificarAsistenciaExistente'])
     ->name('api.verificar.asistencia');
 
+    Route::get('/kardex-vacaciones-pdf', function () {
+        return view('kardex.vacaciones');
+    })->name('kardex.vacaciones');
+
     Route::get('/descargar-bajas', function () {
         return (new BajasSpreadsheetExport())->generateFile();
     })->name('exportar.bajas');
