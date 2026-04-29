@@ -34,6 +34,7 @@ use App\Http\Controllers\RealtimePositionController;
 use App\Http\Controllers\ReingresoController;
 use App\Models\Unidades;
 use App\Models\User;
+use App\Livewire\KardexVacaciones;
 use Illuminate\Http\Request;
 
 
@@ -183,6 +184,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/solicitudes/baja/{id}', [RhController::class, 'actualizar'])->name('solicitudes.baja.actualizar');
     Route::get('/listaAsistenciaMontana', [RhController::class, 'listaAsistenciaMontana'])->name('rh.listaAsistencia');
     Route::get('reingresos', [RhController::class, 'reingresos'])->name('rh.reingresos');
+    Route::get('/kardex-vacaciones', [RhController::class, 'kardexVacaciones'])->name('kardex-vacaciones');
     Route::post('/rh/asistencia-montana/guardar', [RhController::class, 'guardarAsistenciaMontana'])->name('rh.guardarAsistenciaMontana');
     Route::get('/api/usuarios-vacaciones/{fecha}', [RHController::class, 'obtenerUsuariosEnVacaciones'])->name('api.usuarios.vacaciones');
     Route::get('/api/usuarios-permisos/{fecha}', [RHController::class, 'obtenerUsuariosConPermisos'])->name('api.usuarios.permisos');

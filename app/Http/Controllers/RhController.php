@@ -834,4 +834,8 @@ public function guardarArchivosAlta(Request $request, $id)
 
         return view('rh.reingresos', compact('reingresos'));
     }
+
+    public function kardexVacaciones(){
+        return view('rh.kardexVacaciones');
+    }
 }
