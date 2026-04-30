@@ -241,85 +241,97 @@ class RhController extends Controller
 
 
     public function guardarAlta(Request $request){
-        try {
-            $validated = $request->validate([
-                'tipo' => 'required|in:oficina,armado,noarmado',
-                'name' => 'nullable|string|max:255',
-                'apellido_paterno' => 'nullable|string|max:255',
-                'apellido_materno' => 'nullable|string|max:255',
-                'fecha_nacimiento' => 'nullable|date',
-                'curp' => 'nullable|string|max:255',
-                'nss' => 'nullable|string|max:255',
-                'edo_civil' => 'nullable|string',
-                'rfc' => 'nullable|string|max:255',
-                'telefono' => 'nullable|string|max:255',
-                'calle' => 'nullable|string|max:255',
-                'num_ext' => 'nullable|string|max:255',
-                'colonia' => 'nullable|string|max:255',
-                'ciudad' => 'nullable|string|max:255',
-                'peso' => 'nullable|string|max:255',
-                'estatura' => 'nullable|string|max:255',
-                'cp_fiscal' => 'nullable|string|max:255',
-                'estado' => 'nullable|string|max:255',
-                'liga_rfc' => 'nullable|string|max:255',
-                'infonavit' => 'nullable|string|max:255',
-                'fonacot' => 'nullable|string|max:255',
-                'domicilio_comprobante' => 'nullable|string|max:255',
-                'departamento' => 'nullable|string|max:255',
-                'rol' => 'nullable|string|max:255',
-                'reingreso' => 'nullable|string',
-                'punto' => 'nullable|string|max:255',
-                'empresa' => 'nullable|string',
-                'sueldo_mensual' => 'nullable|string',
-                'fecha_ingreso' => 'nullable|date',
-                'email' => 'nullable|email|unique:solicitud_altas,email',
-            ]);
-            $tipoSeleccionado = $request->get('tipo', 'oficina');
+    try {
+        $validated = $request->validate([
+            'tipo' => 'required|in:oficina,armado,noarmado',
+            'name' => 'nullable|string|max:255',
+            'apellido_paterno' => 'nullable|string|max:255',
+            'apellido_materno' => 'nullable|string|max:255',
+            'fecha_nacimiento' => 'nullable|date',
+            'curp' => 'nullable|string|max:255',
+            'nss' => 'nullable|string|max:255',
+            'edo_civil' => 'nullable|string',
+            'rfc' => 'nullable|string|max:255',
+            'telefono' => 'nullable|string|max:255',
+            'calle' => 'nullable|string|max:255',
+            'num_ext' => 'nullable|string|max:255',
+            'colonia' => 'nullable|string|max:255',
+            'ciudad' => 'nullable|string|max:255',
+            'peso' => 'nullable|string|max:255',
+            'estatura' => 'nullable|string|max:255',
+            'cp_fiscal' => 'nullable|string|max:255',
+            'estado' => 'nullable|string|max:255',
+            'liga_rfc' => 'nullable|string|max:255',
+            'infonavit' => 'nullable|string|max:255',
+            'fonacot' => 'nullable|string|max:255',
+            'domicilio_comprobante' => 'nullable|string|max:255',
+            'departamento' => 'nullable|string|max:255',
+            'rol' => 'nullable|string|max:255',
+            'reingreso' => 'nullable|string',
+            'punto' => 'nullable|string|max:255',
+            'empresa' => 'nullable|string',
+            'sueldo_mensual' => 'nullable|string',
+            'fecha_ingreso' => 'nullable|date',
+            'email' => 'nullable|email|unique:solicitud_altas,email',
 
-            $solicitud = new SolicitudAlta();
-            $solicitud->solicitante = auth()->user()->name;
-            $solicitud->nombre = $request->name;
-            $solicitud->apellido_paterno = $request->apellido_paterno;
-            $solicitud->apellido_materno = $request->apellido_materno;
-            $solicitud->fecha_nacimiento = $request->fecha_nacimiento;
-            $solicitud->tipo_empleado = $request->get('tipo', 'oficina');
-            $solicitud->curp = $request->curp;
-            $solicitud->nss = $request->nss;
-            $solicitud->estado_civil = $request->edo_civil;
-            $solicitud->rfc = $request->rfc;
-            $solicitud->telefono = $request->telefono;
-            $solicitud->domicilio_calle = $request->calle;
-            $solicitud->domicilio_numero = $request->num_ext;
-            $solicitud->domicilio_colonia = $request->colonia;
-            $solicitud->cp_fiscal = $request->cp_fiscal;
-            $solicitud->domicilio_ciudad = $request->ciudad;
-            $solicitud->peso = $request->peso;
-            $solicitud->estatura = $request->estatura;
-            $solicitud->liga_rfc = $request->liga_rfc;
-            $solicitud->domicilio_estado = $request->estado;
-            $solicitud->infonavit = $request->infonavit;
-            $solicitud->fonacot = $request->fonacot;
-            $solicitud->domicilio_comprobante = $request->domicilio_comprobante;
-            $solicitud->rol = $request->rol;
-            $solicitud->punto = $request->punto;
-            $solicitud->reingreso = $request->reingreso;
-            $solicitud->empresa = $request->empresa;
-            $solicitud->fecha_ingreso = $request->fecha_ingreso;
-            $solicitud->sueldo_mensual = $request->sueldo_mensual;
-            $solicitud->email = $request->email;
-            $solicitud->status = 'Aceptada';
-            $solicitud->observaciones = 'Solicitud Aceptada.';
-            $solicitud->created_at = Carbon::now('America/Mexico_City');
-            $solicitud->updated_at = Carbon::now('America/Mexico_City');
+            // --- NUEVOS CAMPOS ---
+            'tipo_periodo' => 'nullable|in:semanal,quincenal',
+            'banco' => 'nullable|string|max:255',
+            'cuenta_bancaria' => 'nullable|string|max:255',
+        ]);
 
-            $solicitud->save();
+        $tipoSeleccionado = $request->get('tipo', 'oficina');
 
-            return redirect()->route('rh.subirArchivosAltaForm', ['id' => $solicitud->id, 'tipo' => $tipoSeleccionado]);
+        $solicitud = new SolicitudAlta();
+        $solicitud->solicitante = auth()->user()->name;
+        $solicitud->nombre = $request->name;
+        $solicitud->apellido_paterno = $request->apellido_paterno;
+        $solicitud->apellido_materno = $request->apellido_materno;
+        $solicitud->fecha_nacimiento = $request->fecha_nacimiento;
+        $solicitud->tipo_empleado = $request->get('tipo', 'oficina');
+        $solicitud->curp = $request->curp;
+        $solicitud->nss = $request->nss;
+        $solicitud->estado_civil = $request->edo_civil;
+        $solicitud->rfc = $request->rfc;
+        $solicitud->telefono = $request->telefono;
+        $solicitud->domicilio_calle = $request->calle;
+        $solicitud->domicilio_numero = $request->num_ext;
+        $solicitud->domicilio_colonia = $request->colonia;
+        $solicitud->cp_fiscal = $request->cp_fiscal;
+        $solicitud->domicilio_ciudad = $request->ciudad;
+        $solicitud->peso = $request->peso;
+        $solicitud->estatura = $request->estatura;
+        $solicitud->liga_rfc = $request->liga_rfc;
+        $solicitud->domicilio_estado = $request->estado;
+        $solicitud->infonavit = $request->infonavit;
+        $solicitud->fonacot = $request->fonacot;
+        $solicitud->domicilio_comprobante = $request->domicilio_comprobante;
+        $solicitud->rol = $request->rol;
+        $solicitud->punto = $request->punto;
+        $solicitud->reingreso = $request->reingreso;
+        $solicitud->empresa = $request->empresa;
+        $solicitud->fecha_ingreso = $request->fecha_ingreso;
+        $solicitud->sueldo_mensual = $request->sueldo_mensual;
+        $solicitud->email = $request->email;
 
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error al guardar la solicitud, intente nuevamente.'. $e->getMessage());
-        }
+        // --- ASIGNACIÓN DE NUEVOS CAMPOS ---
+        $solicitud->tipo_periodo = $request->tipo_periodo;
+        $solicitud->banco = $request->banco;
+        $solicitud->cuenta_bancaria = $request->cuenta_bancaria;
+
+        $solicitud->status = 'Aceptada';
+        $solicitud->observaciones = 'Solicitud Aceptada.';
+        $solicitud->created_at = Carbon::now('America/Mexico_City');
+        $solicitud->updated_at = Carbon::now('America/Mexico_City');
+
+        $solicitud->save();
+
+        return redirect()->route('rh.subirArchivosAltaForm', ['id' => $solicitud->id, 'tipo' => $tipoSeleccionado]);
+
+    } catch (\Exception $e) {
+        return redirect()->back()->with('error', 'Error al guardar la solicitud, intente nuevamente.'. $e->getMessage());
     }
+}
 
     public function cancelarSolicitud($id): RedirectResponse
     {
