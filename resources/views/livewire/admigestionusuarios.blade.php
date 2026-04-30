@@ -287,7 +287,7 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                    {{ $user->solicitudAlta?->tipo_periodo ?? 'No Disponible' }}
+                                    {{ $user->solicitudAlta?->tipo_periodo_formatted ?? 'No Disponible' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @php

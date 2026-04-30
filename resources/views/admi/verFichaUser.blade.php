@@ -231,7 +231,7 @@
                                     <!-- Nuevos Campos Bancarios -->
                                     <div>
                                         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Tipo de Pago</p>
-                                        <p class="text-gray-900 dark:text-white">{{ $solicitud?->tipo_periodo ?: 'N/D' }}</p>
+                                        <p class="text-gray-900 dark:text-white">{{ $solicitud?->tipo_periodo_formatted ?? 'No Disponible' }}</p>
                                     </div>
                                     <div>
                                         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Banco</p>

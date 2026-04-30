@@ -78,4 +78,16 @@ class SolicitudAlta extends Model
         return $this->hasOne(User::class, 'sol_alta_id');
     }
 
+    public function getTipoPeriodoFormattedAttribute()
+    {
+        switch ($this->tipo_periodo) {
+            case 'quincenal':
+                return 'Quincenal';
+            case 'semanal':
+                return 'Semanal';
+            default:
+                return 'No Disponible';
+        }
+    }
+
 }
