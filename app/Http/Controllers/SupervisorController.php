@@ -269,18 +269,22 @@ class SupervisorController extends Controller
             'sueldo_mensual' => 'nullable|string',
             'fecha_ingreso' => 'nullable|date',
             'email' => 'nullable|email|unique:solicitud_altas,email,' . $id . ',id',
+
+            // --- NUEVAS VALIDACIONES ---
+            'tipo_periodo' => 'nullable|in:semanal,quincenal',
+            'banco' => 'nullable|string|max:255',
+            'cuenta_bancaria' => 'nullable|string|max:255',
         ]);
 
         $solicitud = SolicitudAlta::findOrFail($id);
-        $id = $solicitud->id;
 
-        // Actualizar todos los campos
+        // Actualizar todos los campos de la solicitud
         $solicitud->solicitante = auth()->user()->name;
         $solicitud->nombre = $request->name;
         $solicitud->apellido_paterno = $request->apellido_paterno;
         $solicitud->apellido_materno = $request->apellido_materno;
         $solicitud->fecha_nacimiento = $request->fecha_nacimiento;
-        $solicitud->tipo_empleado = $request->tipo; // Ahora se puede cambiar el tipo
+        $solicitud->tipo_empleado = $request->tipo;
         $solicitud->curp = $request->curp;
         $solicitud->nss = $request->nss;
         $solicitud->estado_civil = $request->edo_civil;
@@ -305,35 +309,51 @@ class SupervisorController extends Controller
         $solicitud->fecha_ingreso = $request->fecha_ingreso;
         $solicitud->sueldo_mensual = $request->sueldo_mensual;
         $solicitud->email = $request->email;
+
+        // --- ASIGNAR NUEVOS CAMPOS ---
+        $solicitud->tipo_periodo = $request->tipo_periodo;
+        $solicitud->banco = $request->banco;
+        $solicitud->cuenta_bancaria = $request->cuenta_bancaria;
+
         $solicitud->ultima_edicion = Auth::user()->name . " " . Carbon::now('America/Mexico_City');
 
-        // Actualizar status según permisos
-        if(Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' ||
-            Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' ||
-            Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' ||
-            Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' ||
-            Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS'){
+        // Determinar si el usuario tiene permisos de RH/Admin para aceptar cambios directamente
+        $esRH_O_Admin = false;
+        if(Auth::user()->rol == 'admin' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS'){
+            $esRH_O_Admin = true;
+        }
+        // Verificación adicional basada en la solicitud anterior (si el editor es de RH)
+        // Nota: Asumimos que Auth::user() tiene acceso a su propia solicitud o rol directo.
+        // Si la lógica original dependía de $solicitud->departamento del USUARIO LOGUEADO,
+        // asegúrate de que Auth::user() tenga esa relación o atributo.
+        // Aquí mantengo tu lógica original adaptada:
+        elseif(isset(Auth::user()->solicitudAlta) && (
+            Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' ||
+            in_array(Auth::user()->solicitudAlta->rol, ['AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH', 'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH'])
+        )){
+            $esRH_O_Admin = true;
+        }
+
+        if($esRH_O_Admin){
             $solicitud->status = 'Aceptada';
             $solicitud->observaciones = 'Solicitud Aceptada.';
-        }else{
+        } else {
             $solicitud->status = 'En Proceso';
             $solicitud->observaciones = 'Cambios realizados, en espera de revisión.';
         }
 
         $solicitud->save();
 
-        // Actualizar el usuario si tiene permisos
+        // Actualizar el usuario asociado si tiene permisos
         $user = User::where('sol_alta_id', $id)->first();
-        if(Auth()->user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' ||
-            Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' ||
-            Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' ||
-            Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' ||
-            Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS'){
-            $user->name = $solicitud->nombre . " " . $solicitud->apellido_paterno . " " . $solicitud->apellido_materno;
+
+        if($user && $esRH_O_Admin){
+            $user->name = trim($solicitud->nombre . " " . $solicitud->apellido_paterno . " " . $solicitud->apellido_materno);
             $user->email = $solicitud->email;
             $user->punto = $solicitud->punto;
             $user->rol = $solicitud->rol;
             $user->empresa = $solicitud->empresa;
+
             $user->save();
         }
 
