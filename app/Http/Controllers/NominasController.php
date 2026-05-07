@@ -945,4 +945,8 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
             return redirect()->back()->with('error', 'Error al subir el archivo: ' . $e->getMessage());
         }
     }
+
+    public function historialDeducciones(){
+        return view('nominas.historialDeducciones');
+    }
 }

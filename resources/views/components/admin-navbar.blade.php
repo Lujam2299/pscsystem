@@ -7,7 +7,9 @@
     use App\Models\Asistencia;
     use Carbon\Carbon;
     use Illuminate\Support\Facades\DB;
+    use Illuminate\Support\Str;
 
+    // --- LÓGICA ORIGINAL INTACTA ---
     $vacacionesAdmin = SolicitudVacaciones::where('estatus', 'En Proceso')
         ->where('observaciones', '!=', 'Solicitud aceptada, falta subir archivo de solicitud.')
         ->whereHas('user', function ($query) {
@@ -197,490 +199,362 @@
             'icono' => 'message',
             'color' => 'bg-purple-300 dark:bg-purple-700',
         ],
-        /*[
-            'titulo' => 'Importar Datos',
-            'ruta' => route('importar.excel'),
-            'icono' => 'folder-open',
-            'color' => 'bg-gray-300 dark:bg-gray-700',
-        ],
-        [
-            'titulo' => 'Importar Personal Activo',
-            'ruta' => route('importar.personal.activo'),
-            'icono' => 'folder-open',
-            'color' => 'bg-blue-300 dark:bg-gray-700',
-        ],
-        [
-            'titulo' => 'Depurar datos',
-            'form' => true, // Marcador para saber que es un formulario
-            'action' => route('admin.import.unify-duplicates'),
-            'icono' => 'message',
-            'color' => 'bg-purple-300 dark:bg-purple-700',
-            'confirm' => '¿Estás seguro de unificar los usuarios duplicados? Esta acción no se puede deshacer.',
-        ],
-
-        [
-            'titulo' => 'Registrar Datos',
-            'ruta' => '#', // Cambia a # ya que no será un href normal
-            'icono' => 'file-text',
-            'color' => 'bg-orange-300 dark:bg-orange-700',
-            'disabled' => false,
-            'onclick' => 'actualizarDestajos()', // Agrega esta línea
-        ],
-        [
-            'titulo' => 'Registrar Finiquitos',
-            'ruta' => route('registrarFiniquitos'),
-            'icono' => 'file-text',
-            'color' => 'bg-red-300 dark:bg-red-700',
-            'disabled' => true,
-        ],*/
     ]);
 @endphp
 
-<div class="flex h-full">
-    <div class="w-64 px-4 py-6 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-        <div class="space-y-2">
+<div class="flex h-screen bg-gray-50 dark:bg-gray-900 font-sans overflow-hidden">
+
+    {{-- SIDEBAR MEJORADO --}}
+    <aside class="w-72 flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300 z-20 shadow-xl">
+        <div class="p-6 border-b border-gray-100 dark:border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white tracking-tight">
+                Panel <span class="text-blue-600">Admin</span>
+            </h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 uppercase tracking-wider">SGI v1.1</p>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
             @foreach ($cards as $card)
                 @php
                     $isDisabled = $card['disabled'] ?? false;
-                    $isActive = request()->routeIs(Str::after($card['ruta'] ?? '', url('/')));
+                    // Determinar si está activo de forma segura
+                    $isActive = isset($card['ruta']) && request()->fullUrlIs('*'.parse_url($card['ruta'], PHP_URL_PATH).'*');
+
+                    // Mapeo de colores para iconos y badges basado en la clase original
+                    $iconColorClass = match(true) {
+                        Str::contains($card['color'], 'blue') => 'text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400',
+                        Str::contains($card['color'], 'yellow') => 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/30 dark:text-yellow-400',
+                        Str::contains($card['color'], 'indigo') => 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400',
+                        Str::contains($card['color'], 'orange') => 'text-orange-600 bg-orange-50 dark:bg-orange-900/30 dark:text-orange-400',
+                        Str::contains($card['color'], 'red') => 'text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400',
+                        Str::contains($card['color'], 'green') => 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400',
+                        Str::contains($card['color'], 'pink') => 'text-pink-600 bg-pink-50 dark:bg-pink-900/30 dark:text-pink-400',
+                        Str::contains($card['color'], 'purple') => 'text-purple-600 bg-purple-50 dark:bg-purple-900/30 dark:text-purple-400',
+                        default => 'text-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-gray-400',
+                    };
                 @endphp
 
                 @if ($isDisabled)
-                    <div class="p-3 rounded-lg {{ $card['color'] }} opacity-50 cursor-not-allowed">
-                        <div class="flex items-center space-x-3">
-                            <div class="flex items-center justify-center mb-1 rounded-full shadow w-14 h-14 bg-white/80">
-                                <i
-                                    class="ti ti-{{ $card['icono'] }} text-3xl {{ Str::contains($card['color'], 'blue')
-                                        ? 'text-blue-700'
-                                        : (Str::contains($card['color'], 'yellow')
-                                            ? 'text-yellow-700'
-                                            : (Str::contains($card['color'], 'indigo')
-                                                ? 'text-indigo-700'
-                                                : (Str::contains($card['color'], 'orange')
-                                                    ? 'text-orange-700'
-                                                    : (Str::contains($card['color'], 'red')
-                                                        ? 'text-red-700'
-                                                        : (Str::contains($card['color'], 'green')
-                                                            ? 'text-green-700'
-                                                            : (Str::contains($card['color'], 'purple')
-                                                                ? 'text-purple-700'
-                                                                : (Str::contains($card['color'], 'gray')
-                                                                    ? 'text-gray-700'
-                                                                    : 'text-gray-800'))))))) }}"></i>
+                    <div class="group flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-400 rounded-lg cursor-not-allowed opacity-60">
+                        <div class="flex items-center gap-3">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-lg {{ $iconColorClass }} flex items-center justify-center">
+                                <i class="ti ti-{{ $card['icono'] }} text-lg"></i>
                             </div>
-                            <span class="font-medium">{{ $card['titulo'] }}</span>
+                            <span>{{ $card['titulo'] }}</span>
+                        </div>
+                    </div>
+
+                @elseif(isset($card['form']) && $card['form'])
+                    <form action="{{ $card['action'] }}" method="POST"
+                          class="group flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors relative"
+                          onsubmit="return confirm('{{ $card['confirm'] ?? '¿Estás seguro?' }}')">
+                        @csrf
+                        <div class="flex items-center gap-3 w-full">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-lg {{ $iconColorClass }} flex items-center justify-center transition-transform group-hover:scale-110">
+                                <i class="ti ti-{{ $card['icono'] }} text-lg"></i>
+                            </div>
+                            <span class="truncate">{{ $card['titulo'] }}</span>
                         </div>
                         @if (isset($card['notificaciones']) && $card['notificaciones'] > 0)
-                            <span class="absolute top-2 right-2 bg-red-600 text-white text-xs rounded-full px-2 py-0.5">
+                            <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white transform translate-x-1 bg-red-500 rounded-full">
                                 {{ $card['notificaciones'] }}
                             </span>
                         @endif
-                    </div>
-                @elseif($card['titulo'] === 'Importar Datos')
-                    <form action="{{ route('importar.excel') }}" method="POST" enctype="multipart/form-data"
-                        class="p-3 rounded-lg {{ $card['color'] }}">
-                        @csrf
-                        <div class="flex items-center space-x-3">
-                            <div
-                                class="flex items-center justify-center mb-1 rounded-full shadow w-14 h-14 bg-white/80">
-                                <i
-                                    class="ti ti-{{ $card['icono'] }} text-3xl {{ Str::contains($card['color'], 'blue')
-                                        ? 'text-blue-700'
-                                        : (Str::contains($card['color'], 'yellow')
-                                            ? 'text-yellow-700'
-                                            : (Str::contains($card['color'], 'red')
-                                                ? 'text-red-700'
-                                                : (Str::contains($card['color'], 'green')
-                                                    ? 'text-green-700'
-                                                    : (Str::contains($card['color'], 'purple')
-                                                        ? 'text-purple-700'
-                                                        : (Str::contains($card['color'], 'gray')
-                                                            ? 'text-gray-700'
-                                                            : 'text-gray-800'))))) }}"></i>
-                            </div>
-                            <span class="font-medium">{{ $card['titulo'] }}</span>
-                        </div>
-                        <input type="file" name="excel" accept=".xlsx,.xls, .csv"
-                            class="mt-2 w-full text-sm text-gray-500 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                            required>
-                        <button type="submit"
-                            class="mt-2 w-full bg-blue-600 text-white py-1 px-2 rounded hover:bg-blue-700 transition text-sm">
-                            Importar
-                        </button>
+                        <button type="submit" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"></button>
                     </form>
-                @elseif($card['titulo'] === 'Importar Personal Activo')
-                    <form action="{{ route('importar.personal.activo') }}" method="POST" enctype="multipart/form-data"
-                        class="p-3 rounded-lg {{ $card['color'] }}">
-                        @csrf
-                        <div class="flex items-center space-x-3">
-                            <div
-                                class="flex items-center justify-center mb-1 rounded-full shadow w-14 h-14 bg-white/80">
-                                <i
-                                    class="ti ti-user-plus text-3xl {{ Str::contains($card['color'], 'blue') ? 'text-blue-700' : 'text-gray-700' }}"></i>
-                            </div>
-                            <span class="font-medium">{{ $card['titulo'] }}</span>
-                        </div>
-                        <input type="file" name="excel" accept=".xlsx,.xls"
-                            class="mt-2 w-full text-sm text-gray-500 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                            required>
-                        <button type="submit"
-                            class="mt-2 w-full bg-blue-600 text-white py-1 px-2 rounded hover:bg-blue-700 transition text-sm">
-                            Importar
-                        </button>
-                    </form>
-                @elseif (isset($card['form']) && $card['form'])
-                    <form action="{{ $card['action'] }}" method="POST"
-                        class="p-3 rounded-lg {{ $card['color'] }} hover:bg-opacity-70 transition relative block"
-                        onsubmit="return confirm('{{ $card['confirm'] ?? '¿Estás seguro?' }}')">
-                        @csrf
-                        <button type="submit" class="w-full h-full flex items-center space-x-3 text-left">
-                            <div
-                                class="flex items-center justify-center mb-1 rounded-full shadow w-14 h-14 bg-white/80">
-                                <i
-                                    class="ti ti-{{ $card['icono'] }} text-3xl {{ Str::contains($card['color'], 'blue')
-                                        ? 'text-blue-700'
-                                        : (Str::contains($card['color'], 'yellow')
-                                            ? 'text-yellow-700'
-                                            : (Str::contains($card['color'], 'red')
-                                                ? 'text-red-700'
-                                                : (Str::contains($card['color'], 'green')
-                                                    ? 'text-green-700'
-                                                    : (Str::contains($card['color'], 'purple')
-                                                        ? 'text-purple-700'
-                                                        : (Str::contains($card['color'], 'gray')
-                                                            ? 'text-gray-700'
-                                                            : 'text-gray-800'))))) }}"></i>
-                            </div>
-                            <span class="font-medium">{{ $card['titulo'] }}</span>
-                        </button>
-                    </form>
+
                 @else
                     <a href="{{ $card['ruta'] ?? '#' }}"
-                        @if (isset($card['onclick'])) onclick="{{ $card['onclick'] }}; return false;" @endif
-                        @if (in_array($card['titulo'], ['RRHH', 'Nóminas', 'IMSS'])) @click.prevent="$dispatch('cambiar-menu', { menu: '{{ strtolower(str_replace(' ', '_', $card['titulo'])) }}' })" @endif
-                        id="{{ Str::slug($card['titulo']) }}"
-                        class="block p-3 rounded-lg {{ $card['color'] }} {{ $isActive ? 'ring-2 ring-blue-500' : '' }} hover:bg-opacity-70 transition relative cursor-pointer">
-                        <div class="flex items-center space-x-3">
-                            <div
-                                class="flex items-center justify-center mb-1 rounded-full shadow w-14 h-14 bg-white/80">
-                                <i
-                                    class="ti ti-{{ $card['icono'] }} text-3xl {{ Str::contains($card['color'], 'blue')
-                                        ? 'text-blue-700'
-                                        : (Str::contains($card['color'], 'yellow')
-                                            ? 'text-yellow-700'
-                                            : (Str::contains($card['color'], 'red')
-                                                ? 'text-red-700'
-                                                : (Str::contains($card['color'], 'indigo')
-                                                ? 'text-indigo-700'
-                                                : (Str::contains($card['color'], 'green')
-                                                    ? 'text-green-700'
-                                                    : (Str::contains($card['color'], 'pink')
-                                                    ? 'text-pink-700'
-                                                    : (Str::contains($card['color'], 'purple')
-                                                        ? 'text-purple-700'
-                                                        : (Str::contains($card['color'], 'gray')
-                                                            ? 'text-gray-700'
-                                                            : 'text-gray-800'))))))) }}"></i>
+                       @if (isset($card['onclick'])) onclick="{{ $card['onclick'] }}; return false;" @endif
+                       @if (in_array($card['titulo'], ['RRHH', 'Nóminas', 'IMSS']))
+                           @click.prevent="$dispatch('cambiar-menu', { menu: '{{ strtolower(str_replace(' ', '_', $card['titulo'])) }}' })"
+                       @endif
+                       id="{{ Str::slug($card['titulo']) }}"
+                       class="group flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200
+                              {{ $isActive
+                                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white' }}">
+
+                        <div class="flex items-center gap-3">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-lg {{ $isActive ? 'bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300' : $iconColorClass }} flex items-center justify-center transition-transform group-hover:scale-110">
+                                <i class="ti ti-{{ $card['icono'] }} text-lg"></i>
                             </div>
-                            <span class="font-medium">{{ $card['titulo'] }}</span>
+                            <span class="truncate">{{ $card['titulo'] }}</span>
                         </div>
+
                         @if (isset($card['notificaciones']) && $card['notificaciones'] > 0)
-                            <span class="absolute top-2 right-2 bg-red-600 text-white text-xs rounded-full px-2 py-0.5">
+                            <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-500 rounded-full shadow-sm ring-2 ring-white dark:ring-gray-800">
                                 {{ $card['notificaciones'] }}
                             </span>
                         @endif
                     </a>
                 @endif
             @endforeach
+        </nav>
+
+        <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md">
+                    {{ substr(Auth::user()->name, 0, 1) }}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {{ Auth::user()->name }}
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {{ Auth::user()->rol ?? 'Administrador' }}
+                    </p>
+                </div>
+            </div>
         </div>
-    </div>
+    </aside>
 
-    <div class="flex-1 overflow-y-auto">
-        <div x-data="{ slide: 1 }" class="relative">
-            <div class="overflow-hidden">
-                <div :class="`flex transition-transform duration-500 ease-in-out transform ${slide === 1 ? 'translate-x-0' : 'translate-x-full md:translate-x-[-50%]'}`"
-                    style="display: flex; width: 200%;">
-                    <div class="grid gap-4 p-4 w-full" style="grid-template-columns: repeat(3, 1fr);">
+    {{-- MAIN CONTENT --}}
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-gray-50 dark:bg-gray-900">
 
-                        {{-- Elementos Activos --}}
-                        <div
-                            class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-t-4 border-blue-500 hover:shadow-xl transform hover:-translate-y-1 transition">
-                            <div class="flex items-center gap-4">
-                                <div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
-                                    <!-- Icono de usuarios -->
-                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                        class="h-8 w-8 text-blue-600 dark:text-blue-300" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M17 20h5v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2h5" />
-                                        <circle cx="12" cy="7" r="4" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Elementos Activos
-                                    </h3>
-                                    <p class="text-3xl font-bold text-gray-800 dark:text-gray-200">{{ $activos }}
-                                    </p>
-                                    <div
-                                        class="text-sm mt-1 flex items-center gap-1 {{ $variacionActivos >= 0 ? 'text-green-600' : 'text-red-500' }}">
-                                        @if ($variacionActivos > 0)
-                                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M5 10l5-5 5 5H5z" />
-                                            </svg>
-                                        @elseif($variacionActivos < 0)
-                                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M5 10l5 5 5-5H5z" />
-                                            </svg>
-                                        @else
-                                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M4 9h12v2H4z" />
-                                            </svg>
-                                        @endif
-                                        <span>{{ $variacionActivos >= 0 ? '+' : '' }}{{ $variacionActivos }}% vs mes
-                                            pasado</span>
+        {{-- TOP SECTION: KPI CARDS --}}
+        <div class="flex-1 overflow-y-auto p-6 scroll-smooth">
+
+            {{-- Header Mobile/Tablet Title --}}
+            <div class="mb-6 md:hidden">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Dashboard General</h1>
+            </div>
+
+            <div x-data="{ slide: 1 }" class="relative max-w-7xl mx-auto">
+
+                {{-- Slider Container --}}
+                <div class="overflow-hidden rounded-2xl">
+                    <div :class="`flex transition-transform duration-500 ease-out transform ${slide === 1 ? 'translate-x-0' : '-translate-x-full md:-translate-x-1/2'}`"
+                         style="width: 200%;">
+
+                        {{-- SLIDE 1: KPIs Principales --}}
+                        <div class="w-1/2 px-2 md:px-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                                {{-- Card: Activos --}}
+                                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow duration-300 relative overflow-hidden group">
+                                    <div class="absolute top-0 right-0 w-24 h-24 bg-blue-50 dark:bg-blue-900/20 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                                    <div class="relative z-10">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <div class="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-xl text-blue-600 dark:text-blue-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2h5" />
+                                                    <circle cx="12" cy="7" r="4" />
+                                                </svg>
+                                            </div>
+                                            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Personal</span>
+                                        </div>
+                                        <h3 class="text-3xl font-bold text-gray-900 dark:text-white mb-1">{{ $activos }}</h3>
+                                        <div class="flex items-center text-sm {{ $variacionActivos >= 0 ? 'text-emerald-600' : 'text-red-500' }}">
+                                            @if ($variacionActivos > 0) <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5-5 5 5H5z"/></svg>
+                                            @elseif($variacionActivos < 0) <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5 5 5-5H5z"/></svg>
+                                            @else <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M4 9h12v2H4z"/></svg>
+                                            @endif
+                                            <span class="font-medium">{{ abs($variacionActivos) }}%</span>
+                                            <span class="text-gray-500 dark:text-gray-400 ml-1">vs mes anterior</span>
+                                        </div>
                                     </div>
+                                </div>
+
+                                {{-- Card: Altas --}}
+                                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow duration-300 relative overflow-hidden group">
+                                    <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-50 dark:bg-emerald-900/20 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                                    <div class="relative z-10">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <div class="p-3 bg-emerald-100 dark:bg-emerald-900/50 rounded-xl text-emerald-600 dark:text-emerald-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                                </svg>
+                                            </div>
+                                            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Altas Mes</span>
+                                        </div>
+                                        <h3 class="text-3xl font-bold text-gray-900 dark:text-white mb-1">{{ $conteoAltasAdmin }}</h3>
+                                        <div class="flex items-center text-sm {{ $variacionAltas >= 0 ? 'text-emerald-600' : 'text-red-500' }}">
+                                            @if ($variacionAltas > 0) <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5-5 5 5H5z"/></svg>
+                                            @elseif($variacionAltas < 0) <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5 5 5-5H5z"/></svg>
+                                            @else <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M4 9h12v2H4z"/></svg>
+                                            @endif
+                                            <span class="font-medium">{{ abs($variacionAltas) }}%</span>
+                                            <span class="text-gray-500 dark:text-gray-400 ml-1">vs mes anterior</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Card: Bajas --}}
+                                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow duration-300 relative overflow-hidden group">
+                                    <div class="absolute top-0 right-0 w-24 h-24 bg-red-50 dark:bg-red-900/20 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                                    <div class="relative z-10">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <div class="p-3 bg-red-100 dark:bg-red-900/50 rounded-xl text-red-600 dark:text-red-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12l-4-4m0 0l-4 4m4-4v12" transform="rotate(180 12 12)" />
+                                                    <!-- Icono simplificado de salida -->
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                                </svg>
+                                            </div>
+                                            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Bajas Mes</span>
+                                        </div>
+                                        <h3 class="text-3xl font-bold text-gray-900 dark:text-white mb-1">{{ $conteoBajasAdmin }}</h3>
+                                        <div class="flex items-center text-sm {{ $variacionBajas <= 0 ? 'text-emerald-600' : 'text-red-500' }}">
+                                            @if ($variacionBajas > 0) <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5-5 5 5H5z"/></svg>
+                                            @elseif($variacionBajas < 0) <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5 5 5-5H5z"/></svg>
+                                            @else <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M4 9h12v2H4z"/></svg>
+                                            @endif
+                                            <span class="font-medium">{{ abs($variacionBajas) }}%</span>
+                                            <span class="text-gray-500 dark:text-gray-400 ml-1">vs mes anterior</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            {{-- Alertas de Sesión (Importación) --}}
+                            @if (session('usuarios_no_en_excel'))
+                                <div class="mt-6 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-4 rounded-r-lg shadow-sm">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <svg class="h-5 w-5 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                        <div class="ml-3">
+                                            <h3 class="text-sm font-medium text-amber-800 dark:text-amber-200">Discrepancias en Importación</h3>
+                                            <div class="mt-2 text-sm text-amber-700 dark:text-amber-300">
+                                                <p>Usuarios activos en sistema no encontrados en el Excel:</p>
+                                                <ul class="list-disc list-inside mt-1 space-y-1 max-h-32 overflow-y-auto">
+                                                    @foreach (session('usuarios_no_en_excel') as $usuario)
+                                                        <li>{{ $usuario->name }} <span class="text-xs opacity-75">(ID: {{ $usuario->id }})</span></li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+
+                        {{-- SLIDE 2: Livewire Components --}}
+                        <div class="w-1/2 px-2 md:px-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
+                                @livewire('nominamensual')
+                                @livewire('finiquitomensual')
+                                @livewire('destajosmensuales')
+                            </div>
+
+                            @if (session('resumen'))
+                                <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                    <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
+                                        <h4 class="font-bold text-blue-800 dark:text-blue-300 mb-1">Coincidencias</h4>
+                                        <span class="text-xs text-blue-600 dark:text-blue-400">{{ session('resumen.en_excel_y_bd')->count() }} registros</span>
+                                    </div>
+                                    <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-100 dark:border-green-800">
+                                        <h4 class="font-bold text-green-800 dark:text-green-300 mb-1">Nuevos (Excel)</h4>
+                                        <span class="text-xs text-green-600 dark:text-green-400">{{ session('resumen.en_excel_no_bd')->count() }} registros</span>
+                                    </div>
+                                    <div class="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-800">
+                                        <h4 class="font-bold text-red-800 dark:text-red-300 mb-1">Faltantes (Excel)</h4>
+                                        <span class="text-xs text-red-600 dark:text-red-400">{{ session('resumen.en_bd_no_excel')->count() }} registros</span>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Slider Controls --}}
+                <div class="flex justify-center items-center mt-6 gap-4">
+                    <button type="button" @click="slide = 1"
+                            class="p-2 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            :class="{ 'opacity-50 cursor-not-allowed': slide === 1 }">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+
+                    <div class="flex space-x-2">
+                        <div class="h-2 w-2 rounded-full transition-colors duration-300" :class="slide === 1 ? 'bg-blue-600 w-6' : 'bg-gray-300 dark:bg-gray-600'"></div>
+                        <div class="h-2 w-2 rounded-full transition-colors duration-300" :class="slide === 2 ? 'bg-blue-600 w-6' : 'bg-gray-300 dark:bg-gray-600'"></div>
+                    </div>
+
+                    <button type="button" @click="slide = 2"
+                            class="p-2 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            :class="{ 'opacity-50 cursor-not-allowed': slide === 2 }">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+
+            </div>
+
+            {{-- BOTTOM SECTION: Carousel Charts --}}
+            <div class="max-w-7xl mx-auto mt-8 pb-8">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-1 relative">
+                    <div class="overflow-hidden rounded-xl" id="carouselContainer">
+                        <div id="carouselSlides" class="flex transition-transform duration-500 ease-in-out">
+                            <div class="w-full flex-shrink-0 p-4">
+                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 min-h-[300px]">
+                                    @livewire('nominastotales')
+                                </div>
+                            </div>
+                            <div class="w-full flex-shrink-0 p-4">
+                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 min-h-[300px]">
+                                    @livewire('destajo-mensual')
+                                </div>
+                            </div>
+                            <div class="w-full flex-shrink-0 p-4">
+                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 min-h-[300px]">
+                                    @livewire('graficasfiniquitos')
+                                </div>
+                            </div>
+                            <div class="w-full flex-shrink-0 p-4">
+                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 min-h-[300px]">
+                                    @livewire('graficas-altas')
                                 </div>
                             </div>
                         </div>
-
-                        {{-- Altas Nuevas --}}
-                        <div
-                            class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-t-4 border-green-500 hover:shadow-xl transform hover:-translate-y-1 transition">
-                            <div class="flex items-center gap-4">
-                                <div class="p-3 bg-green-100 dark:bg-green-900 rounded-full">
-                                    <!-- Icono de flecha arriba -->
-                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                        class="h-8 w-8 text-green-600 dark:text-green-300" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Altas Nuevas</h3>
-                                    <p class="text-3xl font-bold text-gray-800 dark:text-gray-200">
-                                        {{ $conteoAltasAdmin }}</p>
-                                    <div
-                                        class="text-sm mt-1 flex items-center gap-1 {{ $variacionAltas >= 0 ? 'text-green-600' : 'text-red-500' }}">
-                                        @if ($variacionAltas > 0)
-                                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M5 10l5-5 5 5H5z" />
-                                            </svg>
-                                        @elseif($variacionAltas < 0)
-                                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M5 10l5 5 5-5H5z" />
-                                            </svg>
-                                        @else
-                                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M4 9h12v2H4z" />
-                                            </svg>
-                                        @endif
-                                        <span>{{ $variacionAltas >= 0 ? '+' : '' }}{{ $variacionAltas }}% vs mes
-                                            pasado</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Bajas Recientes --}}
-                        <div
-                            class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-t-4 border-red-500 hover:shadow-xl transform hover:-translate-y-1 transition">
-                            <div class="flex items-center gap-4">
-                                <div class="p-3 bg-red-100 dark:bg-red-900 rounded-full">
-                                    <!-- Icono de flecha abajo -->
-                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                        class="h-8 w-8 text-red-600 dark:text-red-300" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Bajas Recientes
-                                    </h3>
-                                    <p class="text-3xl font-bold text-gray-800 dark:text-gray-200">
-                                        {{ $conteoBajasAdmin }}</p>
-                                    <div
-                                        class="text-sm mt-1 flex items-center gap-1 {{ $variacionBajas >= 0 ? 'text-red-600' : 'text-green-500' }}">
-                                        @if ($variacionBajas > 0)
-                                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M5 10l5-5 5 5H5z" />
-                                            </svg>
-                                        @elseif($variacionBajas < 0)
-                                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M5 10l5 5 5-5H5z" />
-                                            </svg>
-                                        @else
-                                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M4 9h12v2H4z" />
-                                            </svg>
-                                        @endif
-                                        <span>{{ $variacionBajas >= 0 ? '+' : '' }}{{ $variacionBajas }}% vs mes
-                                            pasado</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                     </div>
 
+                    {{-- Carousel Arrows --}}
+                    <button onclick="prevSlide()" class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 p-2 rounded-full shadow-lg border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition z-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <button onclick="nextSlide()" class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 p-2 rounded-full shadow-lg border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition z-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
 
-                    <div class="flex w-full">
-                        <div class="grid gap-4 p-4 w-full" style="grid-template-columns: repeat(3, 1fr);">
-                            @livewire('nominamensual')
-                            @livewire('finiquitomensual')
-                            @livewire('destajosmensuales')
-                        </div>
-                    </div>
+                {{-- Carousel Indicators --}}
+                <div class="flex justify-center mt-4 space-x-2">
+                    @for ($i = 0; $i < 4; $i++)
+                        <button onclick="goToSlide({{ $i }})"
+                                class="indicator-dot w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-600 hover:bg-blue-400 transition-all duration-300 focus:outline-none"></button>
+                    @endfor
                 </div>
             </div>
-            @if (session('usuarios_no_en_excel'))
-                <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <h3 class="font-semibold text-yellow-800 mb-2">⚠️ Usuarios activos (no Montana) en sistema que NO
-                        están en el Excel:</h3>
-                    <ul class="list-disc list-inside text-sm text-yellow-700 space-y-1">
-                        @foreach (session('usuarios_no_en_excel') as $usuario)
-                            <li>{{ $usuario->name }} (ID: {{ $usuario->id }}, Empleado:
-                                {{ $usuario->num_empleado }}, Empresa: {{ $usuario->empresa }})</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-            @if (session('resumen'))
-                <div class="mt-6">
-                    <h3 class="font-semibold text-blue-800">📊 Usuarios en Excel Y en BD (activos) <span
-                            class="text-sm text-blue-600">({{ session('resumen.en_excel_y_bd')->count() }})</span>
-                    </h3>
-                    <ul class="list-disc list-inside text-sm text-blue-700">
-                        @foreach (session('resumen.en_excel_y_bd') as $item)
-                            <li>{{ $item['nombre'] }} (ID: {{ $item['id_bd'] }}, Estatus: {{ $item['estatus'] }})
-                            </li>
-                        @endforeach
-                    </ul>
 
-                    <h3 class="font-semibold text-green-800 mt-4">➕ Usuarios en Excel pero NO en BD <span
-                            class="text-sm text-green-600">({{ session('resumen.en_excel_no_bd')->count() }})</span>
-                    </h3>
-                    <ul class="list-disc list-inside text-sm text-green-700">
-                        @foreach (session('resumen.en_excel_no_bd') as $item)
-                            <li>{{ $item['nombre'] }} (Empleado: {{ $item['num_empleado'] ?? 'N/A' }})</li>
-                        @endforeach
-                    </ul>
-
-                    <h3 class="font-semibold text-red-800 mt-4">❌ Usuarios en BD pero NO en Excel <span
-                            class="text-sm text-red-600">({{ session('resumen.en_bd_no_excel')->count() }})</span>
-                    </h3>
-                    <ul class="list-disc list-inside text-sm text-red-700">
-                        @foreach (session('resumen.en_bd_no_excel') as $item)
-                            <li>{{ $item['name'] }} (ID: {{ $item['id'] }}, Empleado:
-                                {{ $item['num_empleado'] ?? 'N/A' }})</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            <!--
-            <div class="flex justify-center space-x-2 mt-4">
-                <button type="button" @click="slide = 1"
-                    :class="{
-                        'bg-blue-500 text-white': slide ===
-                            1,
-                        'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300': slide !== 1
-                    }"
-                    class="w-3 h-3 rounded-full focus:outline-none" aria-label="Slide 1"></button>
-                <button type="button" @click="slide = 2"
-                    :class="{
-                        'bg-blue-500 text-white': slide ===
-                            2,
-                        'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300': slide !== 2
-                    }"
-                    class="w-3 h-3 rounded-full focus:outline-none" aria-label="Slide 2"></button>
-            </div>
-            -->
-
-            <button type="button" @click="slide = 1"
-                class="absolute top-1/2 left-2 transform -translate-y-1/2 bg-white dark:bg-gray-800 rounded-full p-1 shadow-md opacity-70 hover:opacity-100 focus:outline-none"
-                :disabled="slide === 1" :class="{ 'cursor-not-allowed opacity-40': slide === 1 }">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700 dark:text-gray-300"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-            </button>
-            <button type="button" @click="slide = 2"
-                class="absolute top-1/2 right-2 transform -translate-y-1/2 bg-white dark:bg-gray-800 rounded-full p-1 shadow-md opacity-70 hover:opacity-100 focus:outline-none"
-                :disabled="slide === 2" :class="{ 'cursor-not-allowed opacity-40': slide === 2 }">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700 dark:text-gray-300"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </button>
         </div>
-
-
-        <div class="relative p-6">
-            <div class="relative overflow-hidden rounded-lg">
-                <div id="carouselSlides" class="flex transition-transform duration-300 ease-in-out">
-                    <div class="w-full flex-shrink-0 px-4">
-                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 h-full">
-                            @livewire('nominastotales')
-                        </div>
-                    </div>
-                    <div class="w-full flex-shrink-0 px-4">
-                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 h-full">
-                            @livewire('destajo-mensual')
-                        </div>
-                    </div>
-                    <div class="w-full flex-shrink-0 px-4">
-                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 h-full">
-                            @livewire('graficasfiniquitos')
-                        </div>
-                    </div>
-                    <div class="w-full flex-shrink-0">
-                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-4">
-                            @livewire('graficas-altas')
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <button onclick="prevSlide()" class="carousel-arrow left">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-            </button>
-
-            <button onclick="nextSlide()" class="carousel-arrow right">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </button>
-
-            <div class="flex justify-center mt-4 space-x-2">
-                @for ($i = 0; $i < 4; $i++)
-                    <button onclick="goToSlide({{ $i }})"
-                        class="w-3 h-3 rounded-full bg-gray-400 hover:bg-blue-500 transition indicator-dot"></button>
-                @endfor
-            </div>
-        </div>
-    </div>
+    </main>
 </div>
+
 @push('scripts')
     <script>
         function actualizarDestajos() {
             if (confirm('¿Estás seguro de actualizar todos los destajos? Este proceso puede tardar varios minutos.')) {
                 const boton = document.getElementById('registrar-datos');
                 if (boton) {
-                    // Cambiar el texto del botón
                     const span = boton.querySelector('span.font-medium');
                     if (span) {
                         span.textContent = 'Procesando...';
                     }
-                    boton.classList.add('opacity-75');
-                    boton.onclick = null; // Deshabilitar clics adicionales
+                    boton.classList.add('opacity-75', 'cursor-wait');
+                    boton.onclick = null;
                 }
-
                 procesarLotes(0);
             }
         }
@@ -696,27 +570,20 @@
                 .then(response => response.json())
                 .then(data => {
                     console.log(data.message);
-
                     if (data.continuar) {
-                        // Continuar con el siguiente lote
                         setTimeout(() => procesarLotes(data.siguiente_offset), 1000);
                     } else {
-                        // Proceso completado
                         alert(`Proceso completado. ${data.actualizados} registros actualizados.`);
-
-                        // Refrescar la tabla si es necesario
                         if (typeof Livewire !== 'undefined') {
                             Livewire.dispatch('refreshTable');
                         }
-
-                        // Restaurar botón
                         const boton = document.getElementById('registrar-datos');
                         if (boton) {
                             const span = boton.querySelector('span.font-medium');
                             if (span) {
                                 span.textContent = 'Registrar Datos';
                             }
-                            boton.classList.remove('opacity-75');
+                            boton.classList.remove('opacity-75', 'cursor-wait');
                             boton.onclick = actualizarDestajos;
                         }
                     }
@@ -724,15 +591,13 @@
                 .catch(error => {
                     console.error('Error:', error);
                     alert('Ocurrió un error durante el proceso.');
-
-                    // Restaurar botón en caso de error
                     const boton = document.getElementById('registrar-datos');
                     if (boton) {
                         const span = boton.querySelector('span.font-medium');
                         if (span) {
                             span.textContent = 'Registrar Datos';
                         }
-                        boton.classList.remove('opacity-75');
+                        boton.classList.remove('opacity-75', 'cursor-wait');
                         boton.onclick = actualizarDestajos;
                     }
                 });
@@ -745,11 +610,18 @@
         const indicators = document.querySelectorAll('.indicator-dot');
 
         function updateCarousel() {
-            carousel.style.transform = `translateX(-${currentSlide * 100}%)`;
+            if(carousel) {
+                carousel.style.transform = `translateX(-${currentSlide * 100}%)`;
+            }
 
             indicators.forEach((dot, index) => {
-                dot.classList.toggle('bg-blue-500', index === currentSlide);
-                dot.classList.toggle('bg-gray-400', index !== currentSlide);
+                if (index === currentSlide) {
+                    dot.classList.remove('bg-gray-300', 'dark:bg-gray-600', 'w-2.5', 'h-2.5');
+                    dot.classList.add('bg-blue-600', 'w-6', 'h-2.5');
+                } else {
+                    dot.classList.remove('bg-blue-600', 'w-6', 'h-2.5');
+                    dot.classList.add('bg-gray-300', 'dark:bg-gray-600', 'w-2.5', 'h-2.5');
+                }
             });
 
             if (window.nominaChart) {
@@ -776,7 +648,6 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             updateCarousel();
-            //setInterval(nextSlide, 10000);
         });
     </script>
 @endpush

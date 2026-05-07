@@ -136,6 +136,13 @@
             'icono' => 'message',
             'color' => 'bg-purple-100 dark:bg-purple-700',
         ],
+
+        [
+            'titulo' => 'Historial de Deducciones',
+            'ruta' => route('nominas.historialDeducciones'),
+            'icono' => 'receipt',
+            'color' => 'bg-red-100 dark:bg-red-700',
+        ],
     ];
 @endphp
 <div class="col-span-full">
