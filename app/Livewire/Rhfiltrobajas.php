@@ -4,19 +4,37 @@ namespace App\Livewire;
 
 use Livewire\Component;
 use Livewire\WithPagination;
-use Livewire\WithFileUploads; // ← Añadir
-use App\Models\User;
+use Livewire\WithFileUploads;
 use App\Models\SolicitudBajas;
-use Illuminate\Support\Facades\Storage; // ← Añadir
+use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class Rhfiltrobajas extends Component
 {
-    use WithPagination, WithFileUploads; // ← Añadir WithFileUploads
+    use WithPagination, WithFileUploads;
 
+    // Filtros
     public $search = '';
     public $fecha = null;
-    public $solicitudId; // ← Añadir
-    public $archivoRenuncia; // ← Añadir
+
+    // --- Modal Subir Renuncia (Existente) ---
+    public $solicitudId;
+    public $archivoRenuncia;
+
+    // --- Modal Editar Solicitud (Nuevo) ---
+    public $editSolicitudId = null;
+    public $solicitudActual = null; // Instancia del modelo cargada
+
+    public $editMotivo = '';
+    public $editPor = '';
+    public $editFechaBaja = '';
+    public $editEstatus = '';
+
+    // Archivos temporales para edición (si se seleccionan nuevos, reemplazan a los viejos)
+    public $newArchBaja;
+    public $newArchEquipo;
+    public $newArchCheque;
+    public $newArchRenuncia;
 
     protected $queryString = ['search'];
 
@@ -25,14 +43,13 @@ class Rhfiltrobajas extends Component
         $this->resetPage();
     }
 
-    public function updatingDate()
+    public function updatingFecha()
     {
         $this->resetPage();
     }
 
     public function render()
     {
-        $usuario = auth()->user()->name;
         $solicitudes = SolicitudBajas::whereHas('user', function ($query) {
             $query->where('name', 'like', '%' . $this->search . '%');
         })
@@ -48,66 +65,124 @@ class Rhfiltrobajas extends Component
         ]);
     }
 
-    // Nuevo método para abrir modal
+    // ------------------------------------------
+    // Lógica Modal: Subir Renuncia (Existente)
+    // ------------------------------------------
     public function abrirModalSubirRenuncia($id)
     {
         $this->solicitudId = $id;
-        $this->archivoRenuncia = null; // Limpiar archivo anterior
+        $this->archivoRenuncia = null;
     }
 
-    // Nuevo método para subir archivo
-public function subirRenuncia()
-{
-    // Validar solo si hay archivo
-    if ($this->archivoRenuncia) {
+    public function subirRenuncia()
+    {
+        if (!$this->archivoRenuncia) {
+            session()->flash('error', 'Por favor selecciona un archivo.');
+            return;
+        }
+
         $this->validate([
-            'archivoRenuncia' => 'file|mimes:pdf,jpg,jpeg,png|max:10240', // Quitar 'required'
+            'archivoRenuncia' => 'file|mimes:pdf,jpg,jpeg,png|max:10240',
         ]);
-    } else {
-        $this->dispatch('archivoSubido', [
-            'type' => 'error',
-            'message' => 'Por favor selecciona un archivo.'
-        ]);
-        return;
+
+        $solicitud = SolicitudBajas::find($this->solicitudId);
+        if (!$solicitud) {
+            session()->flash('error', 'Solicitud no encontrada.');
+            return;
+        }
+
+        $carpeta = 'solicitudesBajas/' . $solicitud->id;
+        Storage::disk('public')->makeDirectory($carpeta);
+
+        $fechaHoy = now()->format('Y-m-d');
+        $extension = $this->archivoRenuncia->getClientOriginalExtension();
+        $nombreArchivo = "arch_renuncia_{$fechaHoy}.{$extension}";
+
+        $ruta = $this->archivoRenuncia->storeAs($carpeta, $nombreArchivo, 'public');
+
+        $solicitud->update(['arch_renuncia' => $ruta]);
+
+        $this->archivoRenuncia = null;
+        $this->solicitudId = null;
+        session()->flash('message', 'Archivo de renuncia subido exitosamente.');
+        $this->resetPage();
     }
 
-    $solicitud = SolicitudBajas::find($this->solicitudId);
+    // ------------------------------------------
+    // Lógica Modal: Editar Solicitud (Nueva)
+    // ------------------------------------------
 
-    if (!$solicitud) {
-        $this->dispatch('archivoSubido', [
-            'type' => 'error',
-            'message' => 'Solicitud no encontrada.'
-        ]);
-        return;
+    public function abrirModalEditar($id)
+    {
+        // Cargamos la solicitud y la guardamos en la propiedad pública
+        $this->solicitudActual = SolicitudBajas::findOrFail($id);
+
+        $this->editSolicitudId = $this->solicitudActual->id;
+        $this->editMotivo = $this->solicitudActual->motivo;
+        $this->editPor = $this->solicitudActual->por;
+        // Formatear fecha para input type="date" (Y-m-d)
+        $this->editFechaBaja = Carbon::parse($this->solicitudActual->fecha_baja)->format('Y-m-d');
+        $this->editEstatus = $this->solicitudActual->estatus;
+
+        // Resetear archivos temporales de edición
+        $this->newArchBaja = null;
+        $this->newArchEquipo = null;
+        $this->newArchCheque = null;
+        $this->newArchRenuncia = null;
     }
 
-    // Crear carpeta si no existe
-    $carpeta = 'solicitudesBajas/' . $solicitud->id;
-    \Storage::disk('public')->makeDirectory($carpeta);
+    public function guardarEdicion()
+    {
+        // Usamos la propiedad cargada o buscamos de nuevo por seguridad
+        $solicitud = $this->solicitudActual ? $this->solicitudActual : SolicitudBajas::findOrFail($this->editSolicitudId);
 
-    // Generar nombre del archivo
-    $fechaHoy = now()->format('Y-m-d');
-    $extension = $this->archivoRenuncia->getClientOriginalExtension();
-    $nombreArchivo = "arch_renuncia_{$fechaHoy}.{$extension}";
+        $this->validate([
+            'editMotivo' => 'required|string|max:1000',
+            'editPor' => 'nullable|string|max:255',
+            'editFechaBaja' => 'required|date',
+            'editEstatus' => 'required|in:En Proceso,Aceptada,Rechazada',
+            'newArchBaja' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'newArchEquipo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'newArchCheque' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'newArchRenuncia' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+        ]);
 
-    // Ruta: solicitudesBajas/{id_solicitud}/arch_renuncia_fecha.extension
-    $ruta = $this->archivoRenuncia->storeAs($carpeta, $nombreArchivo, 'public');
+        $carpeta = 'solicitudesBajas/' . $solicitud->id;
+        Storage::disk('public')->makeDirectory($carpeta);
+        // Usamos la fecha del formulario para nombrar los archivos si se actualizan
+        $fechaRef = Carbon::parse($this->editFechaBaja)->format('Y-m-d');
 
-    // Actualizar campo en la base de datos
-    $solicitud->update([
-        'arch_renuncia' => $ruta,
-    ]);
+        // Closure auxiliar para manejar la subida y limpieza
+        $procesarArchivo = function($nuevoArchivo, $rutaAntigua, $prefijoNombre) use ($carpeta, $fechaRef) {
+            if ($nuevoArchivo) {
+                // Borrar archivo anterior si existe para no llenar el disco
+                if ($rutaAntigua && Storage::disk('public')->exists($rutaAntigua)) {
+                    Storage::disk('public')->delete($rutaAntigua);
+                }
+                $extension = $nuevoArchivo->getClientOriginalExtension();
+                $nombreArchivo = "{$prefijoNombre}_{$fechaRef}.{$extension}";
+                return $nuevoArchivo->storeAs($carpeta, $nombreArchivo, 'public');
+            }
+            // Si no hay nuevo archivo, retornar la ruta antigua (sin cambios)
+            return $rutaAntigua;
+        };
 
-    // Limpiar variables
-    $this->archivoRenuncia = null;
-    $this->solicitudId = null;
+        $solicitud->update([
+            'motivo' => $this->editMotivo,
+            'por' => $this->editPor,
+            'fecha_baja' => $this->editFechaBaja,
+            'estatus' => $this->editEstatus,
 
-    $this->dispatch('archivoSubido', [
-        'type' => 'success',
-        'message' => 'Archivo de renuncia subido exitosamente.'
-    ]);
+            'arch_baja' => $procesarArchivo($this->newArchBaja, $solicitud->arch_baja, 'arch_baja'),
+            'arch_equipo_entregado' => $procesarArchivo($this->newArchEquipo, $solicitud->arch_equipo_entregado, 'arch_equipo'),
+            'arch_cheque' => $procesarArchivo($this->newArchCheque, $solicitud->arch_cheque, 'arch_cheque'),
+            'arch_renuncia' => $procesarArchivo($this->newArchRenuncia, $solicitud->arch_renuncia, 'arch_renuncia'),
+        ]);
 
-    // Recargar datos
-    $this->resetPage();
-}
+        // Cerrar modal y limpiar
+        $this->editSolicitudId = null;
+        $this->solicitudActual = null;
+        session()->flash('message', 'Solicitud actualizada correctamente.');
+        $this->resetPage();
+    }
 }
