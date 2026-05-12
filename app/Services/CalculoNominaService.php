@@ -65,8 +65,11 @@ class CalculoNominaService
         $anio = Carbon::parse($fechaInicio)->year;
         $isr = $this->calcularIsrBruto($subtotal, $anio);
 
-        // Calcular neto bruto (antes de ajuste)
-        $netoBruto = round($subtotal - $isr, 2);
+        // 🔑 NUEVO: Calcular deducciones especiales
+        $deduccionesEspeciales = $this->calcularDeduccionesEspeciales($user->id, $fechaInicio, $fechaFin);
+
+        // Calcular neto bruto (antes de ajuste) - incluyendo deducciones especiales
+        $netoBruto = round($subtotal - $isr - $deduccionesEspeciales, 2);
 
         // 🔑 Ajuste al neto según ÚLTIMO DÍGITO DECIMAL (ej: 2141.84 → 4)
         $decimalStr = number_format($netoBruto, 2, '.', '');
@@ -102,6 +105,8 @@ class CalculoNominaService
             'bonos' => $bonos,
             'horas_extra' => $horasExtra,
             'isr' => round($isr, 2),
+            'deducciones_especiales' => round($deduccionesEspeciales, 2),
+            'detalle_deducciones_especiales' => $this->obtenerDetalleDeducciones($user->id, $fechaInicio, $fechaFin),
             'ajuste_al_neto' => [
                 'monto' => round($ajusteMonto, 2),
                 'tipo' => $ajusteTipo,
@@ -114,6 +119,233 @@ class CalculoNominaService
                 'concepto_horas_extra' => round($horasExtra['monto'], 2),
             ]
         ];
+    }
+
+    /**
+     * Calcula el total de deducciones especiales para un usuario en un periodo
+     */
+    public function calcularDeduccionesEspeciales(
+    int $userId,
+    string $fechaInicio,
+    string $fechaFin
+): float {
+    \Log::info('DEBUG - CalcularDeduccionesEspeciales', [
+        'userId' => $userId,
+        'fechaInicio' => $fechaInicio,
+        'fechaFin' => $fechaFin,
+    ]);
+
+    $deducciones = \App\Models\Deducciones::where('user_id', $userId)
+        ->where('fecha_inicio', '<=', $fechaFin) // comienza antes o durante el rango
+        ->where(function($q) use ($fechaInicio) {
+            // Si fecha_fin es NULL → sigue activa indefinidamente
+            // Si tiene fecha_fin → debe ser >= fechaInicio (aún no terminó)
+            $q->whereNull('fecha_fin')
+              ->orWhere('fecha_fin', '>=', $fechaInicio);
+        })
+        ->where('status', '!=', 'Pagado')
+        ->get();
+
+    \Log::info('DEBUG - Deducciones encontradas', [
+        'count' => $deducciones->count(),
+        'deducciones' => $deducciones->map(fn($d) => [
+            'id' => $d->id,
+            'concepto' => $d->concepto,
+            'monto' => $d->monto,
+            'num_quincenas' => $d->num_quincenas,
+            'fecha_inicio' => $d->fecha_inicio,
+            'fecha_fin' => $d->fecha_fin,
+            'status' => $d->status,
+        ])->toArray(),
+    ]);
+
+    $totalDeducciones = 0;
+    foreach ($deducciones as $deduccion) {
+        $monto = $this->calcularMontoDeduccionEnRango($deduccion, $fechaInicio, $fechaFin);
+        \Log::info("DEBUG - Monto deduccion {$deduccion->id}: $monto", [
+            'monto_por_quincena' => $deduccion->monto / $deduccion->num_quincenas,
+            'quincenas_inicio' => $this->calcularQuincenasTranscurridas($deduccion, $fechaInicio),
+            'quincenas_fin' => $this->calcularQuincenasTranscurridas($deduccion, $fechaFin),
+        ]);
+        $totalDeducciones += $monto;
+    }
+
+    return round($totalDeducciones, 2);
+}
+
+    /**
+     * Obtiene el detalle de deducciones para mostrar en el modal
+     */
+    public function obtenerDetalleDeducciones(
+        int $userId,
+        string $fechaInicio,
+        string $fechaFin
+    ): array {
+        $deducciones = \App\Models\Deducciones::where('user_id', $userId)
+            ->where(function($q) use ($fechaInicio, $fechaFin) {
+                $q->where('fecha_inicio', '<=', $fechaFin)
+                  ->where(function($sub) use ($fechaInicio) {
+                      $sub->whereNull('fecha_fin')
+                          ->orWhere('fecha_fin', '>=', $fechaInicio);
+                  });
+            })
+            ->where('status', '!=', 'Pagado')
+            ->get();
+
+        $detalle = [];
+        foreach ($deducciones as $deduccion) {
+            $montoEnPeriodo = $this->calcularMontoDeduccionEnRango($deduccion, $fechaInicio, $fechaFin);
+            if ($montoEnPeriodo > 0) {
+                $detalle[] = [
+                    'id' => $deduccion->id,
+                    'concepto' => $deduccion->concepto,
+                    'monto_periodo' => $montoEnPeriodo,
+                    'monto_total' => $deduccion->monto,
+                    'saldo_pendiente' => $this->calcularSaldoPendienteDeduccion($deduccion, $fechaFin),
+                    'num_quincenas' => $deduccion->num_quincenas,
+                    'fecha_inicio' => $deduccion->fecha_inicio->format('Y-m-d'),
+                    'fecha_fin' => $this->calcularFechaFinDeduccion($deduccion)->format('Y-m-d'),
+                ];
+            }
+        }
+
+        return $detalle;
+    }
+
+    /**
+ * Calcula el monto pendiente de una deducción en un rango de fechas
+ */
+private function calcularMontoDeduccionEnRango($deduccion, $fechaInicio, $fechaFin)
+{
+    $fechaInicio = Carbon::parse($fechaInicio);
+    $fechaFin = Carbon::parse($fechaFin);
+
+    // Si la deducción aún no comienza en este rango
+    if ($deduccion->fecha_inicio->gt($fechaFin)) {
+        return 0;
+    }
+
+    $montoPorQuincena = $deduccion->monto / $deduccion->num_quincenas;
+
+    // Contar cuántas quincenas activas hay en el periodo
+    $quincenasEnRango = 0;
+    $current = $deduccion->fecha_inicio->copy();
+
+    // Asumimos quincenas del 1-15 y del 16-fin de mes
+    while ($current->lte($fechaFin)) {
+        // Quincena del 1-15
+        $quincena1 = Carbon::create($current->year, $current->month, 15);
+        if ($current->day <= 15 && $fechaInicio->lte($quincena1) && $quincena1->lte($fechaFin)) {
+            $quincenasEnRango++;
+        }
+
+        // Quincena del 16-fin de mes
+        $quincena2 = Carbon::create($current->year, $current->month, $current->daysInMonth());
+        if ($current->day >= 16 && $fechaInicio->lte($quincena2) && $quincena2->lte($fechaFin)) {
+            $quincenasEnRango++;
+        }
+
+        // Avanzar al siguiente mes
+        $current->addMonth();
+
+        // Límite para evitar bucles infinitos
+        if ($current->gt($fechaFin->copy()->addMonths(24))) {
+            break;
+        }
+    }
+
+    // Limitar a las quincenas restantes de la deducción
+    $saldoPendienteInicio = $this->calcularSaldoPendienteDeduccion($deduccion, $fechaInicio);
+    $montoMaximoAPagar = min($saldoPendienteInicio, $quincenasEnRango * $montoPorQuincena);
+
+    return round($montoMaximoAPagar, 2);
+}
+
+    /**
+     * Calcula el saldo pendiente de una deducción hasta una fecha
+     */
+    private function calcularSaldoPendienteDeduccion($deduccion, $fechaReferencia)
+    {
+        $fechaReferencia = Carbon::parse($fechaReferencia);
+
+        $quincenasTranscurridas = $this->calcularQuincenasTranscurridas($deduccion, $fechaReferencia);
+        $montoPorQuincena = $deduccion->monto / $deduccion->num_quincenas;
+        $montoDescontado = $quincenasTranscurridas * $montoPorQuincena;
+
+        $saldo = $deduccion->monto - $montoDescontado;
+        return max(0, round($saldo, 2)); // No devolver negativos
+    }
+
+    /**
+ * Calcula cuántas quincenas han transcurrido para una deducción hasta una fecha
+ */
+private function calcularQuincenasTranscurridas($deduccion, $fechaReferencia)
+{
+    $fechaInicio = $deduccion->fecha_inicio;
+    $fechaReferencia = Carbon::parse($fechaReferencia);
+
+    if ($fechaReferencia->lt($fechaInicio)) {
+        return 0;
+    }
+
+    $quincenas = 0;
+    $current = $fechaInicio->copy();
+
+    // Asumimos quincenas del 1-15 y 16-fin de mes
+    while ($current->lte($fechaReferencia)) {
+        // Quincena del 1-15
+        $quincena1 = Carbon::create($current->year, $current->month, 15);
+        if ($current->day <= 15 && $fechaReferencia->gte($quincena1)) {
+            $quincenas++;
+        }
+
+        // Quincena del 16-fin de mes
+        $quincena2 = Carbon::create($current->year, $current->month, $current->daysInMonth());
+        if ($current->day >= 16 && $fechaReferencia->gte($quincena2)) {
+            $quincenas++;
+        }
+
+        $current->addMonth();
+
+        // Límite para evitar bucles infinitos
+        if ($quincenas >= $deduccion->num_quincenas) {
+            $quincenas = $deduccion->num_quincenas;
+            break;
+        }
+    }
+
+    return min($quincenas, $deduccion->num_quincenas);
+}
+
+    /**
+     * Calcula la fecha de fin estimada de una deducción
+     */
+    private function calcularFechaFinDeduccion($deduccion)
+    {
+        $fechaInicio = $deduccion->fecha_inicio;
+        $numQuincenas = $deduccion->num_quincenas;
+
+        $current = $fechaInicio->copy();
+        $quincenasContadas = 0;
+
+        while ($quincenasContadas < $numQuincenas) {
+            $quincena1 = Carbon::create($current->year, $current->month, 15);
+            $quincena2 = Carbon::create($current->year, $current->month, $current->daysInMonth());
+
+            if ($current->day <= 15) {
+                $current = $quincena1;
+                $quincenasContadas++;
+            } else {
+                $current = $quincena2;
+                $quincenasContadas++;
+            }
+
+            if ($quincenasContadas < $numQuincenas) {
+                $current->addDay(); // Pasar al siguiente día para continuar
+            }
+        }
+
+        return $current;
     }
 
     /**
