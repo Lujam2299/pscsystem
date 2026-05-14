@@ -28,7 +28,8 @@ class Rhfiltrobajas extends Component
     public $editMotivo = '';
     public $editPor = '';
     public $editFechaBaja = '';
-    public $editEstatus = '';
+    public $editUltimaAsistencia = ''; // NUEVO
+    public $editDescuento = '';       // NUEVO
 
     // Archivos temporales para edición (si se seleccionan nuevos, reemplazan a los viejos)
     public $newArchBaja;
@@ -120,9 +121,10 @@ class Rhfiltrobajas extends Component
         $this->editSolicitudId = $this->solicitudActual->id;
         $this->editMotivo = $this->solicitudActual->motivo;
         $this->editPor = $this->solicitudActual->por;
-        // Formatear fecha para input type="date" (Y-m-d)
+        // Formatear fechas para input type="date" (Y-m-d)
         $this->editFechaBaja = Carbon::parse($this->solicitudActual->fecha_baja)->format('Y-m-d');
-        $this->editEstatus = $this->solicitudActual->estatus;
+        $this->editUltimaAsistencia = $this->solicitudActual->ultima_asistencia ? Carbon::parse($this->solicitudActual->ultima_asistencia)->format('Y-m-d') : null; // NUEVO
+        $this->editDescuento = $this->solicitudActual->descuento; // NUEVO
 
         // Resetear archivos temporales de edición
         $this->newArchBaja = null;
@@ -138,9 +140,10 @@ class Rhfiltrobajas extends Component
 
         $this->validate([
             'editMotivo' => 'required|string|max:1000',
-            'editPor' => 'nullable|string|max:255',
+            'editPor' => 'nullable|in:Renuncia,Ausentismo,Separación Voluntaria,Otro',
             'editFechaBaja' => 'required|date',
-            'editEstatus' => 'required|in:En Proceso,Aceptada,Rechazada',
+            'editUltimaAsistencia' => 'nullable|date', // NUEVO
+            'editDescuento' => 'nullable|numeric',    // NUEVO
             'newArchBaja' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'newArchEquipo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'newArchCheque' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
@@ -152,18 +155,34 @@ class Rhfiltrobajas extends Component
         // Usamos la fecha del formulario para nombrar los archivos si se actualizan
         $fechaRef = Carbon::parse($this->editFechaBaja)->format('Y-m-d');
 
-        // Closure auxiliar para manejar la subida y limpieza
-        $procesarArchivo = function($nuevoArchivo, $rutaAntigua, $prefijoNombre) use ($carpeta, $fechaRef) {
+        // Closure auxiliar para manejar la subida y limpieza - CON LOGGING
+        $procesarArchivo = function($nuevoArchivo, $rutaAntigua, $prefijoNombre) use ($carpeta, $fechaRef, $solicitud) {
+            \Log::info("Procesando archivo {$prefijoNombre}", [
+                'nuevoArchivo' => $nuevoArchivo ? 'SI' : 'NO',
+                'rutaAntigua' => $rutaAntigua,
+                'existeAnterior' => $rutaAntigua && Storage::disk('public')->exists($rutaAntigua),
+                'solicitud_id' => $solicitud->id
+            ]);
+
             if ($nuevoArchivo) {
+                \Log::info("  -> Subiendo nuevo archivo para {$prefijoNombre}");
                 // Borrar archivo anterior si existe para no llenar el disco
                 if ($rutaAntigua && Storage::disk('public')->exists($rutaAntigua)) {
-                    Storage::disk('public')->delete($rutaAntigua);
+                    try {
+                        $deleted = Storage::disk('public')->delete($rutaAntigua);
+                        \Log::info("  -> Borrado archivo anterior {$rutaAntigua}: " . ($deleted ? 'OK' : 'ERROR'));
+                    } catch (\Exception $e) {
+                        \Log::error("Error borrando archivo anterior {$rutaAntigua}: " . $e->getMessage());
+                    }
                 }
                 $extension = $nuevoArchivo->getClientOriginalExtension();
                 $nombreArchivo = "{$prefijoNombre}_{$fechaRef}.{$extension}";
-                return $nuevoArchivo->storeAs($carpeta, $nombreArchivo, 'public');
+                $rutaNueva = $nuevoArchivo->storeAs($carpeta, $nombreArchivo, 'public');
+                \Log::info("  -> Archivo subido como: {$rutaNueva}");
+                return $rutaNueva;
             }
             // Si no hay nuevo archivo, retornar la ruta antigua (sin cambios)
+            \Log::info("  -> No hay nuevo archivo, manteniendo: {$rutaAntigua}");
             return $rutaAntigua;
         };
 
@@ -171,9 +190,11 @@ class Rhfiltrobajas extends Component
             'motivo' => $this->editMotivo,
             'por' => $this->editPor,
             'fecha_baja' => $this->editFechaBaja,
-            'estatus' => $this->editEstatus,
+            'ultima_asistencia' => $this->editUltimaAsistencia, // NUEVO
+            'descuento' => $this->editDescuento,               // NUEVO
+            'estatus' => 'Aceptada',                           // ESTABLECIDO COMO FIJO
 
-            'arch_baja' => $procesarArchivo($this->newArchBaja, $solicitud->arch_baja, 'arch_baja'),
+            'archivo_baja' => $procesarArchivo($this->newArchBaja, $solicitud->archivo_baja, 'archivo_baja'),
             'arch_equipo_entregado' => $procesarArchivo($this->newArchEquipo, $solicitud->arch_equipo_entregado, 'arch_equipo'),
             'arch_cheque' => $procesarArchivo($this->newArchCheque, $solicitud->arch_cheque, 'arch_cheque'),
             'arch_renuncia' => $procesarArchivo($this->newArchRenuncia, $solicitud->arch_renuncia, 'arch_renuncia'),

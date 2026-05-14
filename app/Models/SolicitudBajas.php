@@ -14,6 +14,7 @@ class SolicitudBajas extends Model
         'motivo',
         'por',
         'incapacidad',
+        'descuento',
         'ultima_asistencia',
         'calculo_finiquito',
         'arch_renuncia',

@@ -353,37 +353,43 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
                 <!-- Columna Izquierda: Datos de Texto -->
-                <div class="space-y-6">
-                    <div class="bg-gray-50 dark:bg-gray-700/50 p-5 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">Información General</h4>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Motivo de Baja</label>
+                        <textarea wire:model="editMotivo" rows="4" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white transition-all duration-200"></textarea>
+                        @error('editMotivo') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
 
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Motivo de Baja</label>
-                                <textarea wire:model="editMotivo" rows="4" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white transition-all duration-200"></textarea>
-                                @error('editMotivo') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                            </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Procesado Por</label>
+                        <select wire:model="editPor" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white transition-all duration-200">
+                            <option value="">Seleccionar...</option>
+                            <option value="Renuncia">Renuncia</option>
+                            <option value="Ausentismo">Ausentismo</option>
+                            <option value="Separación Voluntaria">Separación Voluntaria</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                        @error('editPor') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Procesado Por</label>
-                                <input type="text" wire:model="editPor" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white transition-all duration-200">
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha de Baja</label>
-                                    <input type="date" wire:model="editFechaBaja" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white transition-all duration-200">
-                                    @error('editFechaBaja') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estatus</label>
-                                    <select wire:model="editEstatus" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white transition-all duration-200">
-                                        <option value="En Proceso">En Proceso</option>
-                                        <option value="Aceptada">Aceptada</option>
-                                        <option value="Rechazada">Rechazada</option>
-                                    </select>
-                                </div>
-                            </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha de Baja</label>
+                            <input type="date" wire:model="editFechaBaja" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white transition-all duration-200">
+                            @error('editFechaBaja') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                        <!-- Campo Estatus (oculto, se guarda como 'Aceptada') -->
+                        <input type="hidden" wire:model="editEstatus" value="Aceptada">
+                        <!-- Nuevos Campos -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Última Asistencia</label>
+                            <input type="date" wire:model="editUltimaAsistencia" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white transition-all duration-200">
+                            @error('editUltimaAsistencia') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descuento ($)</label>
+                            <input type="number" step="0.01" wire:model="editDescuento" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white transition-all duration-200">
+                            @error('editDescuento') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                         </div>
                     </div>
                 </div>
@@ -440,51 +446,52 @@
                                         </div>
                                     @endif
 
-                                    <!-- Dropzone con Alpine.js -->
-<div x-data="dropzone('{{ $arch['key'] }}')"
-     x-ref="dropzone"
-     class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-yellow-400 dark:hover:border-yellow-500 transition-colors duration-200"
-     @dragover.prevent
-     @dragenter.prevent="isOver = true"
-     @dragleave.prevent="isOver = false"
-     @drop.prevent="handleDrop($event)">
-    <input type="file"
-           wire:model="{{ $arch['key'] }}"
-           id="fileInput_{{ $arch['key'] }}"
-           class="hidden"
-           accept=".pdf,.jpg,.jpeg,.png">
-    <div class="flex flex-col items-center justify-center">
-        <svg class="w-6 h-6 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-        </svg>
-        <p class="text-xs text-gray-500">
-            <span class="font-medium text-yellow-600 dark:text-yellow-400" x-text="isOver ? 'Suelta para subir' : 'Click para seleccionar'"></span> o arrastra un archivo aquí
-        </p>
-        <p class="text-[9px] text-gray-400 mt-0.5">PDF, JPG, PNG</p>
-    </div>
-</div>
+                                    <!-- Dropzone con Alpine.js - Versión Forzada -->
+                                    <div x-data="dropzone('{{ $arch['key'] }}')"
+                                         x-ref="dropzone"
+                                         class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-yellow-400 dark:hover:border-yellow-500 transition-colors duration-200 relative"
+                                         @dragover.prevent
+                                         @dragenter.prevent="isOver = true"
+                                         @dragleave.prevent="isOver = false"
+                                         @drop.prevent="handleDrop($event)"
+                                         style="pointer-events: auto;">
+                                        <input type="file"
+                                               wire:model="{{ $arch['key'] }}"
+                                               id="fileInput_{{ $arch['key'] }}"
+                                               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                               accept=".pdf,.jpg,.jpeg,.png">
+                                        <div class="relative z-10 flex flex-col items-center justify-center">
+                                            <svg class="w-6 h-6 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                            </svg>
+                                            <p class="text-xs text-gray-500">
+                                                <span class="font-medium text-yellow-600 dark:text-yellow-400" x-text="isOver ? 'Suelta para subir' : 'Click para seleccionar'"></span> o arrastra un archivo aquí
+                                            </p>
+                                            <p class="text-[9px] text-gray-400 mt-0.5">PDF, JPG, PNG</p>
+                                        </div>
+                                    </div>
 
-@error($arch['key'])
-    <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
-@enderror
+                                    @error($arch['key'])
+                                        <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
+                                    @enderror
 
-@if(${$arch['key']})
-    <div class="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded flex items-center justify-between">
-        <div class="flex items-center truncate">
-            <svg class="w-4 h-4 text-blue-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-            <span class="text-xs text-blue-800 dark:text-blue-300 truncate" title="{{ ${$arch['key']}->getClientOriginalName() }}">
-                {{ ${$arch['key']}->getClientOriginalName() }}
-            </span>
-        </div>
-        <button type="button" @click="removeFile()" class="text-red-500 hover:text-red-700 text-xs">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-        </button>
-    </div>
-@endif
+                                    @if(${$arch['key']})
+                                        <div class="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded flex items-center justify-between">
+                                            <div class="flex items-center truncate">
+                                                <svg class="w-4 h-4 text-blue-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                </svg>
+                                                <span class="text-xs text-blue-800 dark:text-blue-300 truncate" title="{{ ${$arch['key']}->getClientOriginalName() }}">
+                                                    {{ ${$arch['key']}->getClientOriginalName() }}
+                                                </span>
+                                            </div>
+                                            <button type="button" @click="removeFile()" class="text-red-500 hover:text-red-700 text-xs">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>
