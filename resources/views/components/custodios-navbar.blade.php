@@ -1,118 +1,197 @@
+@php
+    use Illuminate\Support\Str;
+    use Illuminate\Support\Facades\Auth;
+
+    $tipoSeleccionado = 'oficina';
+
+    // Definición de tarjetas con metadatos para estilos dinámicos
+    $cards = [
+        // --- GESTIÓN DE MISIONES (CORE) ---
+        [
+            'titulo' => 'Nueva Misión',
+            'ruta' => route('custodios.nuevaMisionForm'),
+            'icono' => 'truck',
+            'theme' => 'blue',
+            'desc' => 'Asignar nueva ruta o custodia'
+        ],
+        [
+            'titulo' => 'Misiones Activas',
+            'ruta' => route('custodios.misiones'),
+            'icono' => 'map-pin',
+            'theme' => 'emerald',
+            'desc' => 'Monitoreo de unidades en tránsito'
+        ],
+        [
+            'titulo' => 'Alertas y Geocercas',
+            'ruta' => route('admin.mapaGeocercas'),
+            'icono' => 'bell-ringing',
+            'theme' => 'amber',
+            'desc' => 'Notificaciones de seguridad y desvíos'
+        ],
+
+        // --- REPORTES Y CIERRE ---
+        [
+            'titulo' => 'Reportes Post-Misión',
+            'ruta' => route('custodios.misionesTerminadas'),
+            'icono' => 'clipboard-check',
+            'theme' => 'indigo',
+            'desc' => 'Validación y cierre de operaciones'
+        ],
+        [
+            'titulo' => 'Historial de Misiones',
+            'ruta' => route('custodios.historialMisiones'),
+            'icono' => 'history',
+            'theme' => 'slate',
+            'variant' => 'soft',
+            'desc' => 'Bitácora completa de servicios'
+        ],
+        [
+            'titulo' => 'Solicitudes de Misión',
+            'ruta' => '#',
+            'icono' => 'file-plus',
+            'theme' => 'blue',
+            'variant' => 'soft',
+            'desc' => 'Bandeja de solicitudes pendientes'
+        ],
+
+        // --- PERSONAL Y RECURSOS ---
+        [
+            'titulo' => 'Listado de Elementos',
+            'ruta' => route('custodios.elementos'),
+            'icono' => 'users',
+            'theme' => 'cyan',
+            'desc' => 'Directorio de custodios disponibles'
+        ],
+
+        // --- USUARIO Y GENERAL ---
+        [
+            'titulo' => 'Solicitar Vacaciones',
+            'ruta' => route('user.solicitarVacacionesForm'),
+            'icono' => 'plane-inflight',
+            'theme' => 'teal',
+            'desc' => 'Formulario de solicitud'
+        ],
+        [
+            'titulo' => 'Mis Vacaciones',
+            'ruta' => route('user.historialVacaciones'),
+            'icono' => 'calendar-user',
+            'theme' => 'teal',
+            'variant' => 'soft',
+            'desc' => 'Historial personal'
+        ],
+        [
+            'titulo' => 'Mi Ficha Técnica',
+            'ruta' => route('user.verFicha', auth()->user()->id),
+            'icono' => 'id-badge',
+            'theme' => 'gray',
+            'desc' => 'Datos laborales personales'
+        ],
+        [
+            'titulo' => 'Mensajería Interna',
+            'ruta' => route('mensajes.index'),
+            'icono' => 'mail',
+            'theme' => 'violet',
+            'desc' => 'Comunicación directa'
+        ],
+        [
+            'titulo' => 'Buzón de Quejas',
+            'ruta' => route('user.buzon'),
+            'icono' => 'message-report',
+            'theme' => 'gray',
+            'variant' => 'soft',
+            'desc' => 'Sugerencias anónimas'
+        ],
+    ];
+
+    // Helper para clases de color (Consistente con los otros dashboards)
+    function getCustodiosThemeClasses($theme, $isHover = false) {
+        $colors = [
+            'blue' => ['bg' => 'bg-blue-50 dark:bg-blue-900/20', 'text' => 'text-blue-600 dark:text-blue-400', 'border' => 'border-blue-100 dark:border-blue-800', 'hover' => 'hover:border-blue-300 dark:hover:border-blue-700'],
+            'emerald' => ['bg' => 'bg-emerald-50 dark:bg-emerald-900/20', 'text' => 'text-emerald-600 dark:text-emerald-400', 'border' => 'border-emerald-100 dark:border-emerald-800', 'hover' => 'hover:border-emerald-300 dark:hover:border-emerald-700'],
+            'amber' => ['bg' => 'bg-amber-50 dark:bg-amber-900/20', 'text' => 'text-amber-600 dark:text-amber-400', 'border' => 'border-amber-100 dark:border-amber-800', 'hover' => 'hover:border-amber-300 dark:hover:border-amber-700'],
+            'indigo' => ['bg' => 'bg-indigo-50 dark:bg-indigo-900/20', 'text' => 'text-indigo-600 dark:text-indigo-400', 'border' => 'border-indigo-100 dark:border-indigo-800', 'hover' => 'hover:border-indigo-300 dark:hover:border-indigo-700'],
+            'cyan' => ['bg' => 'bg-cyan-50 dark:bg-cyan-900/20', 'text' => 'text-cyan-600 dark:text-cyan-400', 'border' => 'border-cyan-100 dark:border-cyan-800', 'hover' => 'hover:border-cyan-300 dark:hover:border-cyan-700'],
+            'teal' => ['bg' => 'bg-teal-50 dark:bg-teal-900/20', 'text' => 'text-teal-600 dark:text-teal-400', 'border' => 'border-teal-100 dark:border-teal-800', 'hover' => 'hover:border-teal-300 dark:hover:border-teal-700'],
+            'slate' => ['bg' => 'bg-slate-50 dark:bg-slate-800', 'text' => 'text-slate-600 dark:text-slate-400', 'border' => 'border-slate-200 dark:border-slate-700', 'hover' => 'hover:border-slate-300 dark:hover:border-slate-600'],
+            'violet' => ['bg' => 'bg-violet-50 dark:bg-violet-900/20', 'text' => 'text-violet-600 dark:text-violet-400', 'border' => 'border-violet-100 dark:border-violet-800', 'hover' => 'hover:border-violet-300 dark:hover:border-violet-700'],
+            'gray' => ['bg' => 'bg-gray-50 dark:bg-gray-800', 'text' => 'text-gray-600 dark:text-gray-400', 'border' => 'border-gray-200 dark:border-gray-700', 'hover' => 'hover:border-gray-300 dark:hover:border-gray-600'],
+        ];
+
+        $c = $colors[$theme] ?? $colors['slate'];
+        return $isHover ? $c['hover'] : ($c['bg'] . ' ' . $c['text'] . ' ' . $c['border']);
+    }
+@endphp
+
 <div class="col-span-full">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        @php
-        $tipoSeleccionado='oficina';
-            $cards = [
-                [
-                    'titulo' => 'Nueva Misión',
-                    'ruta' => route('custodios.nuevaMisionForm'),
-                    'icono' => 'car',
-                    'color' => 'bg-blue-100 dark:bg-blue-700',
-                ],
-                /*[
-                    'titulo' => 'Notificaciones de Misiones',
-                    'ruta' => '#',
-                    'icono' => 'bell',
-                    'color' => 'bg-yellow-100 dark:bg-yellow-700',
-                ],*/
-                [
-                    'titulo' => 'Alertas',
-                    'ruta' => route('admin.mapaGeocercas'),
-                    'icono' => 'bell',
-                    'color' => 'bg-yellow-100 dark:bg-yellow-700',
-                ],
-                [
-                    'titulo' => 'Misiones Activas',
-                    'ruta' => route('custodios.misiones'),
-                    'icono' => 'file-description',
-                    'color' => 'bg-green-100 dark:bg-green-700'
-                ],
-                [
-                    'titulo' => 'Solicitudes de  Misiones',
-                    'ruta' => '#',
-                    'icono' => 'clipboard-list',
-                    'color' => 'bg-blue-100 dark:bg-blue-700',
-                ],
-                [
-                    'titulo' => 'Formularios Post-Misión',
-                    'ruta' => route('custodios.misionesTerminadas'),
-                    'icono' => 'clipboard-list',
-                    'color' => 'bg-yellow-100 dark:bg-yellow-700'
-                ],
-                [
-                    'titulo' => 'Listado de Elementos',
-                    'ruta' => route('custodios.elementos'),
-                    'icono' => 'clipboard-list',
-                    'color' => 'bg-green-100 dark:bg-green-700'
-                ],
-                [
-                    'titulo' => 'Solicitar Vacaciones',
-                    'ruta' => route('user.solicitarVacacionesForm'),
-                    'icono' => 'confetti',
-                    'color' => 'bg-blue-100 dark:bg-blue-700'
-                ],
-                [
-                    'titulo' => 'Mi Historial de Vacaciones',
-                    'ruta' => route('user.historialVacaciones'),
-                    'icono' => 'calendar',
-                    'color' => 'bg-yellow-100 dark:bg-yellow-700'
-                ],
-                [
-                    'titulo' => 'Historial de Misiones',
-                    'ruta' => route('custodios.historialMisiones'),
-                    'icono' => 'folder-open',
-                    'color' => 'bg-green-100 dark:bg-green-700'
-                ],
-                [
-                    'titulo' => 'Buzón de Quejas y Sugerencias',
-                    'ruta' => route('user.buzon'),
-                    'icono' => 'message',
-                    'color' => 'bg-purple-100 dark:bg-purple-700',
-                ],
-                [
-                    'titulo' => 'Ficha Técnica',
-                    'ruta' => route('user.verFicha', auth()->user()->id),
-                    'icono' => 'file-description',
-                    'color' => 'bg-yellow-100 dark:bg-yellow-700',
-                ],
-                [
-                    'titulo' => 'Mensajes',
-                    'ruta' => route('mensajes.index'),
-                    'icono' => 'message',
-                    'color' => 'bg-purple-100 dark:bg-purple-700',
-                ],
-            ];
-        @endphp
+    <div class="mb-6">
+        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Módulo de Custodios</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Gestión de misiones, rastreo y seguridad de unidades</p>
+    </div>
 
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         @foreach($cards as $card)
-        <div class="{{ $card['disabled'] ?? false ? 'pointer-events-none opacity-50' : '' }}" style="{{ ($card['disabled'] ?? false) ? 'opacity: 0.5; pointer-events: none; cursor: default;' : '' }}">
-            <a href="{{ $card['ruta'] }}" class="transition-transform transform hover:scale-105 block">
-                <div class="p-4 rounded-xl shadow-md {{ $card['color'] }} hover:shadow-lg h-full flex flex-col justify-between relative">
-                    @if (!empty($card['notificaciones']) && $card['notificaciones'] > 0)
-                        <span class="absolute top-2 right-2 bg-red-600 text-white text-xs rounded-full px-2 py-0.5">
-                            {{ $card['notificaciones'] }}
-                        </span>
-                    @endif
-                    <div class="flex items-center space-x-3">
-                        <div class="flex items-center justify-center mb-1 rounded-full shadow w-14 h-14 bg-white/80">
-                            <i class="ti ti-{{ $card['icono'] }} text-3xl {{
-                                Str::contains($card['color'], 'blue') ? 'text-blue-700' :
-                                (Str::contains($card['color'], 'yellow') ? 'text-yellow-700' :
-                                (Str::contains($card['color'], 'red') ? 'text-red-700' :
-                                (Str::contains($card['color'], 'green') ? 'text-green-700' :
-                                (Str::contains($card['color'], 'purple') ? 'text-purple-700' :
-                                (Str::contains($card['color'], 'gray') ? 'text-gray-700' : 'text-gray-800')))))
-                            }}"></i>
-                        </div>
-                        <h3 class="text-base font-semibold text-gray-800 dark:text-white">
-                            {{ $card['titulo'] }}
-                        </h3>
-                    </div>
-                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Haz clic para ver más detalles</p>
-                </div>
-            </a>
-        </div>
-        @endforeach
+            @php
+                $isDisabled = $card['disabled'] ?? false;
+                $theme = $card['theme'] ?? 'slate';
+                $baseClasses = getCustodiosThemeClasses($theme);
+                $hoverClasses = getCustodiosThemeClasses($theme, true);
 
+                // Mapeo de colores para el contenedor del icono
+                $iconContainerClass = match($theme) {
+                    'blue' => 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300',
+                    'emerald' => 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-300',
+                    'amber' => 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-300',
+                    'indigo' => 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-300',
+                    'cyan' => 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/50 dark:text-cyan-300',
+                    'teal' => 'bg-teal-100 text-teal-600 dark:bg-teal-900/50 dark:text-teal-300',
+                    'slate' => 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+                    'violet' => 'bg-violet-100 text-violet-600 dark:bg-violet-900/50 dark:text-violet-300',
+                    'gray' => 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+                    default => 'bg-gray-100 text-gray-600',
+                };
+            @endphp
+
+            <div class="group relative {{ $isDisabled ? 'opacity-60 grayscale cursor-not-allowed' : '' }}">
+                @if(!$isDisabled)
+                    <a href="{{ $card['ruta'] }}" class="block h-full">
+                @endif
+
+                    <div class="h-full bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm hover:shadow-md transition-all duration-300 {{ !$isDisabled ? $hoverClasses : '' }} flex flex-col justify-between">
+
+                        {{-- Header: Icono y Badge --}}
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="w-12 h-12 rounded-xl {{ $iconContainerClass }} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
+                                <i class="ti ti-{{ $card['icono'] }} text-2xl"></i>
+                            </div>
+
+                            @if (!empty($card['notificaciones']) && $card['notificaciones'] > 0)
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-800 animate-pulse">
+                                    {{ $card['notificaciones'] }}
+                                </span>
+                            @endif
+                        </div>
+
+                        {{-- Content: Título y Descripción --}}
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                {{ $card['titulo'] }}
+                            </h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                                {{ $card['desc'] ?? 'Acceder al módulo' }}
+                            </p>
+                        </div>
+
+                        {{-- Footer: Indicador visual --}}
+                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center text-xs font-medium text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
+                            <span>Ver detalles</span>
+                            <i class="ti ti-arrow-right ml-1 transform group-hover:translate-x-1 transition-transform"></i>
+                        </div>
+                    </div>
+
+                @if(!$isDisabled)
+                    </a>
+                @endif
+            </div>
+        @endforeach
     </div>
 </div>

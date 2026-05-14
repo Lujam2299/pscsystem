@@ -147,13 +147,13 @@
             'icono' => 'credit-card',
             'color' => 'bg-indigo-300 dark:bg-indigo-700',
         ],
-        [
+        /*[
             'titulo' => 'Jurídico',
             'ruta' => route('admin.juridicoDashboard'),
             'icono' => 'scale',
             'color' => 'bg-red-300 dark:bg-red-700',
             'notificacions' => $conteoBajasJuridico,
-        ],
+        ],*/
         [
             'titulo' => 'Custodios',
             'ruta' => route('admin.custodiosDashboard'),
@@ -173,13 +173,13 @@
             'icono' => 'trending-up',
             'color' => 'bg-indigo-300 dark:bg-indigo-700',
         ],
-        [
+        /*[
             'titulo' => 'Supervisores',
             'ruta' => route('admin.verTableroSupervisores'),
             'icono' => 'users',
             'color' => 'bg-green-300 dark:bg-green-700',
             'notificaciones' => $supNotificaciones,
-        ],
+        ],*/
         [
             'titulo' => 'Vacaciones',
             'ruta' => route('admin.solicitudesVacaciones'),
