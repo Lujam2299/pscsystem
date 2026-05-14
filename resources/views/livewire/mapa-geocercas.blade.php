@@ -1,5 +1,5 @@
 <x-livewire.monitoreo-layout :breadcrumb-items="[
-        ['icon' => 'ti-home', 'url' => route('admin.monitoreoDashboard')],
+        ['icon' => 'ti-home', 'url' => route('dashboard'), 'label' => 'Dashboard'],
         ['icon' => 'ti-map', 'label' => 'Mapa de Geocercas']
     ]" title-main="Mapa de Geocercas" help-text="Visualización de geocercas por misión">
     <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
