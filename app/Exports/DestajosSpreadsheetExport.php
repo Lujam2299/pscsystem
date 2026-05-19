@@ -42,14 +42,13 @@ class DestajosSpreadsheetExport
         $sheet->setTitle('Destajos');
 
         // ============================================
-        // ENCABEZADOS PRINCIPALES (Columnas fijas)
+        // ENCABEZADOS PRINCIPALES (10 columnas fijas)
         // ============================================
         $columnasBase = [
-            'No.', 'Nombre', 'Días Lab.', 'Desc.', 'Faltas', 'Incap.', 'Tarifa Diaria', 'TOTAL DESTAJO'
+            'No.', 'Nombre', 'Días Lab.', 'Desc.', 'Faltas', 'Incap.', 'PE-CG', 'PE-SG', 'Tarifa Diaria', 'TOTAL DESTAJO'
         ];
-        $baseColumnCount = count($columnasBase); // = 8
+        $baseColumnCount = count($columnasBase); // = 10
 
-        // Escribir encabezados base con colores
         for ($index = 0; $index < $baseColumnCount; $index++) {
             $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($index + 1);
             $titulo = $columnasBase[$index];
@@ -57,50 +56,27 @@ class DestajosSpreadsheetExport
             $sheet->setCellValue("{$col}1", $titulo);
             $sheet->mergeCells("{$col}1:{$col}2");
 
-            // Colores por sección
             if ($index <= 1) {
-                // Información del usuario (No., Nombre)
-                $fillColor = 'E0E0E0'; // Gris
-                $fontColor = '000000';
+                $fillColor = 'E0E0E0'; $fontColor = '000000';
             } elseif ($index <= 5) {
-                // Conteos (Días Lab, Desc, Faltas, Incap)
-                $fillColor = 'FFF9C4'; // Amarillo muy claro
-                $fontColor = '000000';
+                $fillColor = 'FFF9C4'; $fontColor = '000000';
             } elseif ($index == 6) {
-                // Tarifa Diaria
-                $fillColor = 'C8E6C9'; // Verde claro
-                $fontColor = '000000';
+                $fillColor = 'E1BEE7'; $fontColor = '000000'; // PE-CG Morado
+            } elseif ($index == 7) {
+                $fillColor = 'BDBDBD'; $fontColor = '000000'; // PE-SG Gris
+            } elseif ($index == 8) {
+                $fillColor = 'C8E6C9'; $fontColor = '000000';
             } else {
-                // Total Destajo
-                $fillColor = '81C784'; // Verde más intenso
-                $fontColor = '000000';
+                $fillColor = '81C784'; $fontColor = '000000';
             }
 
             $style = [
-                'font' => [
-                    'name' => 'Century Gothic',
-                    'size' => 9,
-                    'bold' => true,
-                    'color' => ['rgb' => $fontColor],
-                ],
-                'alignment' => [
-                    'vertical' => Alignment::VERTICAL_CENTER,
-                    'horizontal' => Alignment::HORIZONTAL_CENTER,
-                    'wrapText' => true,
-                ],
-                'fill' => [
-                    'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => $fillColor],
-                ],
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                        'color' => ['rgb' => '000000'],
-                    ],
-                ],
+                'font' => ['name' => 'Century Gothic', 'size' => 9, 'bold' => true, 'color' => ['rgb' => $fontColor]],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $fillColor]],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
             ];
 
-            // Rotar texto si es abreviatura en mayúsculas
             if ($titulo === strtoupper($titulo) && strlen($titulo) > 4 && !str_contains($titulo, ' ')) {
                 $style['alignment']['textRotation'] = 90;
             }
@@ -109,7 +85,7 @@ class DestajosSpreadsheetExport
         }
 
         // ============================================
-        // ENCABEZADOS DE FECHAS (Columnas dinámicas)
+        // ENCABEZADOS DE FECHAS
         // ============================================
         $diasSemanaES = [
             'Monday' => 'Lunes', 'Tuesday' => 'Martes', 'Wednesday' => 'Miércoles',
@@ -126,28 +102,14 @@ class DestajosSpreadsheetExport
             $numeroDia = $currentDate->format('d');
             $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
 
-            // Encabezado de fecha (merge de 1 fila para mantenerlo simple como el blade)
             $sheet->setCellValue("{$colLetter}1", "$diaEspanol\n$numeroDia");
             $sheet->mergeCells("{$colLetter}1:{$colLetter}2");
 
             $sheet->getStyle("{$colLetter}1")->applyFromArray([
                 'font' => ['name' => 'Century Gothic', 'size' => 8, 'bold' => true],
-                'alignment' => [
-                    'horizontal' => Alignment::HORIZONTAL_CENTER,
-                    'vertical' => Alignment::VERTICAL_CENTER,
-                    'wrapText' => true,
-                    'textRotation' => 0,
-                ],
-                'fill' => [
-                    'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => 'FFD54F'], // Amarillo para fechas
-                ],
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                        'color' => ['rgb' => '000000'],
-                    ],
-                ],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true, 'textRotation' => 0],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFD54F']],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
             ]);
 
             $sheet->getColumnDimension($colLetter)->setWidth(6);
@@ -164,48 +126,48 @@ class DestajosSpreadsheetExport
         $row = 3;
         $totalGeneralDestajo = 0;
         $totalGeneralDiasLab = 0;
+        $totalPE_CG = 0;
+        $totalPE_SG = 0;
 
         foreach ($datos['usuarios'] as $user) {
             $destajoData = $datos['destajosPorUsuario'][$user->id] ?? null;
-
-            if (!$destajoData || !$destajoData['success']) {
-                continue;
-            }
+            if (!$destajoData || !$destajoData['success']) continue;
 
             $conteos = $destajoData['conteos'] ?? [];
             $desgloseDiario = $destajoData['desglose_diario'] ?? [];
 
-            // Columnas fijas
+            // Columnas A-H: Datos y conteos
             $sheet->setCellValue("A{$row}", $user->id);
             $sheet->setCellValue("B{$row}", strtoupper($user->name));
             $sheet->setCellValue("C{$row}", $destajoData['dias_laborados']);
             $sheet->setCellValue("D{$row}", $conteos['descansos'] ?? 0);
             $sheet->setCellValue("E{$row}", $conteos['faltas'] ?? 0);
             $sheet->setCellValue("F{$row}", $conteos['incapacidades'] ?? 0);
-            $sheet->setCellValue("G{$row}", $destajoData['tarifa_diaria']);
-            $sheet->setCellValue("H{$row}", $destajoData['total_monto']);
+            $sheet->setCellValue("G{$row}", $conteos['permisos_cg'] ?? 0);  // PE-CG
+            $sheet->setCellValue("H{$row}", $conteos['permisos_sg'] ?? 0);  // PE-SG
+            $sheet->setCellValue("I{$row}", $destajoData['tarifa_diaria']);
+            $sheet->setCellValue("J{$row}", $destajoData['total_monto']);
 
-            // Formato de moneda para tarifa y total
-            $sheet->getStyle("G{$row}")->getNumberFormat()->setFormatCode('$#,##0.00');
-            $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode('$#,##0.00');
+            // Formato de moneda
+            $sheet->getStyle("I{$row}")->getNumberFormat()->setFormatCode('$#,##0.00');
+            $sheet->getStyle("J{$row}")->getNumberFormat()->setFormatCode('$#,##0.00');
 
-            // Color de fondo para Total Destajo
-            $sheet->getStyle("H{$row}")->applyFromArray([
-                'fill' => [
-                    'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => 'C8E6C9'],
-                ],
+            // Color para Total Destajo
+            $sheet->getStyle("J{$row}")->applyFromArray([
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'C8E6C9']],
                 'font' => ['bold' => true],
             ]);
 
-            // Acumular totales generales
+            // Acumular totales
             $totalGeneralDiasLab += $destajoData['dias_laborados'];
             $totalGeneralDestajo += $destajoData['total_monto'];
+            $totalPE_CG += $conteos['permisos_cg'] ?? 0;
+            $totalPE_SG += $conteos['permisos_sg'] ?? 0;
 
             // ============================================
             // COLUMNAS DIARIAS (Desglose visual)
             // ============================================
-            $colDia = $baseColumnCount + 1;
+            $colDia = $baseColumnCount + 1; // = 11 (Columna K)
             $fechaIter = Carbon::parse($this->fechaInicio);
 
             while ($fechaIter->lte(Carbon::parse($this->fechaFin))) {
@@ -215,46 +177,21 @@ class DestajosSpreadsheetExport
 
                 $sheet->setCellValue("{$colLetter}{$row}", $codigo);
 
-                // Aplicar colores según el código (igual que el blade)
-                $colorRGB = 'FFFFFF'; // Default blanco
-
-                if ($codigo === 'A') {
-                    $colorRGB = '58D68D'; // Verde asistencia
-                } elseif ($codigo === 'D') {
-                    $colorRGB = 'F9E79F'; // Amarillo descanso
-                } elseif ($codigo === 'F') {
-                    $colorRGB = 'F5B7B1'; // Rojo falta
-                } elseif ($codigo === 'I') {
-                    $colorRGB = 'F8D7DA'; // Rojo oscuro incapacidad
-                } elseif ($codigo === 'V') {
-                    $colorRGB = 'A9CCE3'; // Azul vacaciones
-                } elseif (str_starts_with($codigo, 'PE-CG')) {
-                    $colorRGB = 'D2B4DE'; // Morado permiso con goce
-                } elseif (str_starts_with($codigo, 'PE-SG')) {
-                    $colorRGB = 'D5DBDB'; // Gris permiso sin goce
-                } elseif (str_starts_with($codigo, 'R')) {
-                    $colorRGB = 'FCF3CF'; // Amarillo claro retardo
-                }
+                $colorRGB = 'FFFFFF';
+                if ($codigo === 'A') $colorRGB = '58D68D';
+                elseif ($codigo === 'D') $colorRGB = 'F9E79F';
+                elseif ($codigo === 'F') $colorRGB = 'F5B7B1';
+                elseif ($codigo === 'I') $colorRGB = 'F8D7DA';
+                elseif ($codigo === 'V') $colorRGB = 'A9CCE3';
+                elseif (str_starts_with($codigo, 'PE-CG')) $colorRGB = 'D2B4DE';
+                elseif (str_starts_with($codigo, 'PE-SG')) $colorRGB = 'D5DBDB';
+                elseif (str_starts_with($codigo, 'R')) $colorRGB = 'FCF3CF';
 
                 $sheet->getStyle("{$colLetter}{$row}")->applyFromArray([
-                    'fill' => [
-                        'fillType' => Fill::FILL_SOLID,
-                        'startColor' => ['rgb' => $colorRGB],
-                    ],
-                    'alignment' => [
-                        'horizontal' => Alignment::HORIZONTAL_CENTER,
-                        'vertical' => Alignment::VERTICAL_CENTER,
-                    ],
-                    'font' => [
-                        'size' => 9,
-                        'bold' => in_array($codigo, ['A', 'D']),
-                    ],
-                    'borders' => [
-                        'allBorders' => [
-                            'borderStyle' => Border::BORDER_THIN,
-                            'color' => ['rgb' => 'CCCCCC'],
-                        ],
-                    ],
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $colorRGB]],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                    'font' => ['size' => 9, 'bold' => in_array($codigo, ['A', 'D'])],
+                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CCCCCC']]],
                 ]);
 
                 $colDia++;
@@ -264,12 +201,7 @@ class DestajosSpreadsheetExport
             // Bordes para toda la fila
             $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colDia - 1);
             $sheet->getStyle("A{$row}:{$lastColLetter}{$row}")->applyFromArray([
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                        'color' => ['rgb' => '000000'],
-                    ],
-                ],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
             ]);
 
             $row++;
@@ -278,13 +210,18 @@ class DestajosSpreadsheetExport
         // ============================================
         // FILA DE TOTALES GENERALES
         // ============================================
-        $lastColIndex = $colIndex; // Columna después de la última fecha
+        $lastColIndex = $colIndex;
         $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($lastColIndex - 1);
 
         $sheet->mergeCells("A{$row}:B{$row}");
         $sheet->setCellValue("A{$row}", 'TOTALES GENERALES');
         $sheet->setCellValue("C{$row}", $totalGeneralDiasLab);
-        $sheet->setCellValue("H{$row}", $totalGeneralDestajo);
+        $sheet->setCellValue("D{$row}", array_sum(array_map(fn($d) => ($d['conteos']['descansos'] ?? 0), $datos['destajosPorUsuario'])));
+        $sheet->setCellValue("E{$row}", array_sum(array_map(fn($d) => ($d['conteos']['faltas'] ?? 0), $datos['destajosPorUsuario'])));
+        $sheet->setCellValue("F{$row}", array_sum(array_map(fn($d) => ($d['conteos']['incapacidades'] ?? 0), $datos['destajosPorUsuario'])));
+        $sheet->setCellValue("G{$row}", $totalPE_CG);
+        $sheet->setCellValue("H{$row}", $totalPE_SG);
+        $sheet->setCellValue("J{$row}", $totalGeneralDestajo);
 
         $sheet->getStyle("A{$row}:B{$row}")->applyFromArray([
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'BDBDBD']],
@@ -298,48 +235,36 @@ class DestajosSpreadsheetExport
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
         ]);
 
-        $sheet->getStyle("H{$row}")->applyFromArray([
+        $sheet->getStyle("J{$row}")->applyFromArray([
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '81C784']],
             'font' => ['bold' => true, 'size' => 11],
             'numberFormat' => ['formatCode' => '$#,##0.00'],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT],
         ]);
 
-        // Bordes para fila de totales
         $sheet->getStyle("A{$row}:{$lastColLetter}{$row}")->applyFromArray([
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_MEDIUM,
-                    'color' => ['rgb' => '000000'],
-                ],
-            ],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => '000000']]],
         ]);
 
         // ============================================
-        // FORMATOS GENERALES Y AJUSTES FINALES
+        // FORMATOS GENERALES
         // ============================================
-        // Anchos de columnas base
-        $sheet->getColumnDimension('A')->setWidth(6);   // No.
-        $sheet->getColumnDimension('B')->setWidth(30);  // Nombre
-        $sheet->getColumnDimension('C')->setWidth(10);  // Días Lab
-        $sheet->getColumnDimension('D')->setWidth(8);   // Desc
-        $sheet->getColumnDimension('E')->setWidth(8);   // Faltas
-        $sheet->getColumnDimension('F')->setWidth(8);   // Incap
-        $sheet->getColumnDimension('G')->setWidth(14);  // Tarifa
-        $sheet->getColumnDimension('H')->setWidth(16);  // Total
+        $sheet->getColumnDimension('A')->setWidth(6);
+        $sheet->getColumnDimension('B')->setWidth(30);
+        $sheet->getColumnDimension('C')->setWidth(10);
+        $sheet->getColumnDimension('D')->setWidth(8);
+        $sheet->getColumnDimension('E')->setWidth(8);
+        $sheet->getColumnDimension('F')->setWidth(8);
+        $sheet->getColumnDimension('G')->setWidth(8);
+        $sheet->getColumnDimension('H')->setWidth(8);
+        $sheet->getColumnDimension('I')->setWidth(14);
+        $sheet->getColumnDimension('J')->setWidth(16);
 
-        // Congelar paneles: mantener visibles columnas A y B al hacer scroll horizontal
         $sheet->freezePane('C3');
 
-        // Bordes generales para todo el rango de datos
         $dataRange = "A1:{$lastColLetter}" . ($row);
         $sheet->getStyle($dataRange)->applyFromArray([
-            'borders' => [
-                'outline' => [
-                    'borderStyle' => Border::BORDER_MEDIUM,
-                    'color' => ['rgb' => '000000'],
-                ],
-            ],
+            'borders' => ['outline' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => '000000']]],
         ]);
 
         // ============================================
@@ -355,16 +280,12 @@ class DestajosSpreadsheetExport
     }
 
     // ============================================
-    // MÉTODOS AUXILIARES (IDÉNTICOS AL LIVWIRE)
+    // MÉTODOS AUXILIARES
     // ============================================
     private function obtenerDatos()
     {
         if (!$this->fechaInicio || !$this->fechaFin) {
-            return [
-                'usuarios' => collect(),
-                'fechas' => [],
-                'destajosPorUsuario' => [],
-            ];
+            return ['usuarios' => collect(), 'fechas' => [], 'destajosPorUsuario' => []];
         }
 
         $filtro = $this->punto ? strtoupper($this->punto) : '';
@@ -448,7 +369,6 @@ class DestajosSpreadsheetExport
 
         $usuarios = $usuarios->get()->sortBy(['punto', 'asc', 'name', 'asc']);
 
-        // Preparar fechas
         $fechas = [];
         $startDate = Carbon::parse($this->fechaInicio);
         $endDate = Carbon::parse($this->fechaFin);
@@ -456,7 +376,6 @@ class DestajosSpreadsheetExport
             $fechas[] = $date->format('Y-m-d');
         }
 
-        // Vacaciones
         $vacacionesPorUsuario = [];
         foreach ($usuarios as $user) {
             $vacaciones = DB::table('solicitud_vacaciones')
@@ -478,7 +397,6 @@ class DestajosSpreadsheetExport
             $vacacionesPorUsuario[$user->id] = $dias->toArray();
         }
 
-        // Permisos
         $permisosPorUsuario = [];
         $permisos = \App\Models\PermisoEspecial::where(function($q) {
             $q->whereBetween('fecha_inicio', [$this->fechaInicio, $this->fechaFin])
@@ -496,7 +414,6 @@ class DestajosSpreadsheetExport
             }
         }
 
-        // Incapacidades
         $incapacidadesPorUsuario = [];
         $incapacidades = \App\Models\Incapacidad::where(function ($q) {
             $q->whereBetween('fecha_inicio', [$this->fechaInicio, $this->fechaFin]);
@@ -517,7 +434,6 @@ class DestajosSpreadsheetExport
             }
         }
 
-        // Calcular destajos
         $destajosPorUsuario = [];
         foreach ($usuarios as $user) {
             try {

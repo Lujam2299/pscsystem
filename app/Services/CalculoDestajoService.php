@@ -18,7 +18,6 @@ class CalculoDestajoService
         string $fechaFin,
         array $datosAsistencias
     ): array {
-        // 1. Obtener la tarifa desde el campo 'compensacion' de la tabla sueldos
         $sueldo = $this->obtenerSueldoUsuario($user);
 
         if (!$sueldo || !$sueldo->compensacion) {
@@ -36,7 +35,6 @@ class CalculoDestajoService
         $compensacionQuincenal = floatval($sueldo->compensacion);
         $tarifaDiaria = $compensacionQuincenal / 15;
 
-        // 2. Calcular días efectivos (Asistencias + Descansos)
         $diasData = $this->calcularDiasEfectivos(
             $user->id,
             $fechaInicio,
@@ -44,7 +42,7 @@ class CalculoDestajoService
             $datosAsistencias
         );
 
-        $totalDiasLaborados = $diasData['total']; // A + D
+        $totalDiasLaborados = $diasData['total'];
         $totalMonto = $totalDiasLaborados * $tarifaDiaria;
 
         return [
@@ -53,8 +51,8 @@ class CalculoDestajoService
             'dias_laborados' => $totalDiasLaborados,
             'tarifa_diaria' => round($tarifaDiaria, 2),
             'total_monto' => round($totalMonto, 2),
-            'conteos' => $diasData['conteos'], // Para mostrar columnas de Faltas, Incap, etc.
-            'desglose_diario' => $diasData['desglose_diario'] // Para pintar la cuadrícula
+            'conteos' => $diasData['conteos'],
+            'desglose_diario' => $diasData['desglose_diario']
         ];
     }
 
@@ -74,7 +72,6 @@ class CalculoDestajoService
         $totalDiasLaborados = 0;
         $desgloseDiario = [];
 
-        // Contadores para las columnas nuevas
         $conteos = [
             'asistencias' => 0,
             'descansos' => 0,
@@ -86,21 +83,18 @@ class CalculoDestajoService
         ];
 
         foreach ($fechas as $fecha) {
-            $codigoDia = ''; // Código visual para la tabla (A, D, F, V, I, etc.)
+            $codigoDia = '';
             $cuentaParaDestajo = 0;
 
-            // 1. Prioridad: Incapacidad
             if (in_array($fecha, $incapacidadesDelUsuario)) {
                 $codigoDia = 'I';
                 $conteos['incapacidades']++;
             }
-            // 2. Permiso Especial
             elseif (isset($permisosPorUsuario[$fecha])) {
                 $permiso = $permisosPorUsuario[$fecha];
                 if ((int)$permiso['con_goce'] === 1) {
                     $codigoDia = 'PE-CG';
                     $conteos['permisos_cg']++;
-                    // ¿Cuenta para destajo? Usualmente NO, pero si quieres que sí, cambia a 1.
                     $cuentaParaDestajo = 0;
                 } else {
                     $codigoDia = 'PE-SG';
@@ -108,13 +102,11 @@ class CalculoDestajoService
                     $cuentaParaDestajo = 0;
                 }
             }
-            // 3. Vacaciones
             elseif (in_array($fecha, $vacacionesPorUsuario)) {
                 $codigoDia = 'V';
                 $conteos['vacaciones']++;
-                $cuentaParaDestajo = 0; // Vacaciones no suelen generar destajo (producción)
+                $cuentaParaDestajo = 0;
             }
-            // 4. Lógica de Asistencia/Falta/Descanso desde la tabla Asistencias
             else {
                 $asistencia = $asistenciasIndexadas->get($fecha);
 
@@ -126,20 +118,20 @@ class CalculoDestajoService
                     if (in_array($userId, $descansantes)) {
                         $codigoDia = 'D';
                         $conteos['descansos']++;
-                        $cuentaParaDestajo = 1; // ✅ DESCANSO CUENTA COMO LABORADO PARA DESTAJO
+                        $cuentaParaDestajo = 1;
                     } elseif (in_array($userId, $enlistados)) {
                         $codigoDia = 'A';
                         $conteos['asistencias']++;
-                        $cuentaParaDestajo = 1; // ✅ ASISTENCIA CUENTA
+                        $cuentaParaDestajo = 1;
                     } elseif (in_array($userId, $faltantes)) {
                         $codigoDia = 'F';
                         $conteos['faltas']++;
                         $cuentaParaDestajo = 0;
                     } else {
-                        $codigoDia = ''; // Sin registro
+                        $codigoDia = '';
                     }
                 } else {
-                    $codigoDia = ''; // No hay registro de asistencia ese día
+                    $codigoDia = '';
                 }
             }
 
@@ -158,14 +150,12 @@ class CalculoDestajoService
     {
         $puntoNombre = $this->resolverPuntoNombre($user->punto) ?? $user->punto;
 
-        // Buscar por Puesto y Punto
         $sueldo = Sueldo::where('puesto', $user->rol)
             ->where('punto', $puntoNombre)
             ->first();
 
         if ($sueldo) return $sueldo;
 
-        // Fallback solo por punto
         $sueldo = Sueldo::where('punto', $puntoNombre)->first();
 
         return $sueldo;
