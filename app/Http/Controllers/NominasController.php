@@ -14,6 +14,7 @@ use App\Models\SolicitudBajas;
 use App\Models\Punto;
 use App\Models\Subpunto;
 use App\Models\Deducciones;
+use App\Exports\DestajosSpreadsheetExport;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -948,5 +949,21 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
 
     public function historialDeducciones(){
         return view('nominas.historialDeducciones');
+    }
+
+    public function exportar(Request $request)
+    {
+        $request->validate([
+            'punto' => 'nullable|string',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+        ]);
+
+        $punto = $request->input('punto', '');
+        $fechaInicio = $request->input('fecha_inicio');
+        $fechaFin = $request->input('fecha_fin');
+
+        $export = new DestajosSpreadsheetExport($punto, $fechaInicio, $fechaFin);
+        return $export->generateFile();
     }
 }

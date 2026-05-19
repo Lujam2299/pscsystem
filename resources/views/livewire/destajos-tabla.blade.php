@@ -6,9 +6,11 @@
         .dark .sticky-second-col { background-color: #1f2937; box-shadow: inset -2px 0 0 #374151; }
     </style>
 
-    <!-- Filtros -->
+    <!-- Filtros en una sola fila -->
     <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 mb-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+
+            <!-- Punto -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Punto</label>
                 <select wire:model.live="punto" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-white">
@@ -27,14 +29,43 @@
                     @endforeach
                 </select>
             </div>
+
+            <!-- Fecha Inicio -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Inicio</label>
                 <input type="date" wire:model.live="fecha_inicio" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
             </div>
+
+            <!-- Fecha Fin -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Fin</label>
                 <input type="date" wire:model.live="fecha_fin" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
             </div>
+
+            <!-- Botón de Exportar Excel -->
+            <div class="flex items-end">
+                @if($fecha_inicio && $fecha_fin)
+                    <form method="GET" action="{{ route('exportar.destajos') }}" target="_blank" class="w-full">
+                        <input type="hidden" name="punto" value="{{ $punto }}">
+                        <input type="hidden" name="fecha_inicio" value="{{ $fecha_inicio }}">
+                        <input type="hidden" name="fecha_fin" value="{{ $fecha_fin }}">
+                        <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-200 shadow-sm h-[42px]">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Exportar
+                        </button>
+                    </form>
+                @else
+                    <button disabled class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-400 text-white font-medium rounded-lg cursor-not-allowed opacity-70 h-[42px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Exportar
+                    </button>
+                @endif
+            </div>
+
         </div>
     </div>
 
