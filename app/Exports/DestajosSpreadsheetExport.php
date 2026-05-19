@@ -11,7 +11,6 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Color;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -47,7 +46,7 @@ class DestajosSpreadsheetExport
         $columnasBase = [
             'No.', 'Nombre', 'Días Lab.', 'Desc.', 'Faltas', 'Incap.', 'PE-CG', 'PE-SG', 'Tarifa Diaria', 'TOTAL DESTAJO'
         ];
-        $baseColumnCount = count($columnasBase); // = 10
+        $baseColumnCount = count($columnasBase);
 
         for ($index = 0; $index < $baseColumnCount; $index++) {
             $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($index + 1);
@@ -61,9 +60,9 @@ class DestajosSpreadsheetExport
             } elseif ($index <= 5) {
                 $fillColor = 'FFF9C4'; $fontColor = '000000';
             } elseif ($index == 6) {
-                $fillColor = 'E1BEE7'; $fontColor = '000000'; // PE-CG Morado
+                $fillColor = 'E1BEE7'; $fontColor = '000000';
             } elseif ($index == 7) {
-                $fillColor = 'BDBDBD'; $fontColor = '000000'; // PE-SG Gris
+                $fillColor = 'BDBDBD'; $fontColor = '000000';
             } elseif ($index == 8) {
                 $fillColor = 'C8E6C9'; $fontColor = '000000';
             } else {
@@ -131,20 +130,45 @@ class DestajosSpreadsheetExport
 
         foreach ($datos['usuarios'] as $user) {
             $destajoData = $datos['destajosPorUsuario'][$user->id] ?? null;
-            if (!$destajoData || !$destajoData['success']) continue;
+
+            // ✅ CORRECCIÓN: Usar datos por defecto en lugar de saltar el usuario
+            if (!$destajoData || !$destajoData['success']) {
+                $destajoData = [
+                    'dias_laborados' => 0,
+                    'tarifa_diaria' => 0,
+                    'total_monto' => 0,
+                    'conteos' => [
+                        'descansos' => 0, 'faltas' => 0, 'incapacidades' => 0,
+                        'permisos_cg' => 0, 'permisos_sg' => 0
+                    ],
+                    'desglose_diario' => []
+                ];
+            }
 
             $conteos = $destajoData['conteos'] ?? [];
             $desgloseDiario = $destajoData['desglose_diario'] ?? [];
 
+            // ✅ FORMATO DE NOMBRE COMPLETO (igual que el Blade)
+            $nombreCompleto = '';
+            if ($user->solicitudAlta) {
+                $s = $user->solicitudAlta;
+                $nombreCompleto = trim(
+                    ($s->apellido_paterno ?? '') . ' ' .
+                    ($s->apellido_materno ?? '') . ' ' .
+                    ($s->nombre ?? '')
+                );
+            }
+            $nombreCompleto = strtoupper($nombreCompleto ?: ($user->name ?? 'SIN NOMBRE'));
+
             // Columnas A-H: Datos y conteos
             $sheet->setCellValue("A{$row}", $user->id);
-            $sheet->setCellValue("B{$row}", strtoupper($user->name));
+            $sheet->setCellValue("B{$row}", $nombreCompleto); // ✅ Usa nombre completo formateado
             $sheet->setCellValue("C{$row}", $destajoData['dias_laborados']);
             $sheet->setCellValue("D{$row}", $conteos['descansos'] ?? 0);
             $sheet->setCellValue("E{$row}", $conteos['faltas'] ?? 0);
             $sheet->setCellValue("F{$row}", $conteos['incapacidades'] ?? 0);
-            $sheet->setCellValue("G{$row}", $conteos['permisos_cg'] ?? 0);  // PE-CG
-            $sheet->setCellValue("H{$row}", $conteos['permisos_sg'] ?? 0);  // PE-SG
+            $sheet->setCellValue("G{$row}", $conteos['permisos_cg'] ?? 0);
+            $sheet->setCellValue("H{$row}", $conteos['permisos_sg'] ?? 0);
             $sheet->setCellValue("I{$row}", $destajoData['tarifa_diaria']);
             $sheet->setCellValue("J{$row}", $destajoData['total_monto']);
 
@@ -167,7 +191,7 @@ class DestajosSpreadsheetExport
             // ============================================
             // COLUMNAS DIARIAS (Desglose visual)
             // ============================================
-            $colDia = $baseColumnCount + 1; // = 11 (Columna K)
+            $colDia = $baseColumnCount + 1;
             $fechaIter = Carbon::parse($this->fechaInicio);
 
             while ($fechaIter->lte(Carbon::parse($this->fechaFin))) {
@@ -250,7 +274,7 @@ class DestajosSpreadsheetExport
         // FORMATOS GENERALES
         // ============================================
         $sheet->getColumnDimension('A')->setWidth(6);
-        $sheet->getColumnDimension('B')->setWidth(30);
+        $sheet->getColumnDimension('B')->setWidth(35);
         $sheet->getColumnDimension('C')->setWidth(10);
         $sheet->getColumnDimension('D')->setWidth(8);
         $sheet->getColumnDimension('E')->setWidth(8);
@@ -341,33 +365,40 @@ class DestajosSpreadsheetExport
             ->get()
             ->keyBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
 
-        $usuarios = User::where('estatus', 'Activo')
-            ->where(function ($query) use ($subpuntos, $puntoGeneral) {
-                foreach ($subpuntos as $subpunto) {
-                    $nombre = $subpunto['nombre'] ?? null;
-                    $codigo = $subpunto['codigo'] ?? null;
-                    $query->orWhere(function ($q) use ($nombre, $codigo, $puntoGeneral) {
-                        if ($nombre) {
-                            $q->whereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%']);
-                            if ($nombre === 'MARY KAY CORPORATIVO') {
-                                $q->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
-                                  ->orWhereRaw('LOWER(punto) LIKE ?', ['%mar kay corporativo%']);
-                            }
+        // ✅ CARGA EAGER-LOAD + ORDENAMIENTO POR NOMBRE COMPLETO
+        $usuariosQuery = User::with('solicitudAlta')->where('estatus', 'Activo');
+        $usuariosQuery->where(function ($query) use ($subpuntos, $puntoGeneral) {
+            foreach ($subpuntos as $subpunto) {
+                $nombre = $subpunto['nombre'] ?? null;
+                $codigo = $subpunto['codigo'] ?? null;
+                $query->orWhere(function ($q) use ($nombre, $codigo, $puntoGeneral) {
+                    if ($nombre) {
+                        $q->whereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%']);
+                        if ($nombre === 'MARY KAY CORPORATIVO') {
+                            $q->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
+                              ->orWhereRaw('LOWER(punto) LIKE ?', ['%mar kay corporativo%']);
                         }
-                        if ($codigo && $puntoGeneral === 'MONTERREY') {
-                            $q->orWhere('punto', $codigo);
-                        }
-                    });
-                }
-            });
-
+                    }
+                    if ($codigo && $puntoGeneral === 'MONTERREY') {
+                        $q->orWhere('punto', $codigo);
+                    }
+                });
+            }
+        });
         if ($filtro === 'MONTERREY' || $rolAuth === 'AUXILIAR OPERACIONES') {
-            $usuarios->orWhere(function ($q) {
+            $usuariosQuery->orWhere(function ($q) {
                 $q->where('punto', 'KANSAS')->orWhere('punto', 'MTY');
             });
         }
 
-        $usuarios = $usuarios->get()->sortBy(['punto', 'asc', 'name', 'asc']);
+        // ✅ Ordenar alfabéticamente por nombre completo
+        $usuarios = $usuariosQuery->get()->sortBy(function ($user) {
+            if ($user->solicitudAlta) {
+                $s = $user->solicitudAlta;
+                return strtolower(trim(($s->apellido_paterno ?? '') . ' ' . ($s->apellido_materno ?? '') . ' ' . ($s->nombre ?? '')));
+            }
+            return strtolower($user->name ?? '');
+        })->values();
 
         $fechas = [];
         $startDate = Carbon::parse($this->fechaInicio);
@@ -384,15 +415,12 @@ class DestajosSpreadsheetExport
                 ->where(function ($query) {
                     $query->whereBetween('fecha_inicio', [$this->fechaInicio, $this->fechaFin])
                         ->orWhereBetween('fecha_fin', [$this->fechaInicio, $this->fechaFin]);
-                })
-                ->get();
+                })->get();
             $dias = collect();
             foreach ($vacaciones as $vac) {
                 $inicio = Carbon::parse($vac->fecha_inicio);
                 $fin = Carbon::parse($vac->fecha_fin);
-                for ($d = $inicio->copy(); $d->lte($fin); $d->addDay()) {
-                    $dias->push($d->format('Y-m-d'));
-                }
+                for ($d = $inicio->copy(); $d->lte($fin); $d->addDay()) $dias->push($d->format('Y-m-d'));
             }
             $vacacionesPorUsuario[$user->id] = $dias->toArray();
         }
@@ -407,18 +435,14 @@ class DestajosSpreadsheetExport
             $inicio = Carbon::parse($permiso->fecha_inicio);
             $fin = Carbon::parse($permiso->fecha_fin);
             for ($d = $inicio->copy(); $d->lte($fin); $d->addDay()) {
-                $fecha = $d->format('Y-m-d');
-                $permisosPorUsuario[$permiso->user_id][$fecha] = [
-                    'con_goce' => (int) $permiso->con_goce === 1
-                ];
+                $permisosPorUsuario[$permiso->user_id][$d->format('Y-m-d')] = ['con_goce' => (int) $permiso->con_goce === 1];
             }
         }
 
         $incapacidadesPorUsuario = [];
         $incapacidades = \App\Models\Incapacidad::where(function ($q) {
             $q->whereBetween('fecha_inicio', [$this->fechaInicio, $this->fechaFin]);
-        })
-        ->orWhere(function ($q) {
+        })->orWhere(function ($q) {
             $q->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>=', $this->fechaInicio)
               ->where('fecha_inicio', '<=', $this->fechaFin);
         })->get();
@@ -437,69 +461,39 @@ class DestajosSpreadsheetExport
         $destajosPorUsuario = [];
         foreach ($usuarios as $user) {
             try {
-                $resultado = $this->destajoService->calcularDestajo(
-                    $user,
-                    $this->fechaInicio,
-                    $this->fechaFin,
-                    [
-                        'vacacionesPorUsuario' => $vacacionesPorUsuario,
-                        'asistenciasIndexadas' => $asistenciasIndexadas,
-                        'permisosPorUsuario' => $permisosPorUsuario,
-                        'incapacidadesPorUsuario' => $incapacidadesPorUsuario,
-                    ]
-                );
-                if ($resultado['success']) {
-                    $destajosPorUsuario[$user->id] = $resultado;
-                }
-            } catch (\Exception $e) {
-                // Silencioso
-            }
+                $res = $this->destajoService->calcularDestajo($user, $this->fechaInicio, $this->fechaFin, [
+                    'vacacionesPorUsuario' => $vacacionesPorUsuario,
+                    'asistenciasIndexadas' => $asistenciasIndexadas,
+                    'permisosPorUsuario' => $permisosPorUsuario,
+                    'incapacidadesPorUsuario' => $incapacidadesPorUsuario,
+                ]);
+                if ($res['success']) $destajosPorUsuario[$user->id] = $res;
+            } catch (\Exception $e) {}
         }
 
-        return [
-            'usuarios' => $usuarios,
-            'fechas' => $fechas,
-            'destajosPorUsuario' => $destajosPorUsuario,
-        ];
+        return ['usuarios' => $usuarios, 'fechas' => $fechas, 'destajosPorUsuario' => $destajosPorUsuario];
     }
 
     protected function getSubpuntosPorPunto()
     {
         $monterreyId = Punto::where('nombre', 'MONTERREY')->value('id');
-        $codigos = [];
-        if ($monterreyId) {
-            $codigos = Subpunto::where('punto_id', $monterreyId)->pluck('codigo', 'nombre')->toArray();
-        }
+        $codigos = $monterreyId ? Subpunto::where('punto_id', $monterreyId)->pluck('codigo', 'nombre')->toArray() : [];
         $codigoMaryKay = $codigos['MARY KAY CORPORATIVO'] ?? $codigos['MARYKAY CORPORATIVO'] ?? $codigos['MAR KAY CORPORATIVO'] ?? null;
-
         $monterreySubpuntos = [
-            ['nombre' => 'MONTERREY', 'codigo' => $codigos['MONTERREY'] ?? null],
-            ['nombre' => 'CUSTODIO', 'codigo' => $codigos['CUSTODIO'] ?? null],
-            ['nombre' => 'DALTILE', 'codigo' => $codigos['DALTILE'] ?? null],
-            ['nombre' => 'TORRENOVO', 'codigo' => $codigos['TORRENOVO'] ?? null],
-            ['nombre' => 'TRASLADOS', 'codigo' => $codigos['TRASLADOS'] ?? null],
-            ['nombre' => 'BONETERA', 'codigo' => $codigos['BONETERA'] ?? null],
-            ['nombre' => 'HOMEDEPOT', 'codigo' => $codigos['HOMEDEPOT'] ?? null],
-            ['nombre' => 'AMERICAN AIRLINES', 'codigo' => $codigos['AMERICAN AIRLINES'] ?? null],
-            ['nombre' => 'MARY KAY CORPORATIVO', 'codigo' => $codigoMaryKay],
-            ['nombre' => 'KANSAS', 'codigo' => $codigos['KANSAS'] ?? null],
-            ['nombre' => 'CIMARRON', 'codigo' => $codigos['CIMARRON'] ?? null],
-            ['nombre' => 'OFICINA', 'codigo' => $codigos['OFICINA'] ?? null],
-            ['nombre' => 'ASSET', 'codigo' => $codigos['ASSET'] ?? null],
-            ['nombre' => 'TORRE DELTA', 'codigo' => $codigos['TORRE DELTA'] ?? null],
-            ['nombre' => 'SACMI DE MEXICO', 'codigo' => $codigos['SACMI DE MEXICO'] ?? null],
-            ['nombre' => 'THERMO ELÉCTRICA', 'codigo' => $codigos['THERMO ELÉCTRICA'] ?? null],
-            ['nombre' => 'KINDER MORGAN', 'codigo' => $codigos['KINDER MORGAN'] ?? null],
-            ['nombre' => 'GOBAR', 'codigo' => $codigos['GOBAR'] ?? null],
-            ['nombre' => 'PEMCORP #2', 'codigo' => $codigos['PEMCORP #2'] ?? null],
-            ['nombre' => 'ROCHE BOBOIS', 'codigo' => $codigos['ROCHE BOBOIS'] ?? null],
-            ['nombre' => 'OFF ON GREEN', 'codigo' => $codigos['OFF ON GREEN'] ?? null],
-            ['nombre' => 'COOPER LIGHT', 'codigo' => $codigos['COOPER LIGHT'] ?? null],
-            ['nombre' => 'MONTE PALATINO', 'codigo' => $codigos['MONTE PALATINO'] ?? null],
-            ['nombre' => 'OATEY', 'codigo' => $codigos['OATEY'] ?? null],
+            ['nombre' => 'MONTERREY', 'codigo' => $codigos['MONTERREY'] ?? null], ['nombre' => 'CUSTODIO', 'codigo' => $codigos['CUSTODIO'] ?? null],
+            ['nombre' => 'DALTILE', 'codigo' => $codigos['DALTILE'] ?? null], ['nombre' => 'TORRENOVO', 'codigo' => $codigos['TORRENOVO'] ?? null],
+            ['nombre' => 'TRASLADOS', 'codigo' => $codigos['TRASLADOS'] ?? null], ['nombre' => 'BONETERA', 'codigo' => $codigos['BONETERA'] ?? null],
+            ['nombre' => 'HOMEDEPOT', 'codigo' => $codigos['HOMEDEPOT'] ?? null], ['nombre' => 'AMERICAN AIRLINES', 'codigo' => $codigos['AMERICAN AIRLINES'] ?? null],
+            ['nombre' => 'MARY KAY CORPORATIVO', 'codigo' => $codigoMaryKay], ['nombre' => 'KANSAS', 'codigo' => $codigos['KANSAS'] ?? null],
+            ['nombre' => 'CIMARRON', 'codigo' => $codigos['CIMARRON'] ?? null], ['nombre' => 'OFICINA', 'codigo' => $codigos['OFICINA'] ?? null],
+            ['nombre' => 'ASSET', 'codigo' => $codigos['ASSET'] ?? null], ['nombre' => 'TORRE DELTA', 'codigo' => $codigos['TORRE DELTA'] ?? null],
+            ['nombre' => 'SACMI DE MEXICO', 'codigo' => $codigos['SACMI DE MEXICO'] ?? null], ['nombre' => 'THERMO ELÉCTRICA', 'codigo' => $codigos['THERMO ELÉCTRICA'] ?? null],
+            ['nombre' => 'KINDER MORGAN', 'codigo' => $codigos['KINDER MORGAN'] ?? null], ['nombre' => 'GOBAR', 'codigo' => $codigos['GOBAR'] ?? null],
+            ['nombre' => 'PEMCORP #2', 'codigo' => $codigos['PEMCORP #2'] ?? null], ['nombre' => 'ROCHE BOBOIS', 'codigo' => $codigos['ROCHE BOBOIS'] ?? null],
+            ['nombre' => 'OFF ON GREEN', 'codigo' => $codigos['OFF ON GREEN'] ?? null], ['nombre' => 'COOPER LIGHT', 'codigo' => $codigos['COOPER LIGHT'] ?? null],
+            ['nombre' => 'MONTE PALATINO', 'codigo' => $codigos['MONTE PALATINO'] ?? null], ['nombre' => 'OATEY', 'codigo' => $codigos['OATEY'] ?? null],
             ['nombre' => 'PLAZA DOMENA', 'codigo' => $codigos['PLAZA DOMENA'] ?? null],
         ];
-
         return [
             'MONTERREY' => $monterreySubpuntos,
             'GUANAJUATO' => [['nombre' => 'SILAO', 'codigo' => null], ['nombre' => 'CELAYA', 'codigo' => null], ['nombre' => 'SALAMANCA', 'codigo' => null]],

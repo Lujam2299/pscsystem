@@ -131,7 +131,7 @@ class DestajosTabla extends Component
             ->keyBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
 
         // --- 3. OBTENER USUARIOS ACTIVOS SEGÚN FILTRO ---
-        $usuariosQuery = User::where('estatus', 'Activo');
+        $usuariosQuery = User::with('solicitudAlta')->where('estatus', 'Activo');
 
         $usuariosQuery->where(function ($query) use ($subpuntos, $puntoGeneral) {
             foreach ($subpuntos as $subpunto) {
@@ -166,7 +166,13 @@ class DestajosTabla extends Component
             });
         }
 
-        $usuarios = $usuariosQuery->get()->sortBy(['punto', 'asc', 'name', 'asc']);
+        $usuarios = $usuariosQuery->get()->sortBy(function ($user) {
+            if ($user->solicitudAlta) {
+                $s = $user->solicitudAlta;
+                return strtolower(trim(($s->apellido_paterno ?? '') . ' ' . ($s->apellido_materno ?? '') . ' ' . ($s->nombre ?? '')));
+            }
+            return strtolower($user->name ?? '');
+        })->values();
 
         // --- 4. PREPARAR FECHAS Y DATOS AUXILIARES ---
         $startDate = Carbon::parse($this->fecha_inicio);

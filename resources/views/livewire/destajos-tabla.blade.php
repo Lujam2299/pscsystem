@@ -105,6 +105,19 @@
                 <tbody>
                     @foreach($usuarios as $user)
                         @php
+                            // Lógica para formato de nombre completo
+                            $nombreCompleto = '';
+                            if ($user->solicitudAlta) {
+                                $s = $user->solicitudAlta;
+                                $nombreCompleto = trim(
+                                    ($s->apellido_paterno ?? '') . ' ' .
+                                    ($s->apellido_materno ?? '') . ' ' .
+                                    ($s->nombre ?? '')
+                                );
+                            }
+                            // Fallback si no hay solicitud de alta
+                            $nombreCompleto = $nombreCompleto ?: ($user->name ?? 'SIN NOMBRE');
+
                             $data = $destajosPorUsuario[$user->id] ?? [
                                 'dias_laborados' => 0,
                                 'tarifa_diaria' => 0,
@@ -117,7 +130,7 @@
                         <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition duration-150">
                             <td class="sticky-first-col px-3 py-2 text-sm border-r">{{ $user->id }}</td>
                             <td class="sticky-second-col px-3 py-2 text-sm font-medium border-r text-gray-900 dark:text-white">
-                                {{ strtoupper($user->name) }}
+                                {{ strtoupper($nombreCompleto) }}
                             </td>
 
                             <td class="px-2 py-2 text-center text-sm font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/10 border-r">
