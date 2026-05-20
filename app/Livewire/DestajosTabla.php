@@ -15,16 +15,13 @@ use Carbon\Carbon;
 class DestajosTabla extends Component
 {
     public $punto = '';
+    public $empresa = '';
     public $fecha_inicio = '';
     public $fecha_fin = '';
 
-    // Propiedad para mantener el mapa de puntos asignados si es necesario mostrarlo
     protected $puntosAsignadosMap = [];
-
     private CalculoDestajoService $destajoService;
-
-    // QueryString para mantener filtros al recargar
-    protected $queryString = ['punto', 'fecha_inicio', 'fecha_fin'];
+    protected $queryString = ['punto', 'empresa', 'fecha_inicio', 'fecha_fin'];
 
     public function __construct()
     {
@@ -36,7 +33,6 @@ class DestajosTabla extends Component
         $datos = $this->obtenerDatos();
         $subpuntosMap = $this->getSubpuntosPorPunto();
 
-        // Filtro de seguridad para rol Auxiliar Operaciones
         $rol = Auth::user()?->rol;
         if ($rol === 'AUXILIAR OPERACIONES') {
             $subpuntosMap = ['MONTERREY' => $subpuntosMap['MONTERREY'] ?? []];
@@ -53,7 +49,8 @@ class DestajosTabla extends Component
 
     public function obtenerDatos()
     {
-        // Si no hay fechas, retornamos vacío
+        // === VALIDACIÓN DE FILTROS ===
+        // Fechas obligatorias
         if (!$this->fecha_inicio || !$this->fecha_fin) {
             return [
                 'usuarios' => collect(),
@@ -63,10 +60,18 @@ class DestajosTabla extends Component
             ];
         }
 
-        // --- 1. LÓGICA DE FILTRADO DE PUNTOS (IDÉNTICA A NÓMINA) ---
-        $filtro = strtoupper($this->punto);
+        // Al menos uno de: punto o empresa
+        if (empty($this->punto) && empty($this->empresa)) {
+            return [
+                'usuarios' => collect(),
+                'fechas' => [],
+                'destajosPorUsuario' => [],
+                'totalesGenerales' => ['dias_trabajados' => 0, 'total_monto' => 0]
+            ];
+        }
 
-        // Correcciones de nombres comunes
+        // === FILTRADO DE PUNTOS ===
+        $filtro = strtoupper($this->punto);
         if (in_array($filtro, ['MARYKAY CORPORATIVO', 'MAR KAY CORPORATIVO'])) {
             $filtro = 'MARY KAY CORPORATIVO';
         }
@@ -75,95 +80,93 @@ class DestajosTabla extends Component
         $subpuntos = [];
         $mapaSubpuntos = $this->getSubpuntosPorPunto();
 
-        // Buscar si el filtro es un Punto General o un Subpunto específico
         foreach ($mapaSubpuntos as $p => $subs) {
-            // Coincidencia exacta con Punto General
             if ($filtro === $p) {
                 $puntoGeneral = $p;
                 $subpuntos = $subs;
                 break;
-            }
-            // Coincidencia con nombre de Subpunto
-            elseif (collect($subs)->pluck('nombre')->map('strtoupper')->contains($filtro)) {
+            } elseif (collect($subs)->pluck('nombre')->map('strtoupper')->contains($filtro)) {
                 $puntoGeneral = $p;
                 $subpuntos = [collect($subs)->firstWhere('nombre', 'LIKE', $filtro)];
                 break;
-            }
-            // Coincidencia con código de Subpunto
-            elseif (collect($subs)->pluck('codigo')->map('strval')->contains($filtro)) {
+            } elseif (collect($subs)->pluck('codigo')->map('strval')->contains($filtro)) {
                 $puntoGeneral = $p;
                 $subpuntos = [collect($subs)->firstWhere('codigo', $filtro)];
                 break;
             }
         }
 
-        // Caso especial Mary Kay si no se encontró antes
         if (!$puntoGeneral && in_array($filtro, ['MARYKAY CORPORATIVO', 'MARY KAY CORPORATIVO'])) {
             $puntoGeneral = 'MONTERREY';
             $subpuntos = [collect($mapaSubpuntos['MONTERREY'])->firstWhere('nombre', 'LIKE', $filtro)];
         }
 
-        // Si sigue sin encontrar, asumimos que es un punto directo
-        if (!$puntoGeneral) {
+        if (!$puntoGeneral && !empty($this->punto)) {
             $puntoGeneral = $filtro;
             $subpuntos = [['nombre' => $filtro, 'codigo' => null]];
         }
 
-        // Override para Auxiliar Operaciones
         $rolAuth = Auth::user()?->rol;
         if ($rolAuth === 'AUXILIAR OPERACIONES') {
             $puntoGeneral = 'MONTERREY';
             $subpuntos = $mapaSubpuntos['MONTERREY'];
         }
 
-        // Definir qué puntos buscar en la tabla de Asistencias
-        if ($filtro === 'MONTERREY' || ($rolAuth === 'AUXILIAR OPERACIONES')) {
-            $monterreySubpuntos = collect($mapaSubpuntos['MONTERREY'])->pluck('nombre')->toArray();
-            $puntosAsistencias = array_merge(['MONTERREY'], $monterreySubpuntos, ['KANSAS', 'MTY']);
-        } else {
-            $puntosAsistencias = [$filtro];
+        // Puntos para buscar asistencias
+        $puntosAsistencias = [];
+        if (!empty($this->punto)) {
+            if ($filtro === 'MONTERREY' || $rolAuth === 'AUXILIAR OPERACIONES') {
+                $monterreySubpuntos = collect($mapaSubpuntos['MONTERREY'])->pluck('nombre')->toArray();
+                $puntosAsistencias = array_merge(['MONTERREY'], $monterreySubpuntos, ['KANSAS', 'MTY']);
+            } else {
+                $puntosAsistencias = [$filtro];
+            }
         }
 
-        // --- 2. OBTENER ASISTENCIAS INDEXADAS ---
-        $asistenciasIndexadas = Asistencia::whereIn('punto', $puntosAsistencias)
-            ->whereBetween('fecha', [$this->fecha_inicio, $this->fecha_fin])
-            ->get()
-            ->keyBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
+        // === OBTENER ASISTENCIAS ===
+        $asistenciasQuery = Asistencia::whereBetween('fecha', [$this->fecha_inicio, $this->fecha_fin]);
 
-        // --- 3. OBTENER USUARIOS ACTIVOS SEGÚN FILTRO ---
+        if (!empty($puntosAsistencias)) {
+            $asistenciasQuery->whereIn('punto', $puntosAsistencias);
+        }
+
+        $asistenciasIndexadas = $asistenciasQuery->get()->keyBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
+
+        // === OBTENER USUARIOS ===
         $usuariosQuery = User::with('solicitudAlta')->where('estatus', 'Activo');
 
-        $usuariosQuery->where(function ($query) use ($subpuntos, $puntoGeneral) {
-            foreach ($subpuntos as $subpunto) {
-                $nombre = $subpunto['nombre'] ?? null;
-                $codigo = $subpunto['codigo'] ?? null;
+        // Filtro por empresa
+        if (!empty($this->empresa)) {
+            $usuariosQuery->where('empresa', $this->empresa);
+        }
 
-                $query->orWhere(function ($q) use ($nombre, $codigo, $puntoGeneral) {
-                    if ($nombre) {
-                        // Búsqueda parcial insensible a mayúsculas en el campo 'punto' del usuario
-                        $q->whereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%']);
+        // Filtro por punto
+        if (!empty($this->punto)) {
+            $usuariosQuery->where(function ($query) use ($subpuntos, $puntoGeneral) {
+                foreach ($subpuntos as $subpunto) {
+                    $nombre = $subpunto['nombre'] ?? null;
+                    $codigo = $subpunto['codigo'] ?? null;
 
-                        // Casos especiales de nombres compuestos o variantes
-                        if ($nombre === 'MARY KAY CORPORATIVO') {
-                            $q->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
-                              ->orWhereRaw('LOWER(punto) LIKE ?', ['%mar kay corporativo%']);
+                    $query->orWhere(function ($q) use ($nombre, $codigo, $puntoGeneral) {
+                        if ($nombre) {
+                            $q->whereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%']);
+                            if ($nombre === 'MARY KAY CORPORATIVO') {
+                                $q->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
+                                  ->orWhereRaw('LOWER(punto) LIKE ?', ['%mar kay corporativo%']);
+                            }
                         }
-                    }
+                        if ($codigo && $puntoGeneral === 'MONTERREY') {
+                            $q->orWhere('punto', $codigo);
+                        }
+                    });
+                }
+            });
 
-                    // Si es Monterrey y hay código, buscar también por código exacto
-                    if ($codigo && $puntoGeneral === 'MONTERREY') {
-                        $q->orWhere('punto', $codigo);
-                    }
+            if ($filtro === 'MONTERREY' || $rolAuth === 'AUXILIAR OPERACIONES') {
+                $usuariosQuery->orWhere(function ($q) {
+                    $q->where('punto', 'KANSAS')->orWhere('punto', 'MTY');
                 });
             }
-        });
-
-        // Inclusión explícita de Kansas y MTY si el filtro es Monterrey
-        if ($filtro === 'MONTERREY' || $rolAuth === 'AUXILIAR OPERACIONES') {
-            $usuariosQuery->orWhere(function ($q) {
-                $q->where('punto', 'KANSAS')
-                  ->orWhere('punto', 'MTY');
-            });
         }
 
         $usuarios = $usuariosQuery->get()->sortBy(function ($user) {
@@ -174,15 +177,14 @@ class DestajosTabla extends Component
             return strtolower($user->name ?? '');
         })->values();
 
-        // --- 4. PREPARAR FECHAS Y DATOS AUXILIARES ---
+        // === FECHAS Y DATOS AUXILIARES ===
+        $fechas = [];
         $startDate = Carbon::parse($this->fecha_inicio);
         $endDate = Carbon::parse($this->fecha_fin);
-        $fechas = [];
         for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
             $fechas[] = $date->format('Y-m-d');
         }
 
-        // Cargar Vacaciones
         $vacacionesPorUsuario = [];
         foreach ($usuarios as $user) {
             $vacaciones = DB::table('solicitud_vacaciones')
@@ -191,21 +193,16 @@ class DestajosTabla extends Component
                 ->where(function ($query) {
                     $query->whereBetween('fecha_inicio', [$this->fecha_inicio, $this->fecha_fin])
                         ->orWhereBetween('fecha_fin', [$this->fecha_inicio, $this->fecha_fin]);
-                })
-                ->get();
-
+                })->get();
             $dias = collect();
             foreach ($vacaciones as $vac) {
                 $inicio = Carbon::parse($vac->fecha_inicio);
                 $fin = Carbon::parse($vac->fecha_fin);
-                for ($d = $inicio->copy(); $d->lte($fin); $d->addDay()) {
-                    $dias->push($d->format('Y-m-d'));
-                }
+                for ($d = $inicio->copy(); $d->lte($fin); $d->addDay()) $dias->push($d->format('Y-m-d'));
             }
             $vacacionesPorUsuario[$user->id] = $dias->toArray();
         }
 
-        // Cargar Permisos Especiales
         $permisosPorUsuario = [];
         $permisos = \App\Models\PermisoEspecial::where(function($q) {
             $q->whereBetween('fecha_inicio', [$this->fecha_inicio, $this->fecha_fin])
@@ -216,19 +213,14 @@ class DestajosTabla extends Component
             $inicio = Carbon::parse($permiso->fecha_inicio);
             $fin = Carbon::parse($permiso->fecha_fin);
             for ($d = $inicio->copy(); $d->lte($fin); $d->addDay()) {
-                $fecha = $d->format('Y-m-d');
-                $permisosPorUsuario[$permiso->user_id][$fecha] = [
-                    'con_goce' => (int) $permiso->con_goce === 1
-                ];
+                $permisosPorUsuario[$permiso->user_id][$d->format('Y-m-d')] = ['con_goce' => (int) $permiso->con_goce === 1];
             }
         }
 
-        // Cargar Incapacidades
         $incapacidadesPorUsuario = [];
         $incapacidades = \App\Models\Incapacidad::where(function ($q) {
             $q->whereBetween('fecha_inicio', [$this->fecha_inicio, $this->fecha_fin]);
-        })
-        ->orWhere(function ($q) {
+        })->orWhere(function ($q) {
             $q->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>=', $this->fecha_inicio)
               ->where('fecha_inicio', '<=', $this->fecha_fin);
         })->get();
@@ -244,7 +236,7 @@ class DestajosTabla extends Component
             }
         }
 
-        // --- 5. CALCULAR DESTAJOS ---
+        // === CALCULAR DESTAJOS ===
         $destajosPorUsuario = [];
         $totalesGenerales = ['dias_trabajados' => 0, 'total_monto' => 0];
 
@@ -261,15 +253,12 @@ class DestajosTabla extends Component
                         'incapacidadesPorUsuario' => $incapacidadesPorUsuario,
                     ]
                 );
-
                 if ($resultado['success']) {
                     $destajosPorUsuario[$user->id] = $resultado;
                     $totalesGenerales['dias_trabajados'] += $resultado['dias_trabajados'];
                     $totalesGenerales['total_monto'] += $resultado['total_monto'];
                 }
-            } catch (\Exception $e) {
-                // Log opcional
-            }
+            } catch (\Exception $e) {}
         }
 
         return [
@@ -282,42 +271,24 @@ class DestajosTabla extends Component
 
     protected function getSubpuntosPorPunto()
     {
-        // Tu método existente de mapeo de puntos
         $monterreyId = Punto::where('nombre', 'MONTERREY')->value('id');
-        $codigos = [];
-        if ($monterreyId) {
-            $codigos = Subpunto::where('punto_id', $monterreyId)->pluck('codigo', 'nombre')->toArray();
-        }
+        $codigos = $monterreyId ? Subpunto::where('punto_id', $monterreyId)->pluck('codigo', 'nombre')->toArray() : [];
         $codigoMaryKay = $codigos['MARY KAY CORPORATIVO'] ?? $codigos['MARYKAY CORPORATIVO'] ?? $codigos['MAR KAY CORPORATIVO'] ?? null;
-
         $monterreySubpuntos = [
-            ['nombre' => 'MONTERREY', 'codigo' => $codigos['MONTERREY'] ?? null],
-            ['nombre' => 'CUSTODIO', 'codigo' => $codigos['CUSTODIO'] ?? null],
-            ['nombre' => 'DALTILE', 'codigo' => $codigos['DALTILE'] ?? null],
-            ['nombre' => 'TORRENOVO', 'codigo' => $codigos['TORRENOVO'] ?? null],
-            ['nombre' => 'TRASLADOS', 'codigo' => $codigos['TRASLADOS'] ?? null],
-            ['nombre' => 'BONETERA', 'codigo' => $codigos['BONETERA'] ?? null],
-            ['nombre' => 'HOMEDEPOT', 'codigo' => $codigos['HOMEDEPOT'] ?? null],
-            ['nombre' => 'AMERICAN AIRLINES', 'codigo' => $codigos['AMERICAN AIRLINES'] ?? null],
-            ['nombre' => 'MARY KAY CORPORATIVO', 'codigo' => $codigoMaryKay],
-            ['nombre' => 'KANSAS', 'codigo' => $codigos['KANSAS'] ?? null],
-            ['nombre' => 'CIMARRON', 'codigo' => $codigos['CIMARRON'] ?? null],
-            ['nombre' => 'OFICINA', 'codigo' => $codigos['OFICINA'] ?? null],
-            ['nombre' => 'ASSET', 'codigo' => $codigos['ASSET'] ?? null],
-            ['nombre' => 'TORRE DELTA', 'codigo' => $codigos['TORRE DELTA'] ?? null],
-            ['nombre' => 'SACMI DE MEXICO', 'codigo' => $codigos['SACMI DE MEXICO'] ?? null],
-            ['nombre' => 'THERMO ELÉCTRICA', 'codigo' => $codigos['THERMO ELÉCTRICA'] ?? null],
-            ['nombre' => 'KINDER MORGAN', 'codigo' => $codigos['KINDER MORGAN'] ?? null],
-            ['nombre' => 'GOBAR', 'codigo' => $codigos['GOBAR'] ?? null],
-            ['nombre' => 'PEMCORP #2', 'codigo' => $codigos['PEMCORP #2'] ?? null],
-            ['nombre' => 'ROCHE BOBOIS', 'codigo' => $codigos['ROCHE BOBOIS'] ?? null],
-            ['nombre' => 'OFF ON GREEN', 'codigo' => $codigos['OFF ON GREEN'] ?? null],
-            ['nombre' => 'COOPER LIGHT', 'codigo' => $codigos['COOPER LIGHT'] ?? null],
-            ['nombre' => 'MONTE PALATINO', 'codigo' => $codigos['MONTE PALATINO'] ?? null],
-            ['nombre' => 'OATEY', 'codigo' => $codigos['OATEY'] ?? null],
+            ['nombre' => 'MONTERREY', 'codigo' => $codigos['MONTERREY'] ?? null], ['nombre' => 'CUSTODIO', 'codigo' => $codigos['CUSTODIO'] ?? null],
+            ['nombre' => 'DALTILE', 'codigo' => $codigos['DALTILE'] ?? null], ['nombre' => 'TORRENOVO', 'codigo' => $codigos['TORRENOVO'] ?? null],
+            ['nombre' => 'TRASLADOS', 'codigo' => $codigos['TRASLADOS'] ?? null], ['nombre' => 'BONETERA', 'codigo' => $codigos['BONETERA'] ?? null],
+            ['nombre' => 'HOMEDEPOT', 'codigo' => $codigos['HOMEDEPOT'] ?? null], ['nombre' => 'AMERICAN AIRLINES', 'codigo' => $codigos['AMERICAN AIRLINES'] ?? null],
+            ['nombre' => 'MARY KAY CORPORATIVO', 'codigo' => $codigoMaryKay], ['nombre' => 'KANSAS', 'codigo' => $codigos['KANSAS'] ?? null],
+            ['nombre' => 'CIMARRON', 'codigo' => $codigos['CIMARRON'] ?? null], ['nombre' => 'OFICINA', 'codigo' => $codigos['OFICINA'] ?? null],
+            ['nombre' => 'ASSET', 'codigo' => $codigos['ASSET'] ?? null], ['nombre' => 'TORRE DELTA', 'codigo' => $codigos['TORRE DELTA'] ?? null],
+            ['nombre' => 'SACMI DE MEXICO', 'codigo' => $codigos['SACMI DE MEXICO'] ?? null], ['nombre' => 'THERMO ELÉCTRICA', 'codigo' => $codigos['THERMO ELÉCTRICA'] ?? null],
+            ['nombre' => 'KINDER MORGAN', 'codigo' => $codigos['KINDER MORGAN'] ?? null], ['nombre' => 'GOBAR', 'codigo' => $codigos['GOBAR'] ?? null],
+            ['nombre' => 'PEMCORP #2', 'codigo' => $codigos['PEMCORP #2'] ?? null], ['nombre' => 'ROCHE BOBOIS', 'codigo' => $codigos['ROCHE BOBOIS'] ?? null],
+            ['nombre' => 'OFF ON GREEN', 'codigo' => $codigos['OFF ON GREEN'] ?? null], ['nombre' => 'COOPER LIGHT', 'codigo' => $codigos['COOPER LIGHT'] ?? null],
+            ['nombre' => 'MONTE PALATINO', 'codigo' => $codigos['MONTE PALATINO'] ?? null], ['nombre' => 'OATEY', 'codigo' => $codigos['OATEY'] ?? null],
             ['nombre' => 'PLAZA DOMENA', 'codigo' => $codigos['PLAZA DOMENA'] ?? null],
         ];
-
         return [
             'MONTERREY' => $monterreySubpuntos,
             'GUANAJUATO' => [['nombre' => 'SILAO', 'codigo' => null], ['nombre' => 'CELAYA', 'codigo' => null], ['nombre' => 'SALAMANCA', 'codigo' => null]],

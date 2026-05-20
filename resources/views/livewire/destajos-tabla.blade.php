@@ -8,7 +8,8 @@
 
     <!-- Filtros en una sola fila -->
     <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 mb-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
+            <!-- Punto -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Punto</label>
                 <select wire:model.live="punto" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-white">
@@ -27,18 +28,36 @@
                     @endforeach
                 </select>
             </div>
+
+            <!-- Empresa -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Empresa</label>
+                <select wire:model.live="empresa" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-white">
+                    <option value="">Todas</option>
+                    <option value="PSC">PSC</option>
+                    <option value="SPYT">SPYT</option>
+                    <option value="Montana">Montana</option>
+                </select>
+            </div>
+
+            <!-- Fecha Inicio -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Inicio</label>
                 <input type="date" wire:model.live="fecha_inicio" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
             </div>
+
+            <!-- Fecha Fin -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Fin</label>
                 <input type="date" wire:model.live="fecha_fin" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
             </div>
+
+            <!-- Exportar -->
             <div class="flex items-end">
-                @if($fecha_inicio && $fecha_fin)
+                @if($fecha_inicio && $fecha_fin && ($punto || $empresa))
                     <form method="GET" action="{{ route('exportar.destajos') }}" target="_blank" class="w-full">
                         <input type="hidden" name="punto" value="{{ $punto }}">
+                        <input type="hidden" name="empresa" value="{{ $empresa }}">
                         <input type="hidden" name="fecha_inicio" value="{{ $fecha_inicio }}">
                         <input type="hidden" name="fecha_fin" value="{{ $fecha_fin }}">
                         <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-200 shadow-sm h-[42px]">
@@ -49,7 +68,7 @@
                         </button>
                     </form>
                 @else
-                    <button disabled class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-400 text-white font-medium rounded-lg cursor-not-allowed opacity-70 h-[42px]">
+                    <button disabled class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-400 text-white font-medium rounded-lg cursor-not-allowed opacity-70 h-[42px]" title="Selecciona fechas y al menos un filtro (Punto o Empresa)">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
@@ -77,7 +96,13 @@
 
     @if($usuarios->isEmpty())
         <div class="text-center py-8 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-lg shadow">
-            Selecciona un punto y rango de fechas.
+            @if(!$fecha_inicio || !$fecha_fin)
+                Selecciona un rango de fechas.
+            @elseif(!$punto && !$empresa)
+                Selecciona al menos un filtro: Punto o Empresa.
+            @else
+                No hay datos para mostrar con los filtros actuales.
+            @endif
         </div>
     @else
         <div class="overflow-x-auto shadow-lg rounded-lg">
@@ -86,12 +111,12 @@
                     <tr class="bg-gray-100 dark:bg-gray-700">
                         <th class="sticky-first-col px-3 py-2 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase border-r">No.</th>
                         <th class="sticky-second-col px-3 py-2 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase border-r">Nombre</th>
-                        <th class="px-2 py-2 text-center text-xs font-bold text-green-700 dark:text-green-400 uppercase border-r bg-green-50 dark:bg-green-900/10" title="Asistencias + Descansos">Días Lab.</th>
+                        <th class="px-2 py-2 text-center text-xs font-bold text-green-700 dark:text-green-400 uppercase border-r bg-green-50 dark:bg-green-900/10">Días Lab.</th>
                         <th class="px-2 py-2 text-center text-xs font-bold text-yellow-700 dark:text-yellow-400 uppercase border-r bg-yellow-50 dark:bg-yellow-900/10">Desc.</th>
                         <th class="px-2 py-2 text-center text-xs font-bold text-red-700 dark:text-red-400 uppercase border-r bg-red-50 dark:bg-red-900/10">Faltas</th>
                         <th class="px-2 py-2 text-center text-xs font-bold text-orange-700 dark:text-orange-400 uppercase border-r bg-orange-50 dark:bg-orange-900/10">Incap.</th>
-                        <th class="px-2 py-2 text-center text-xs font-bold text-purple-700 dark:text-purple-400 uppercase border-r bg-purple-50 dark:bg-purple-900/10" title="Permisos con Goce">PE-CG</th>
-                        <th class="px-2 py-2 text-center text-xs font-bold text-gray-700 dark:text-gray-400 uppercase border-r bg-gray-50 dark:bg-gray-900/10" title="Permisos sin Goce">PE-SG</th>
+                        <th class="px-2 py-2 text-center text-xs font-bold text-purple-700 dark:text-purple-400 uppercase border-r bg-purple-50 dark:bg-purple-900/10">PE-CG</th>
+                        <th class="px-2 py-2 text-center text-xs font-bold text-gray-700 dark:text-gray-400 uppercase border-r bg-gray-50 dark:bg-gray-900/10">PE-SG</th>
                         <th class="px-2 py-2 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase border-r">Tarifa Diaria</th>
                         <th class="px-2 py-2 text-right text-xs font-bold text-green-700 dark:text-green-400 uppercase border-r bg-green-50 dark:bg-green-900/20">TOTAL DESTAJO</th>
 
@@ -105,7 +130,6 @@
                 <tbody>
                     @foreach($usuarios as $user)
                         @php
-                            // Lógica para formato de nombre completo
                             $nombreCompleto = '';
                             if ($user->solicitudAlta) {
                                 $s = $user->solicitudAlta;
@@ -115,7 +139,6 @@
                                     ($s->nombre ?? '')
                                 );
                             }
-                            // Fallback si no hay solicitud de alta
                             $nombreCompleto = $nombreCompleto ?: ($user->name ?? 'SIN NOMBRE');
 
                             $data = $destajosPorUsuario[$user->id] ?? [
@@ -179,7 +202,6 @@
                         </tr>
                     @endforeach
 
-                    <!-- Fila de Totales -->
                     <tr class="bg-gray-200 dark:bg-gray-700 font-bold border-t-2 border-gray-400">
                         <td colspan="2" class="px-3 py-2 text-right text-sm uppercase text-gray-700 dark:text-gray-200">Totales:</td>
                         <td class="px-2 py-2 text-center text-sm text-green-800 dark:text-green-200 bg-green-100 dark:bg-green-900/20 border-r">
@@ -208,12 +230,12 @@
                     </tr>
                 </tbody>
             </table>
-                <div class="mb-4 mt-4 flex justify-center">
-                    <a href="{{ route('dashboard') }}"
-                    class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-medium rounded-lg transition duration-200 shadow-sm">
-                        Regresar
-                    </a>
-                </div>
+        </div>
+        <div class="mb-4 mt-4 flex justify-center">
+            <a href="{{ route('dashboard') }}"
+            class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-medium rounded-lg transition duration-200 shadow-sm">
+                Regresar
+            </a>
         </div>
     @endif
 </div>

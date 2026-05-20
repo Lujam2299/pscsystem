@@ -953,17 +953,24 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
 
     public function exportar(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'punto' => 'nullable|string',
+            'empresa' => 'nullable|string|in:PSC,SPYT,Montana',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
         ]);
 
-        $punto = $request->input('punto', '');
-        $fechaInicio = $request->input('fecha_inicio');
-        $fechaFin = $request->input('fecha_fin');
+        // Validar que al menos uno de punto o empresa esté presente
+        if (empty($validated['punto']) && empty($validated['empresa'])) {
+            return redirect()->back()->with('error', 'Selecciona al menos un filtro: Punto o Empresa');
+        }
 
-        $export = new DestajosSpreadsheetExport($punto, $fechaInicio, $fechaFin);
+        $punto = $validated['punto'] ?? '';
+        $empresa = $validated['empresa'] ?? '';
+        $fechaInicio = $validated['fecha_inicio'];
+        $fechaFin = $validated['fecha_fin'];
+
+        $export = new DestajosSpreadsheetExport($punto, $empresa, $fechaInicio, $fechaFin);
         return $export->generateFile();
     }
 

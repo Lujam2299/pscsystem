@@ -19,14 +19,16 @@ use App\Services\CalculoDestajoService;
 class DestajosSpreadsheetExport
 {
     protected $punto;
+    protected $empresa;
     protected $fechaInicio;
     protected $fechaFin;
 
     private CalculoDestajoService $destajoService;
 
-    public function __construct($punto = null, $fechaInicio = null, $fechaFin = null)
+    public function __construct($punto = null, $empresa = null, $fechaInicio = null, $fechaFin = null)
     {
         $this->punto = $punto;
+        $this->empresa = $empresa;
         $this->fechaInicio = $fechaInicio;
         $this->fechaFin = $fechaFin;
         $this->destajoService = app(CalculoDestajoService::class);
@@ -40,9 +42,6 @@ class DestajosSpreadsheetExport
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Destajos');
 
-        // ============================================
-        // ENCABEZADOS PRINCIPALES (10 columnas fijas)
-        // ============================================
         $columnasBase = [
             'No.', 'Nombre', 'Días Lab.', 'Desc.', 'Faltas', 'Incap.', 'PE-CG', 'PE-SG', 'Tarifa Diaria', 'TOTAL DESTAJO'
         ];
@@ -83,35 +82,26 @@ class DestajosSpreadsheetExport
             $sheet->getStyle("{$col}1")->applyFromArray($style);
         }
 
-        // ============================================
-        // ENCABEZADOS DE FECHAS
-        // ============================================
-        $diasSemanaES = [
-            'Monday' => 'Lunes', 'Tuesday' => 'Martes', 'Wednesday' => 'Miércoles',
-            'Thursday' => 'Jueves', 'Friday' => 'Viernes', 'Saturday' => 'Sábado', 'Sunday' => 'Domingo',
-        ];
-
+        $diasSemanaES = ['Monday'=>'Lunes','Tuesday'=>'Martes','Wednesday'=>'Miércoles','Thursday'=>'Jueves','Friday'=>'Viernes','Saturday'=>'Sábado','Sunday'=>'Domingo'];
         $colIndex = $baseColumnCount + 1;
         $currentDate = Carbon::parse($this->fechaInicio);
-        $endDate = Carbon::parse($this->fechaFin);
 
-        while ($currentDate->lte($endDate)) {
-            $diaIngles = $currentDate->format('l');
-            $diaEspanol = $diasSemanaES[$diaIngles] ?? $diaIngles;
+        while ($currentDate->lte(Carbon::parse($this->fechaFin))) {
+            $diaEspanol = $diasSemanaES[$currentDate->format('l')] ?? $currentDate->format('l');
             $numeroDia = $currentDate->format('d');
-            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
 
-            $sheet->setCellValue("{$colLetter}1", "$diaEspanol\n$numeroDia");
-            $sheet->mergeCells("{$colLetter}1:{$colLetter}2");
+            $colStart = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+            $sheet->setCellValue("{$colStart}1", "{$diaEspanol}\n{$numeroDia}");
+            $sheet->mergeCells("{$colStart}1:{$colStart}2");
 
-            $sheet->getStyle("{$colLetter}1")->applyFromArray([
+            $sheet->getStyle("{$colStart}1")->applyFromArray([
                 'font' => ['name' => 'Century Gothic', 'size' => 8, 'bold' => true],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true, 'textRotation' => 0],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFD54F']],
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
             ]);
 
-            $sheet->getColumnDimension($colLetter)->setWidth(6);
+            $sheet->getColumnDimension($colStart)->setWidth(6);
             $colIndex++;
             $currentDate->addDay();
         }
@@ -119,9 +109,6 @@ class DestajosSpreadsheetExport
         $sheet->getRowDimension(1)->setRowHeight(50);
         $sheet->getRowDimension(2)->setRowHeight(15);
 
-        // ============================================
-        // FILAS DE DATOS POR USUARIO
-        // ============================================
         $row = 3;
         $totalGeneralDestajo = 0;
         $totalGeneralDiasLab = 0;
@@ -131,16 +118,10 @@ class DestajosSpreadsheetExport
         foreach ($datos['usuarios'] as $user) {
             $destajoData = $datos['destajosPorUsuario'][$user->id] ?? null;
 
-            // ✅ CORRECCIÓN: Usar datos por defecto en lugar de saltar el usuario
             if (!$destajoData || !$destajoData['success']) {
                 $destajoData = [
-                    'dias_laborados' => 0,
-                    'tarifa_diaria' => 0,
-                    'total_monto' => 0,
-                    'conteos' => [
-                        'descansos' => 0, 'faltas' => 0, 'incapacidades' => 0,
-                        'permisos_cg' => 0, 'permisos_sg' => 0
-                    ],
+                    'dias_laborados' => 0, 'tarifa_diaria' => 0, 'total_monto' => 0,
+                    'conteos' => ['descansos'=>0, 'faltas'=>0, 'incapacidades'=>0, 'permisos_cg'=>0, 'permisos_sg'=>0],
                     'desglose_diario' => []
                 ];
             }
@@ -148,21 +129,15 @@ class DestajosSpreadsheetExport
             $conteos = $destajoData['conteos'] ?? [];
             $desgloseDiario = $destajoData['desglose_diario'] ?? [];
 
-            // ✅ FORMATO DE NOMBRE COMPLETO (igual que el Blade)
             $nombreCompleto = '';
             if ($user->solicitudAlta) {
                 $s = $user->solicitudAlta;
-                $nombreCompleto = trim(
-                    ($s->apellido_paterno ?? '') . ' ' .
-                    ($s->apellido_materno ?? '') . ' ' .
-                    ($s->nombre ?? '')
-                );
+                $nombreCompleto = trim(($s->apellido_paterno ?? '') . ' ' . ($s->apellido_materno ?? '') . ' ' . ($s->nombre ?? ''));
             }
             $nombreCompleto = strtoupper($nombreCompleto ?: ($user->name ?? 'SIN NOMBRE'));
 
-            // Columnas A-H: Datos y conteos
             $sheet->setCellValue("A{$row}", $user->id);
-            $sheet->setCellValue("B{$row}", $nombreCompleto); // ✅ Usa nombre completo formateado
+            $sheet->setCellValue("B{$row}", $nombreCompleto);
             $sheet->setCellValue("C{$row}", $destajoData['dias_laborados']);
             $sheet->setCellValue("D{$row}", $conteos['descansos'] ?? 0);
             $sheet->setCellValue("E{$row}", $conteos['faltas'] ?? 0);
@@ -172,25 +147,18 @@ class DestajosSpreadsheetExport
             $sheet->setCellValue("I{$row}", $destajoData['tarifa_diaria']);
             $sheet->setCellValue("J{$row}", $destajoData['total_monto']);
 
-            // Formato de moneda
             $sheet->getStyle("I{$row}")->getNumberFormat()->setFormatCode('$#,##0.00');
             $sheet->getStyle("J{$row}")->getNumberFormat()->setFormatCode('$#,##0.00');
-
-            // Color para Total Destajo
             $sheet->getStyle("J{$row}")->applyFromArray([
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'C8E6C9']],
                 'font' => ['bold' => true],
             ]);
 
-            // Acumular totales
             $totalGeneralDiasLab += $destajoData['dias_laborados'];
             $totalGeneralDestajo += $destajoData['total_monto'];
             $totalPE_CG += $conteos['permisos_cg'] ?? 0;
             $totalPE_SG += $conteos['permisos_sg'] ?? 0;
 
-            // ============================================
-            // COLUMNAS DIARIAS (Desglose visual)
-            // ============================================
             $colDia = $baseColumnCount + 1;
             $fechaIter = Carbon::parse($this->fechaInicio);
 
@@ -214,7 +182,7 @@ class DestajosSpreadsheetExport
                 $sheet->getStyle("{$colLetter}{$row}")->applyFromArray([
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $colorRGB]],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-                    'font' => ['size' => 9, 'bold' => in_array($codigo, ['A', 'D'])],
+                    'font' => ['size' => 9, 'bold' => $codigo === 'A' || $codigo === 'D'],
                     'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CCCCCC']]],
                 ]);
 
@@ -222,7 +190,6 @@ class DestajosSpreadsheetExport
                 $fechaIter->addDay();
             }
 
-            // Bordes para toda la fila
             $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colDia - 1);
             $sheet->getStyle("A{$row}:{$lastColLetter}{$row}")->applyFromArray([
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
@@ -231,9 +198,6 @@ class DestajosSpreadsheetExport
             $row++;
         }
 
-        // ============================================
-        // FILA DE TOTALES GENERALES
-        // ============================================
         $lastColIndex = $colIndex;
         $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($lastColIndex - 1);
 
@@ -270,9 +234,6 @@ class DestajosSpreadsheetExport
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => '000000']]],
         ]);
 
-        // ============================================
-        // FORMATOS GENERALES
-        // ============================================
         $sheet->getColumnDimension('A')->setWidth(6);
         $sheet->getColumnDimension('B')->setWidth(35);
         $sheet->getColumnDimension('C')->setWidth(10);
@@ -291,9 +252,6 @@ class DestajosSpreadsheetExport
             'borders' => ['outline' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => '000000']]],
         ]);
 
-        // ============================================
-        // GUARDAR Y DESCARGAR
-        // ============================================
         $writer = new Xlsx($spreadsheet);
         $fileName = 'destajos_' . $this->fechaInicio . '_al_' . $this->fechaFin . '.xlsx';
         $tempPath = tempnam(sys_get_temp_dir(), 'destajos_export_');
@@ -303,15 +261,17 @@ class DestajosSpreadsheetExport
         return response()->download($tempPath, $fileName)->deleteFileAfterSend(true);
     }
 
-    // ============================================
-    // MÉTODOS AUXILIARES
-    // ============================================
     private function obtenerDatos()
     {
         if (!$this->fechaInicio || !$this->fechaFin) {
             return ['usuarios' => collect(), 'fechas' => [], 'destajosPorUsuario' => []];
         }
 
+        if (empty($this->punto) && empty($this->empresa)) {
+            return ['usuarios' => collect(), 'fechas' => [], 'destajosPorUsuario' => []];
+        }
+
+        // Filtrado de puntos (igual que en Livewire)
         $filtro = $this->punto ? strtoupper($this->punto) : '';
         if (in_array($filtro, ['MARYKAY CORPORATIVO', 'MAR KAY CORPORATIVO'])) {
             $filtro = 'MARY KAY CORPORATIVO';
@@ -321,30 +281,32 @@ class DestajosSpreadsheetExport
         $subpuntos = [];
         $mapaSubpuntos = $this->getSubpuntosPorPunto();
 
-        foreach ($mapaSubpuntos as $p => $subs) {
-            if ($filtro === $p) {
-                $puntoGeneral = $p;
-                $subpuntos = $subs;
-                break;
-            } elseif (collect($subs)->pluck('nombre')->map('strtoupper')->contains($filtro)) {
-                $puntoGeneral = $p;
-                $subpuntos = [collect($subs)->firstWhere('nombre', 'LIKE', $filtro)];
-                break;
-            } elseif (collect($subs)->pluck('codigo')->map('strval')->contains($filtro)) {
-                $puntoGeneral = $p;
-                $subpuntos = [collect($subs)->firstWhere('codigo', $filtro)];
-                break;
+        if (!empty($this->punto)) {
+            foreach ($mapaSubpuntos as $p => $subs) {
+                if ($filtro === $p) {
+                    $puntoGeneral = $p;
+                    $subpuntos = $subs;
+                    break;
+                } elseif (collect($subs)->pluck('nombre')->map('strtoupper')->contains($filtro)) {
+                    $puntoGeneral = $p;
+                    $subpuntos = [collect($subs)->firstWhere('nombre', 'LIKE', $filtro)];
+                    break;
+                } elseif (collect($subs)->pluck('codigo')->map('strval')->contains($filtro)) {
+                    $puntoGeneral = $p;
+                    $subpuntos = [collect($subs)->firstWhere('codigo', $filtro)];
+                    break;
+                }
             }
-        }
 
-        if (!$puntoGeneral && in_array($filtro, ['MARYKAY CORPORATIVO', 'MARY KAY CORPORATIVO'])) {
-            $puntoGeneral = 'MONTERREY';
-            $subpuntos = [collect($mapaSubpuntos['MONTERREY'])->firstWhere('nombre', 'LIKE', $filtro)];
-        }
+            if (!$puntoGeneral && in_array($filtro, ['MARYKAY CORPORATIVO', 'MARY KAY CORPORATIVO'])) {
+                $puntoGeneral = 'MONTERREY';
+                $subpuntos = [collect($mapaSubpuntos['MONTERREY'])->firstWhere('nombre', 'LIKE', $filtro)];
+            }
 
-        if (!$puntoGeneral) {
-            $puntoGeneral = $filtro;
-            $subpuntos = [['nombre' => $filtro, 'codigo' => null]];
+            if (!$puntoGeneral) {
+                $puntoGeneral = $filtro;
+                $subpuntos = [['nombre' => $filtro, 'codigo' => null]];
+            }
         }
 
         $rolAuth = Auth::user()?->rol;
@@ -353,45 +315,58 @@ class DestajosSpreadsheetExport
             $subpuntos = $mapaSubpuntos['MONTERREY'];
         }
 
-        if ($filtro === 'MONTERREY' || $rolAuth === 'AUXILIAR OPERACIONES') {
-            $monterreySubpuntos = collect($mapaSubpuntos['MONTERREY'])->pluck('nombre')->toArray();
-            $puntosAsistencias = array_merge(['MONTERREY'], $monterreySubpuntos, ['KANSAS', 'MTY']);
-        } else {
-            $puntosAsistencias = [$filtro];
+        $puntosAsistencias = [];
+        if (!empty($this->punto)) {
+            if ($filtro === 'MONTERREY' || $rolAuth === 'AUXILIAR OPERACIONES') {
+                $monterreySubpuntos = collect($mapaSubpuntos['MONTERREY'])->pluck('nombre')->toArray();
+                $puntosAsistencias = array_merge(['MONTERREY'], $monterreySubpuntos, ['KANSAS', 'MTY']);
+            } else {
+                $puntosAsistencias = [$filtro];
+            }
         }
 
-        $asistenciasIndexadas = Asistencia::whereIn('punto', $puntosAsistencias)
-            ->whereBetween('fecha', [$this->fechaInicio, $this->fechaFin])
-            ->get()
-            ->keyBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
+        // Consulta de asistencias
+        $asistenciasQuery = Asistencia::whereBetween('fecha', [$this->fechaInicio, $this->fechaFin]);
+        if (!empty($puntosAsistencias)) {
+            $asistenciasQuery->whereIn('punto', $puntosAsistencias);
+        }
+        $asistenciasIndexadas = $asistenciasQuery->get()->keyBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
 
-        // ✅ CARGA EAGER-LOAD + ORDENAMIENTO POR NOMBRE COMPLETO
+        // Consulta de usuarios
         $usuariosQuery = User::with('solicitudAlta')->where('estatus', 'Activo');
-        $usuariosQuery->where(function ($query) use ($subpuntos, $puntoGeneral) {
-            foreach ($subpuntos as $subpunto) {
-                $nombre = $subpunto['nombre'] ?? null;
-                $codigo = $subpunto['codigo'] ?? null;
-                $query->orWhere(function ($q) use ($nombre, $codigo, $puntoGeneral) {
-                    if ($nombre) {
-                        $q->whereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%']);
-                        if ($nombre === 'MARY KAY CORPORATIVO') {
-                            $q->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
-                              ->orWhereRaw('LOWER(punto) LIKE ?', ['%mar kay corporativo%']);
+
+        // Filtro por empresa
+        if (!empty($this->empresa)) {
+            $usuariosQuery->where('empresa', $this->empresa);
+        }
+
+        // Filtro por punto
+        if (!empty($this->punto)) {
+            $usuariosQuery->where(function ($query) use ($subpuntos, $puntoGeneral) {
+                foreach ($subpuntos as $subpunto) {
+                    $nombre = $subpunto['nombre'] ?? null;
+                    $codigo = $subpunto['codigo'] ?? null;
+                    $query->orWhere(function ($q) use ($nombre, $codigo) {
+                        if ($nombre) {
+                            $q->whereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%']);
+                            if ($nombre === 'MARY KAY CORPORATIVO') {
+                                $q->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
+                                  ->orWhereRaw('LOWER(punto) LIKE ?', ['%mar kay corporativo%']);
+                            }
                         }
-                    }
-                    if ($codigo && $puntoGeneral === 'MONTERREY') {
-                        $q->orWhere('punto', $codigo);
-                    }
+                        if ($codigo) {
+                            $q->orWhere('punto', $codigo);
+                        }
+                    });
+                }
+            });
+            if ($filtro === 'MONTERREY' || $rolAuth === 'AUXILIAR OPERACIONES') {
+                $usuariosQuery->orWhere(function ($q) {
+                    $q->where('punto', 'KANSAS')->orWhere('punto', 'MTY');
                 });
             }
-        });
-        if ($filtro === 'MONTERREY' || $rolAuth === 'AUXILIAR OPERACIONES') {
-            $usuariosQuery->orWhere(function ($q) {
-                $q->where('punto', 'KANSAS')->orWhere('punto', 'MTY');
-            });
         }
 
-        // ✅ Ordenar alfabéticamente por nombre completo
         $usuarios = $usuariosQuery->get()->sortBy(function ($user) {
             if ($user->solicitudAlta) {
                 $s = $user->solicitudAlta;
@@ -400,6 +375,7 @@ class DestajosSpreadsheetExport
             return strtolower($user->name ?? '');
         })->values();
 
+        // Datos auxiliares (vacaciones, permisos, incapacidades) - igual que antes
         $fechas = [];
         $startDate = Carbon::parse($this->fechaInicio);
         $endDate = Carbon::parse($this->fechaFin);

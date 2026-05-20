@@ -8,10 +8,6 @@ use Carbon\Carbon;
 
 class CalculoDestajoService
 {
-    /**
-     * Calcula el destajo basado en la compensación quincenal (15 días)
-     * Fórmula: (Compensación / 15) * (Asistencias + Descansos)
-     */
     public function calcularDestajo(
         User $user,
         string $fechaInicio,
@@ -148,7 +144,13 @@ class CalculoDestajoService
 
     protected function obtenerSueldoUsuario(User $user): ?object
     {
-        $puntoNombre = $this->resolverPuntoNombre($user->punto) ?? $user->punto;
+        // Si el punto es null, usamos string vacío para evitar errores
+        $puntoNombre = $this->resolverPuntoNombre($user->punto ?? '') ?? $user->punto ?? '';
+
+        // Si aún está vacío, retornamos null para que no encuentre sueldo
+        if (empty($puntoNombre)) {
+            return null;
+        }
 
         $sueldo = Sueldo::where('puesto', $user->rol)
             ->where('punto', $puntoNombre)
@@ -161,13 +163,20 @@ class CalculoDestajoService
         return $sueldo;
     }
 
-    protected function resolverPuntoNombre(string $valor): ?string
+    protected function resolverPuntoNombre(?string $valor): ?string
     {
+        // Si es null o vacío, retornamos null
+        if (empty($valor)) {
+            return null;
+        }
+
+        // Si es numérico, buscar en subpuntos
         if (preg_match('/^\d+$/', $valor)) {
             $subpunto = \App\Models\Subpunto::where('codigo', (int)$valor)->first();
             if ($subpunto) return $subpunto->nombre;
         }
 
+        // Búsqueda directa insensible a mayúsculas
         $subpunto = \App\Models\Subpunto::whereRaw('LOWER(nombre) = LOWER(?)', [$valor])->first();
         return $subpunto?->nombre;
     }
