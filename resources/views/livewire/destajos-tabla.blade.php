@@ -151,7 +151,7 @@
                             $conteos = $data['conteos'];
                         @endphp
                         <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition duration-150">
-                            <td class="sticky-first-col px-3 py-2 text-sm border-r">{{ $user->id }}</td>
+                            <td class="sticky-first-col px-3 py-2 text-sm border-r">{{ $user->num_empleado }}</td>
                             <td class="sticky-second-col px-3 py-2 text-sm font-medium border-r text-gray-900 dark:text-white">
                                 {{ strtoupper($nombreCompleto) }}
                             </td>

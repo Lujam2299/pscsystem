@@ -20,7 +20,7 @@
         // --- GESTIÓN PRINCIPAL ---
         [
             'titulo' => 'Nóminas Quincenales',
-            'ruta' => route('vistaNominas'),
+            'ruta' => route('nominas.asistencias'), //vistaNominas
             'icono' => 'currency-dollar',
             'theme' => 'blue',
             'desc' => 'Cálculo de nómina'
@@ -122,14 +122,14 @@
         ],
 
         // --- HISTORIAL Y REGISTROS ---
-        [
+        /*[
             'titulo' => 'Asistencias',
             'ruta' => route('nominas.asistencias'),
             'icono' => 'clock-check',
             'theme' => 'blue',
             'variant' => 'soft',
             'desc' => 'Registro diario'
-        ],
+        ],*/
         [
             'titulo' => 'Eventuales',
             'ruta' => route('auxcont.eventuales'),
