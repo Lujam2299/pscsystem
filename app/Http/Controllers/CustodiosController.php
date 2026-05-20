@@ -23,13 +23,23 @@ class CustodiosController extends Controller
         return view('custodios.misionesActuales', compact('misiones'));
     }
 
-    public function custodiosIndex(){
-        $agentes = User::where('estatus', 'Activo')
-            ->whereRaw("LOWER(rol) LIKE ?", ['%escolta%'])
-            ->get();
+    public function custodiosIndex()
+{
+    $agentes = User::query()
+        ->with(['solicitudAlta', 'documentacionAltas'])
+        ->where('estatus', 'Activo')
+        ->whereRaw("LOWER(users.rol) LIKE ?", ['%escolta%'])
+        // 🔹 JOIN para ordenar por apellidos (FK correcta: sol_alta_id)
+        ->leftJoin('solicitud_altas', 'users.sol_alta_id', '=', 'solicitud_altas.id')
+        ->select('users.*')
+        // 🔹 Ordenamiento: alfabético por apellido paterno → materno → nombre
+        ->orderBy('solicitud_altas.apellido_paterno', 'asc')
+        ->orderBy('solicitud_altas.apellido_materno', 'asc')
+        ->orderBy('solicitud_altas.nombre', 'asc')
+        ->paginate(10);
 
-        return view('custodios.listaCustodios', compact('agentes'));
-    }
+    return view('custodios.listaCustodios', compact('agentes'));
+}
 
     public function nuevaMisionForm(){
         return view('custodios.nuevaMisionForm');

@@ -42,9 +42,7 @@
                             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead class="bg-gray-50 dark:bg-gray-700">
                                     <tr>
-                                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                            #
-                                        </th>
+                                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>
                                         <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             <div class="flex items-center">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -92,50 +90,98 @@
                                 </thead>
                                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                     @forelse($agentes as $agente)
+                                        @php
+                                            // 🔹 FOTO: misma lógica que en Antigüedades
+                                            $doc = $agente->documentacionAltas;
+                                            $ruta = $doc?->arch_foto;
+
+                                            if ($ruta) {
+                                                $rutaRelativa = ltrim($ruta, 'storage/');
+                                                $rutaDisco = storage_path('app/public/' . $rutaRelativa);
+                                                $existe = file_exists($rutaDisco);
+                                                $url = $existe ? asset($ruta) : null;
+                                            } else {
+                                                $existe = false;
+                                                $url = null;
+                                            }
+                                        @endphp
                                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                                                 {{ $loop->iteration }}
                                             </td>
+
+                                            {{-- 🔹 CELDA CON FOTO + NOMBRE COMPLETO + DEBUG --}}
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="flex items-center">
                                                     <div class="flex-shrink-0 h-8 w-8">
-                                                        <div class="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                                                            <span class="text-white font-medium text-xs">
-                                                                {{ substr($agente->name ?? '', 0, 2) }}
-                                                            </span>
-                                                        </div>
+                                                        @php
+                                                            $doc = $agente->documentacionAltas;
+                                                            $rutaBD = $doc?->arch_foto;
+
+                                                            // Debug paso a paso
+                                                            $debug = [
+                                                                'user_id' => $agente->id,
+                                                                'ruta_en_bd' => $rutaBD,
+                                                                'tiene_relacion' => $doc ? 'SÍ' : 'NO',
+                                                                'tiene_arch_foto' => $rutaBD ? 'SÍ' : 'NO',
+                                                            ];
+
+                                                            if ($rutaBD) {
+                                                                // Quitar 'storage/' del inicio si existe
+                                                                $rutaRelativa = preg_replace('#^storage/#i', '', $rutaBD);
+                                                                $rutaDisco = storage_path('app/public/' . $rutaRelativa);
+
+                                                                $debug['ruta_relativa'] = $rutaRelativa;
+                                                                $debug['ruta_completa_disco'] = $rutaDisco;
+                                                                $debug['archivo_existe'] = file_exists($rutaDisco) ? 'SÍ ✓' : 'NO ✗';
+                                                                $debug['es_legible'] = is_readable($rutaDisco) ? 'SÍ ✓' : 'NO ✗';
+
+                                                                // URL pública
+                                                                $url = asset($rutaBD);
+                                                                $debug['url_publica'] = $url;
+
+                                                                // Verificar si storage link existe
+                                                                $debug['storage_link'] = file_exists(public_path('storage')) ? 'EXISTS ✓' : 'NO EXISTS ✗';
+                                                            }
+                                                        @endphp
+                                                        {{-- IMAGEN O FALLBACK --}}
+                                                        @if(isset($url) && isset($debug['archivo_existe']) && $debug['archivo_existe'] === 'SÍ ✓')
+                                                            <img src="{{ $url }}"
+                                                                alt="Foto"
+                                                                class="h-10 w-10 rounded-full object-cover shadow-sm ring-2 ring-white dark:ring-gray-800"
+                                                                loading="lazy"
+                                                                >
+                                                        @else
+                                                            <div class="h-10 w-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm ring-2 ring-white dark:ring-gray-800">
+                                                                <span class="text-white font-semibold text-xs">{{ strtoupper(substr($agente->name ?? 'N', 0, 2)) }}</span>
+                                                            </div>
+                                                        @endif
                                                     </div>
                                                     <div class="ml-3">
                                                         <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                                            {{ $agente->name }}
+                                                            @php
+                                                                $nombreCompleto = trim("{$agente->solicitudAlta->apellido_paterno} {$agente->solicitudAlta->apellido_materno} {$agente->solicitudAlta->nombre}");
+                                                            @endphp
+                                                            {{ strtoupper($nombreCompleto) }}
                                                         </div>
                                                     </div>
                                                 </div>
                                             </td>
+
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 @if ($agente->rol == 'admin')
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200">
-                                                        Administrador
-                                                    </span>
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200">Administrador</span>
                                                 @elseif($agente->rol == 'supervisor')
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
-                                                        Supervisor
-                                                    </span>
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">Supervisor</span>
                                                 @elseif($agente->rol == 'agente')
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200">
-                                                        Agente
-                                                    </span>
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200">Agente</span>
                                                 @else
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                                                        {{ $agente->rol ?? 'N/D' }}
-                                                    </span>
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">{{ $agente->rol ?? 'N/D' }}</span>
                                                 @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 @if($agente->punto)
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
-                                                        {{ $agente->punto }}
-                                                    </span>
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">{{ $agente->punto }}</span>
                                                 @else
                                                     <span class="text-gray-400 dark:text-gray-500 text-sm">-</span>
                                                 @endif
@@ -168,6 +214,7 @@
                             </table>
                         </div>
                     </div>
+                    {{ $agentes->links() }}
                 @endif
 
                 <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
