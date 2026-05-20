@@ -57,6 +57,14 @@
             'notificaciones' => $conteoBajas,
             'desc' => 'Procesar bajas y finiquitos'
         ],
+        [
+            'titulo' => 'Historial Finiquitos',
+            'ruta' => route('nominas.historialFiniquitos'),
+            'icono' => 'file-invoice',
+            'theme' => 'rose',
+            'variant' => 'soft',
+            'desc' => 'Consulta finiquitos subidos'
+        ],
 
         // --- DEDUCCIONES Y VALES ---
         [

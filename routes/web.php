@@ -368,6 +368,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/nominas/semanal', [NominasController::class, 'formularioSemanal'])->name('nominas.semanal');
     Route::get('/historial-deducciones', [NominasController::class, 'historialDeducciones'])->name('nominas.historialDeducciones');
     Route::post('/nominas/semanal/guardar', [NominasController::class, 'guardarSemanal'])->name('nominas.guardarSemanal');
+    Route::get('/historial-finiquitos-bajas', [NominasController::class, 'historialFiniquitos'])->name('nominas.historialFiniquitos');
     Route::get('/exportar-destajos', [NominasController::class, 'exportar'])->name('exportar.destajos');
 
     Route::get('/exportar-altas-por-corte', function (Request $request) {

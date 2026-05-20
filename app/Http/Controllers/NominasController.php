@@ -966,4 +966,8 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
         $export = new DestajosSpreadsheetExport($punto, $fechaInicio, $fechaFin);
         return $export->generateFile();
     }
+
+    public function historialFiniquitos(){
+        return view('nominas.historialFiniquitos');
+    }
 }
