@@ -28,7 +28,7 @@
 
     // Definición de tarjetas con metadatos para estilos dinámicos
     $cards = [
-        [
+        /*[
             'titulo' => 'Solicitudes de Altas',
             'ruta' => route('rh.solicitudesAltas'),
             'icono' => 'user-plus',
@@ -51,7 +51,7 @@
             'theme' => 'amber',
             'disabled' => !in_array(strtoupper(Auth::user()?->rol ?? ''), ['JEFA RECURSOS HUMANOS', 'JEFE', 'ADMINISTRADOR', 'ADMIN']),
             'desc' => 'Control diario Montana'
-        ],
+        ],*/
         [
             'titulo' => 'Generar Nueva Alta',
             'ruta' => route('rh.formAlta', $tipoSeleccionado),
