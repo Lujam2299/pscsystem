@@ -208,8 +208,7 @@ class CustodiosController extends Controller
     }
 
     public function misionesTerminadas(){
-        $misiones = Misiones::where('estatus', 'Terminada')
-            ->where('fecha_fin', '<', Carbon::now())
+        $misiones = Misiones::where('fecha_fin', '<', Carbon::now())
             ->paginate(10);
         return view('custodios.misionesTerminadas', compact('misiones'));
     }
