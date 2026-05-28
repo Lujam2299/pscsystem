@@ -16,15 +16,15 @@ class Admigestionusuarios extends Component
 
     public $search = '';
     public $tipo_pago = 'todos';
-    public $estatus = 'todos'; // Nuevo filtro
-    public $punto = '';        // Nuevo filtro
+    public $estatus = 'Activo'; // ✅ Valor por defecto 'Activo'
+    public $punto = '';
     public $sortField = 'name';
     public $sortDirection = 'asc';
 
     protected $queryString = [
         'search' => ['except' => ''],
         'tipo_pago' => ['except' => 'todos'],
-        'estatus' => ['except' => 'todos'],
+        'estatus' => ['except' => 'Activo'],
         'punto' => ['except' => ''],
         'sortField' => ['except' => 'name'],
         'sortDirection' => ['except' => 'asc'],
@@ -167,12 +167,10 @@ class Admigestionusuarios extends Component
         if ($this->punto !== '') {
             $filtro = strtoupper($this->punto);
 
-            // Casos especiales de nombre
             if (in_array($filtro, ['MARYKAY CORPORATIVO', 'MAR KAY CORPORATIVO'])) {
                 $filtro = 'MARY KAY CORPORATIVO';
             }
 
-            // Determinar si es punto general o subpunto
             $puntoGeneral = null;
             $subpuntos = [];
 
@@ -192,14 +190,12 @@ class Admigestionusuarios extends Component
             }
 
             if (!$puntoGeneral) {
-                // Si no se encontró, tratar como valor literal
                 $baseQuery->where(function ($query) use ($filtro) {
                     $query->where('punto', $filtro)
                           ->orWhere('punto', strtoupper($filtro))
                           ->orWhere('punto', strtolower($filtro));
                 });
             } else {
-                // Construir condiciones para los subpuntos encontrados
                 $baseQuery->where(function ($query) use ($subpuntos, $puntoGeneral) {
                     foreach ($subpuntos as $sub) {
                         $nombre = $sub['nombre'] ?? null;
@@ -300,7 +296,29 @@ class Admigestionusuarios extends Component
             return $user;
         });
 
-        if ($this->sortField === 'progreso_documentos') {
+        // ✅ ORDENAMIENTO POR APELLIDOS + NOMBRE EN MAYÚSCULAS
+        if ($this->sortField === 'name') {
+            $users = $this->sortDirection === 'asc'
+                ? $users->sortBy(function ($user) {
+                    $solicitud = $user->solicitudAlta;
+                    // Concatenar apellidos y nombre en mayúsculas para ordenamiento consistente
+                    return strtoupper(sprintf(
+                        '%s %s %s',
+                        $solicitud?->apellido_paterno ?? '',
+                        $solicitud?->apellido_materno ?? '',
+                        $solicitud?->nombre ?? ''
+                    ));
+                })
+                : $users->sortByDesc(function ($user) {
+                    $solicitud = $user->solicitudAlta;
+                    return strtoupper(sprintf(
+                        '%s %s %s',
+                        $solicitud?->apellido_paterno ?? '',
+                        $solicitud?->apellido_materno ?? '',
+                        $solicitud?->nombre ?? ''
+                    ));
+                });
+        } elseif ($this->sortField === 'progreso_documentos') {
             $users = $this->sortDirection === 'asc'
                 ? $users->sortBy('progreso_documentos')
                 : $users->sortByDesc('progreso_documentos');
@@ -309,6 +327,7 @@ class Admigestionusuarios extends Component
                 ? $users->sortBy($this->sortField)
                 : $users->sortByDesc($this->sortField);
         }
+        // ✅ FIN ORDENAMIENTO
 
         $perPage = 10;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();

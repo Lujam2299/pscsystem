@@ -34,6 +34,24 @@
             default => 'bg-red-500',
         };
     }
+
+    // ✅ Función auxiliar para formato de nombre: APELLIDOS NOMBRE(S) en mayúsculas
+    function formatoNombreCompleto($user) {
+        $solicitud = $user->solicitudAlta;
+        if (!$solicitud) {
+            return strtoupper($user->name ?? 'S/N');
+        }
+
+        $partes = array_filter([
+            $solicitud->apellido_paterno ?? '',
+            $solicitud->apellido_materno ?? '',
+            $solicitud->nombre ?? ''
+        ]);
+
+        return !empty($partes)
+            ? strtoupper(implode(' ', $partes))
+            : strtoupper($user->name ?? 'S/N');
+    }
 @endphp
 
 
@@ -68,72 +86,72 @@
 
     <div class="mb-6">
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-    <!-- Filtro de búsqueda -->
-    <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Buscar por nombre
-        </label>
-        <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+            <!-- Filtro de búsqueda -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Buscar por nombre
+                </label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input
+                        type="text"
+                        wire:model.live.debounce.300ms="search"
+                        placeholder="Buscar por nombre..."
+                        class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                    >
+                </div>
             </div>
-            <input
-                type="text"
-                wire:model.live.debounce.300ms="search"
-                placeholder="Buscar por nombre..."
-                class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-            >
-        </div>
-    </div>
 
-    <!-- Filtro de tipo de pago -->
-    <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Tipo de Pago
-        </label>
-        <select wire:model.live="tipo_pago" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-            <option value="todos">Todos</option>
-            <option value="semanal">Semanal</option>
-            <option value="quincenal">Quincenal</option>
-        </select>
-    </div>
+            <!-- Filtro de tipo de pago -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Tipo de Pago
+                </label>
+                <select wire:model.live="tipo_pago" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                    <option value="todos">Todos</option>
+                    <option value="semanal">Semanal</option>
+                    <option value="quincenal">Quincenal</option>
+                </select>
+            </div>
 
-    <!-- Filtro por estatus -->
-    <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Estatus
-        </label>
-        <select wire:model.live="estatus" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-            <option value="todos">Todos</option>
-            <option value="Activo">Activo</option>
-            <option value="Inactivo">Inactivo</option>
-        </select>
-    </div>
+            <!-- Filtro por estatus -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Estatus
+                </label>
+                <select wire:model.live="estatus" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                    <option value="todos">Todos</option>
+                    <option value="Activo" @selected($estatus === 'Activo')>Activo</option>
+                    <option value="Inactivo">Inactivo</option>
+                </select>
+            </div>
 
-    <!-- Filtro por punto -->
-    <div>
-        <label for="punto" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Punto
-        </label>
-        <select wire:model.live="punto" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-            <option value="">Todos</option>
-            @foreach($subpuntosMap as $puntoGeneral => $subpuntos)
-                <optgroup label="{{ $puntoGeneral }}">
-                    <option value="{{ $puntoGeneral }}">(Todos) {{ $puntoGeneral }}</option>
-                    @foreach($subpuntos as $subpunto)
-                        <option value="{{ $subpunto['nombre'] }}">{{ $subpunto['nombre'] }}
-                            @if($subpunto['codigo'])
-                                ({{ str_pad($subpunto['codigo'], 3, '0', STR_PAD_LEFT) }})
-                            @endif
-                        </option>
+            <!-- Filtro por punto -->
+            <div>
+                <label for="punto" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Punto
+                </label>
+                <select wire:model.live="punto" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                    <option value="">Todos</option>
+                    @foreach($subpuntosMap as $puntoGeneral => $subpuntos)
+                        <optgroup label="{{ $puntoGeneral }}">
+                            <option value="{{ $puntoGeneral }}">(Todos) {{ $puntoGeneral }}</option>
+                            @foreach($subpuntos as $subpunto)
+                                <option value="{{ $subpunto['nombre'] }}">{{ $subpunto['nombre'] }}
+                                    @if($subpunto['codigo'])
+                                        ({{ str_pad($subpunto['codigo'], 3, '0', STR_PAD_LEFT) }})
+                                    @endif
+                                </option>
+                            @endforeach
+                        </optgroup>
                     @endforeach
-                </optgroup>
-            @endforeach
-        </select>
-    </div>
-</div>
+                </select>
+            </div>
+        </div>
 
         <div wire:loading class="mt-2 flex items-center text-sm text-blue-600 dark:text-blue-400">
             <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -256,18 +274,18 @@
                                                 $foto = $user->solicitudAlta?->documentacion?->arch_foto;
                                             @endphp
                                             @if($foto)
-                                                <img src="{{ asset($foto) }}" class="h-8 w-8 rounded-full" alt="{{ $user->name }}" />
+                                                <img src="{{ asset($foto) }}" class="h-8 w-8 rounded-full" alt="{{ formatoNombreCompleto($user) }}" />
                                             @else
                                                 <div class="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                                                     <span class="text-white font-medium text-xs">
-                                                        {{ substr($user->name ?? '', 0, 2) }}
+                                                        {{ substr(formatoNombreCompleto($user), 0, 2) }}
                                                     </span>
                                                 </div>
                                             @endif
                                         </div>
                                         <div class="ml-3">
-                                            <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                                {{ $user->name }}
+                                            <div class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
+                                                {{ formatoNombreCompleto($user) }}
                                             </div>
                                         </div>
                                     </div>
