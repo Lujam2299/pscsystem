@@ -99,6 +99,8 @@
                                 </thead>
                                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                     @forelse($misiones as $mision)
+                                    @if ($mision->fecha_inicio > now() || $mision->fecha_fin < now())
+                                    @else
                                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                                                 {{ $loop->iteration }}
@@ -163,6 +165,7 @@
                                                 @endif
                                             </td>
                                         </tr>
+                                    @endif
                                     @empty
                                         <tr>
                                             <td colspan="7" class="px-6 py-12 text-center">

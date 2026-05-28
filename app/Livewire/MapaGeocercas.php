@@ -24,7 +24,9 @@ class MapaGeocercas extends Component
 
     public function cargarMisionesRecientes()
     {
-        $this->misionesRecientes = Misiones::with('geofences')->orderBy('created_at', 'desc')->limit(10)->get();
+        $this->misionesRecientes = Misiones::with('geofences')->where('fecha_inicio', '>=', Carbon::now()->subDays(7))
+            ->orderBy('fecha_inicio', 'desc')
+            ->get();
     }
 
     public function cargarUsuariosEscolta()

@@ -20,6 +20,8 @@
                 <div class="space-y-3 max-h-[420px] overflow-y-auto overflow-x-hidden relative bg-slate-50 dark:bg-gray-800">
                     @if(count($misionesRecientes) > 0)
                         @foreach($misionesRecientes as $mision)
+                        @if($mision->fecha_inicio > now() || $mision->fecha_fin < now())
+                        @else
                             <!-- Div principal ahora es un contenedor clickable via <a> -->
                             <div class="p-3 transition-all duration-200 border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded hover:shadow-md hover:scale-[1.02] mision-card" wire:key="mision-{{ $mision->id }}">
                                 <!-- Enlace que cubre toda la tarjeta -->
@@ -62,6 +64,7 @@
                                     </div>
                                 </a>
                             </div>
+                        @endif
                         @endforeach
                     @else
                         <div class="flex flex-col items-center justify-center p-5 rounded bg-gray-50 dark:bg-gray-700">
