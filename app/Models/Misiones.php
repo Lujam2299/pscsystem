@@ -42,7 +42,26 @@ class Misiones extends Model
     ];
 
     public function geofences()
-{
-    return $this->hasMany(Geofence::class, 'mision_id');
-}
+    {
+        return $this->hasMany(Geofence::class, 'mision_id');
+    }
+
+    public function getNombresAgentesAttribute(): string
+    {
+        if (!$this->agentes_id) {
+            return '';
+        }
+
+        $ids = is_string($this->agentes_id)
+            ? json_decode($this->agentes_id, true)
+            : $this->agentes_id;
+
+        if (!is_array($ids) || empty($ids)) {
+            return '';
+        }
+
+        return \App\Models\User::whereIn('id', $ids)
+            ->pluck('name')
+            ->implode(', ');
+    }
 }

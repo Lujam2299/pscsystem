@@ -398,6 +398,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/misiones_terminadas', [CustodiosController::class, 'misionesTerminadas'])->name('custodios.misionesTerminadas');
     Route::get('/misiones/{mision}/editar', [CustodiosController::class, 'edit'])->name('misiones.edit');
     Route::put('/misiones/{mision}', [CustodiosController::class, 'update'])->name('misiones.update');
+    Route::prefix('misiones/{mision}/itinerarios')->name('misiones.itinerarios.')->group(function () {
+        Route::get('/', [CustodiosController::class, 'mostrarItinerarios'])->name('show');
+        Route::get('/pdf', [CustodiosController::class, 'downloadItinerarios'])->name('pdf');
+    });
     //Route::get('mensajes', [CustodiosController::class,'mensajesIndex'])->name('custodios.mensajes');
 
     //Usuario Auxiliar Contabilidad

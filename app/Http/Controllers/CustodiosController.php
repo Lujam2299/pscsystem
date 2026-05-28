@@ -475,4 +475,119 @@ public function update(Request $request, $id)
     return redirect()->route('dashboard')->with('success', 'Misión actualizada exitosamente.');
 }
 
+    public function mostrarItinerarios(Misiones $mision)
+    {
+        if (!$mision->itinerarios || empty($mision->itinerarios)) {
+            return redirect()->route('custodios.misionesTerminadas')
+                ->with('warning', 'Esta misión no tiene itinerarios registrados.');
+        }
+
+        // Decodificar itinerarios si es string
+        $itinerarios = is_string($mision->itinerarios)
+            ? json_decode($mision->itinerarios, true)
+            : $mision->itinerarios;
+
+        // 🔹 Obtener nombres de los agentes asignados
+        $agentesIds = is_string($mision->agentes_id)
+            ? json_decode($mision->agentes_id, true)
+            : $mision->agentes_id;
+
+        $usersMap = [];
+        if (is_array($agentesIds) && !empty($agentesIds)) {
+            $usersMap = \App\Models\User::whereIn('id', $agentesIds)
+                ->pluck('name', 'id') // Retorna: [1 => 'Juan Pérez', 5 => 'María López']
+                ->toArray();
+        }
+
+        // 🔹 Aplanar estructura: cada evento será una fila en la tabla
+        $eventosPlanos = [];
+        foreach ($itinerarios as $usuarioData) {
+            $userId = $usuarioData['user_id'] ?? null;
+            $userName = $usersMap[$userId] ?? ('Agente #' . $userId);
+
+            foreach ($usuarioData['eventos'] ?? [] as $evento) {
+                $eventosPlanos[] = [
+                    'user_id'     => $userId,
+                    'user_name'   => $userName,
+                    'fecha'       => $evento['fecha'] ?? null,
+                    'hora'        => $evento['hora'] ?? null,
+                    'descripcion' => $evento['descripcion'] ?? null,
+                    'ubicacion'   => $evento['ubicacion'] ?? null,
+                    'created_at'  => $evento['created_at'] ?? null,
+                ];
+            }
+        }
+
+        // Ordenar eventos cronológicamente (fecha + hora)
+        usort($eventosPlanos, function($a, $b) {
+            $timeA = ($a['fecha'] ?? '') . ' ' . ($a['hora'] ?? '');
+            $timeB = ($b['fecha'] ?? '') . ' ' . ($b['hora'] ?? '');
+            return $timeA <=> $timeB;
+        });
+
+        return view('custodios.mostrarItinerarios', compact('mision', 'eventosPlanos'));
+    }
+
+    public function downloadItinerarios(Misiones $mision)
+    {
+        // Validar que existan itinerarios
+        if (!$mision->itinerarios || empty($mision->itinerarios)) {
+            abort(404);
+        }
+
+        // 🔹 Decodificar itinerarios (JSON string → array)
+        $itinerarios = is_string($mision->itinerarios)
+            ? json_decode($mision->itinerarios, true)
+            : $mision->itinerarios;
+
+        // 🔹 Obtener nombres de los agentes desde agentes_id (JSON de IDs)
+        $agentesIds = is_string($mision->agentes_id)
+            ? json_decode($mision->agentes_id, true)
+            : $mision->agentes_id;
+
+        $usersMap = [];
+        if (is_array($agentesIds) && !empty($agentesIds)) {
+            $usersMap = \App\Models\User::whereIn('id', $agentesIds)
+                ->pluck('name', 'id') // Retorna: [1 => 'Juan Pérez', 5 => 'María López']
+                ->toArray();
+        }
+
+        // 🔹 Aplanar estructura: convertir [usuarios → eventos] en [eventos planos]
+        $eventosPlanos = [];
+        foreach ($itinerarios as $usuarioData) {
+            $userId = $usuarioData['user_id'] ?? null;
+            $userName = $usersMap[$userId] ?? ('Agente #' . $userId);
+
+            foreach ($usuarioData['eventos'] ?? [] as $evento) {
+                $eventosPlanos[] = [
+                    'user_id'     => $userId,
+                    'user_name'   => $userName,
+                    'fecha'       => $evento['fecha'] ?? null,
+                    'hora'        => $evento['hora'] ?? null,
+                    'descripcion' => $evento['descripcion'] ?? null,
+                    'ubicacion'   => $evento['ubicacion'] ?? null,
+                    'created_at'  => $evento['created_at'] ?? null,
+                ];
+            }
+        }
+
+        // 🔹 Ordenar eventos cronológicamente (fecha + hora)
+        usort($eventosPlanos, function($a, $b) {
+            $timeA = ($a['fecha'] ?? '') . ' ' . ($a['hora'] ?? '');
+            $timeB = ($b['fecha'] ?? '') . ' ' . ($b['hora'] ?? '');
+            return $timeA <=> $timeB;
+        });
+
+        // 🔹 Generar PDF con la vista actualizada
+        $pdf = Pdf::loadView('pdf.itinerarios', compact('mision', 'eventosPlanos'))
+            ->setPaper('letter', 'portrait')
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => false, // DomPDF no soporta imágenes remotas por URL
+                'defaultFont' => 'DejaVu Sans', // Mejor soporte para caracteres UTF-8
+            ]);
+
+        return $pdf->download('itinerario-mision-'.$mision->id.'.pdf');
+    }
+
 }
