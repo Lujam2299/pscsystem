@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Gastos;
 use App\Models\User;
 use App\Models\Misiones;
 use Illuminate\Support\Facades\Storage;
@@ -590,4 +591,108 @@ public function update(Request $request, $id)
         return $pdf->download('itinerario-mision-'.$mision->id.'.pdf');
     }
 
+    public function mostrarGastos(Misiones $mision)
+    {
+        // Obtener agentes asignados
+        $agentesIds = is_string($mision->agentes_id)
+            ? json_decode($mision->agentes_id, true)
+            : $mision->agentes_id;
+
+        if (!is_array($agentesIds) || empty($agentesIds)) {
+            return redirect()->route('custodios.misionesTerminadas')
+                ->with('warning', 'Esta misión no tiene agentes asignados.');
+        }
+
+        // Obtener gastos dentro del rango de fechas y de los agentes
+        $gastos = Gastos::whereIn('user_id', $agentesIds)
+            ->whereBetween('Fecha', [$mision->fecha_inicio, $mision->fecha_fin])
+            ->orderBy('Fecha', 'asc')
+            ->orderBy('Hora', 'asc')
+            ->get();
+
+        if ($gastos->isEmpty()) {
+            return redirect()->route('custodios.misionesTerminadas')
+                ->with('info', 'No hay gastos registrados para esta misión en el período indicado.');
+        }
+
+        // Calcular totales
+        $totalGeneral = $gastos->sum('Monto');
+        $totalViaticos = $gastos->where('Tipo', 'Viaticos')->sum('Monto');
+        $totalGasolina = $gastos->where('Tipo', 'Gasolina')->sum('Monto');
+        $totalLitros = $gastos->where('Tipo', 'Gasolina')->sum('Litros');
+        $totalKm = $gastos->where('Tipo', 'Gasolina')->sum('Km');
+
+        // Obtener nombres de agentes para mostrar
+        $agentesNombres = \App\Models\User::whereIn('id', $agentesIds)
+            ->pluck('name', 'id')
+            ->toArray();
+
+        return view('custodios.gastos', compact(
+            'mision',
+            'gastos',
+            'agentesNombres',
+            'totalGeneral',
+            'totalViaticos',
+            'totalGasolina',
+            'totalLitros',
+            'totalKm'
+        ));
+    }
+
+    /**
+     * Generar PDF de gastos
+     */
+    public function downloadGastos(Misiones $mision)
+    {
+        // Obtener agentes asignados
+        $agentesIds = is_string($mision->agentes_id)
+            ? json_decode($mision->agentes_id, true)
+            : $mision->agentes_id;
+
+        if (!is_array($agentesIds) || empty($agentesIds)) {
+            abort(404);
+        }
+
+        // Obtener gastos
+        $gastos = Gastos::whereIn('user_id', $agentesIds)
+            ->whereBetween('Fecha', [$mision->fecha_inicio, $mision->fecha_fin])
+            ->orderBy('Fecha', 'asc')
+            ->orderBy('Hora', 'asc')
+            ->get();
+
+        if ($gastos->isEmpty()) {
+            abort(404);
+        }
+
+        // Calcular totales
+        $totalGeneral = $gastos->sum('Monto');
+        $totalViaticos = $gastos->where('Tipo', 'Viaticos')->sum('Monto');
+        $totalGasolina = $gastos->where('Tipo', 'Gasolina')->sum('Monto');
+        $totalLitros = $gastos->where('Tipo', 'Gasolina')->sum('Litros');
+        $totalKm = $gastos->where('Tipo', 'Gasolina')->sum('Km');
+
+        // Obtener nombres de agentes
+        $agentesNombres = \App\Models\User::whereIn('id', $agentesIds)
+            ->pluck('name', 'id')
+            ->toArray();
+
+        $pdf = Pdf::loadView('pdf.gastosMision', compact(
+            'mision',
+            'gastos',
+            'agentesNombres',
+            'totalGeneral',
+            'totalViaticos',
+            'totalGasolina',
+            'totalLitros',
+            'totalKm'
+        ))
+        ->setPaper('letter', 'portrait')
+        ->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'defaultFont' => 'DejaVu Sans',
+        ]);
+
+        return $pdf->download('gastos-mision-'.$mision->id.'.pdf');
+    }
 }

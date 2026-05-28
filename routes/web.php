@@ -402,6 +402,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [CustodiosController::class, 'mostrarItinerarios'])->name('show');
         Route::get('/pdf', [CustodiosController::class, 'downloadItinerarios'])->name('pdf');
     });
+    Route::prefix('misiones/{mision}/gastos')->name('misiones.gastos.')->group(function () {
+        Route::get('/', [CustodiosController::class, 'mostrarGastos'])->name('show');
+        Route::get('/pdf', [CustodiosController::class, 'downloadGastos'])->name('pdf');
+    });
     //Route::get('mensajes', [CustodiosController::class,'mensajesIndex'])->name('custodios.mensajes');
 
     //Usuario Auxiliar Contabilidad

@@ -147,11 +147,41 @@
                                                         </div>
                                                     @endif
 
-                                                    {{-- Espacio reservado para el segundo botón (futuro) --}}
-                                                    {{-- Puedes dejarlo comentado o añadir un placeholder deshabilitado también --}}
-                                                    {{--
-                                                    <button type="button" disabled class="...">...</button>
-                                                    --}}
+                                                    {{-- Botón 2: Gastos --}}
+                                                    @php
+                                                        $hasGastos = false;
+                                                        $agentesIds = is_string($mision->agentes_id)
+                                                            ? json_decode($mision->agentes_id, true)
+                                                            : $mision->agentes_id;
+
+                                                        if (is_array($agentesIds) && !empty($agentesIds)) {
+                                                            $hasGastos = \App\Models\Gastos::whereIn('user_id', $agentesIds)
+                                                                ->whereBetween('Fecha', [$mision->fecha_inicio, $mision->fecha_fin])
+                                                                ->exists();
+                                                        }
+                                                    @endphp
+
+                                                    @if($hasGastos)
+                                                        <a href="{{ route('misiones.gastos.show', $mision->id) }}"
+                                                            class="inline-flex items-center justify-center p-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition duration-200 shadow-sm cursor-pointer"
+                                                            title="Ver gastos de la misión">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                        </a>
+                                                    @else
+                                                        <div class="relative inline-flex group">
+                                                            <button type="button" disabled
+                                                                class="inline-flex items-center justify-center p-2 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed transition duration-200 shadow-sm">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                            </button>
+                                                            <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 text-xs font-medium text-white bg-gray-900 dark:bg-gray-700 rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                                Sin gastos registrados
+                                                            </span>
+                                                        </div>
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>

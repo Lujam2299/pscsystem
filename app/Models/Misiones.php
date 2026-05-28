@@ -64,4 +64,52 @@ class Misiones extends Model
             ->pluck('name')
             ->implode(', ');
     }
+
+    /**
+     * Accessor para verificar si la misión tiene gastos registrados
+     * dentro de su rango de fechas y con sus agentes asignados
+     */
+    public function getHasGastosAttribute(): bool
+    {
+        // Obtener IDs de agentes asignados
+        $agentesIds = $this->agentes_id;
+
+        // Si es string (JSON), decodificar
+        if (is_string($agentesIds)) {
+            $agentesIds = json_decode($agentesIds, true);
+        }
+
+        // Validar que sea un array con datos
+        if (!is_array($agentesIds) || empty($agentesIds)) {
+            return false;
+        }
+
+        // Verificar existencia de gastos en el rango de fechas
+        return \App\Models\Gasto::whereIn('user_id', $agentesIds)
+            ->whereBetween('Fecha', [$this->fecha_inicio, $this->fecha_fin])
+            ->exists();
+    }
+
+    /**
+     * Accessor para obtener los gastos de la misión
+     * (útil para reutilizar la consulta en controller y vistas)
+     */
+    public function getGastosDelPeriodoAttribute()
+    {
+        $agentesIds = $this->agentes_id;
+
+        if (is_string($agentesIds)) {
+            $agentesIds = json_decode($agentesIds, true);
+        }
+
+        if (!is_array($agentesIds) || empty($agentesIds)) {
+            return collect([]);
+        }
+
+        return \App\Models\Gasto::whereIn('user_id', $agentesIds)
+            ->whereBetween('Fecha', [$this->fecha_inicio, $this->fecha_fin])
+            ->orderBy('Fecha', 'asc')
+            ->orderBy('Hora', 'asc')
+            ->get();
+    }
 }
