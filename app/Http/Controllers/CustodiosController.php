@@ -16,6 +16,14 @@ use App\Models\RealtimePosition;
 
 class CustodiosController extends Controller
 {
+    private const REALTIME_NOTIFICATION_ROLES = [
+        'CUSTODIOS',
+        'AUXILIAR MONITORISTA',
+        'ADMIN',
+        'ADMINISTRADOR',
+        'JEFE',
+    ];
+
     public function misionesIndex(){
         $hoy = Carbon::now();
         $misiones = Misiones::where('fecha_inicio', '<=', $hoy)
@@ -222,6 +230,77 @@ class CustodiosController extends Controller
     public function mostrarMapaGeocercas()
     {
         return view('custodios.mapaGeocercas');
+    }
+
+    public function geocercasActivasRealtime(Request $request)
+    {
+        $rol = strtoupper(trim($request->user()?->rol ?? ''));
+        abort_unless(in_array($rol, self::REALTIME_NOTIFICATION_ROLES, true), 403);
+
+        $hoy = Carbon::now()->toDateString();
+        $misiones = Misiones::with('geofences')
+            ->where('fecha_inicio', '<=', $hoy)
+            ->where(function ($query) use ($hoy) {
+                $query->whereNull('fecha_fin')
+                    ->orWhere('fecha_fin', '>=', $hoy);
+            })
+            ->get();
+
+        $misionesData = $misiones->map(function ($mision) {
+            $agentesIds = is_array($mision->agentes_id)
+                ? $mision->agentes_id
+                : (json_decode($mision->agentes_id, true) ?? []);
+
+            return [
+                'id' => $mision->id,
+                'nombre' => $mision->nombre_clave ?? 'Misión #' . $mision->id,
+                'agentes_id' => collect($agentesIds)->map(fn ($id) => (int) $id)->values(),
+                'geocercas' => $mision->geofences->map(function ($geocerca) {
+                    return [
+                        'id' => $geocerca->id,
+                        'tipo' => $geocerca->tipo,
+                        'centro' => $geocerca->centro,
+                        'radio_km' => $geocerca->radio_km,
+                        'nombre_referencia' => $geocerca->nombre_referencia,
+                    ];
+                })->values(),
+            ];
+        })->values();
+
+        $agentesIds = $misionesData
+            ->pluck('agentes_id')
+            ->flatten()
+            ->unique()
+            ->values();
+
+        $ultimasPosiciones = RealtimePosition::query()
+            ->whereIn('user_id', $agentesIds)
+            ->whereIn('id', function ($query) use ($agentesIds) {
+                $query->selectRaw('MAX(id)')
+                    ->from('realtime_positions')
+                    ->whereIn('user_id', $agentesIds)
+                    ->groupBy('user_id');
+            })
+            ->with('user:id,name')
+            ->get()
+            ->map(function ($posicion) {
+                return [
+                    'user_id' => $posicion->user_id,
+                    'latitude' => $posicion->latitude,
+                    'longitude' => $posicion->longitude,
+                    'recorded_at' => $posicion->recorded_at?->toISOString(),
+                    'user' => [
+                        'id' => $posicion->user_id,
+                        'name' => $posicion->user?->name ?? 'Agente',
+                    ],
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'misiones' => $misionesData,
+            'posiciones' => $ultimasPosiciones,
+        ]);
     }
 
     public function verDetalleMision($misionId)

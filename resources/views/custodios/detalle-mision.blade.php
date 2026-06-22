@@ -364,7 +364,13 @@
             }
 
             function mostrarToastIngresoDetalle(posicion, geocerca) {
-                const rolesPermitidos = ['CUSTODIOS', 'AUXILIAR MONITORISTA'];
+                const rolesPermitidos = [
+                    'CUSTODIOS',
+                    'AUXILIAR MONITORISTA',
+                    'ADMIN',
+                    'ADMINISTRADOR',
+                    'JEFE'
+                ];
                 if (!rolesPermitidos.includes(window.userRoleUpper || '')) return;
                 if (typeof window.Swal === 'undefined') return;
 
@@ -427,7 +433,7 @@
 
                 window.Echo.channel('realtime-positions.all')
                     .listen('.NuevaUbicacionRealtime', event => {
-                        procesarPosicionAgenteDetalle(event?.position, true);
+                        procesarPosicionAgenteDetalle(event?.position, false);
                     });
             }
 

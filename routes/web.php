@@ -301,6 +301,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/compras/{id}', \App\Livewire\CompraDetalle::class)->name('compras.detalle');
 
     Route::get('/mapa-geocercas', [CustodiosController::class, 'mostrarMapaGeocercas'])->name('admin.mapaGeocercas');
+    Route::get('/api/custodios/geocercas-activas', [CustodiosController::class, 'geocercasActivasRealtime'])
+        ->name('admin.geocercasActivasRealtime');
     Route::get('/detalle-mision/{mision}', [CustodiosController::class, 'verDetalleMision'])->name('admin.detalleMision');
 
     //Usuario Aux Admin
