@@ -23,11 +23,17 @@ class RealtimePositionController extends Controller
 
         $periodo = Carbon::now()->subHours(24);
 
-        $positions = RealtimePosition::where('user_id', $id)
+        $positionsQuery = RealtimePosition::where('user_id', $id)
             ->where('recorded_at', '>', $periodo)
             ->orderBy('recorded_at', 'desc')
-            ->select('latitude', 'longitude', 'recorded_at', 'device_id')
-            ->get();
+            ->select('latitude', 'longitude', 'recorded_at', 'device_id');
+
+        $limit = max(0, min($request->integer('limit', 0), 500));
+        if ($limit > 0) {
+            $positionsQuery->limit($limit);
+        }
+
+        $positions = $positionsQuery->get();
 
         return response()->json([
             'user_id' => $id,

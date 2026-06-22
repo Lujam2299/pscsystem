@@ -203,6 +203,140 @@ const estadoMapa = {
     inicializado: false
 };
 
+const interpolarCurvaCatmullRom = (puntos, muestrasPorTramo = 6) => {
+    if (puntos.length < 2) return puntos;
+
+    const resultado = [];
+    const puntoEn = (index) => puntos[Math.max(0, Math.min(index, puntos.length - 1))];
+
+    for (let i = 0; i < puntos.length - 1; i++) {
+        const p0 = puntoEn(i - 1);
+        const p1 = puntoEn(i);
+        const p2 = puntoEn(i + 1);
+        const p3 = puntoEn(i + 2);
+
+        for (let muestra = 0; muestra < muestrasPorTramo; muestra++) {
+            const t = muestra / muestrasPorTramo;
+            const t2 = t * t;
+            const t3 = t2 * t;
+            const lat = 0.5 * ((2 * p1[0])
+                + (-p0[0] + p2[0]) * t
+                + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2
+                + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+            const lng = 0.5 * ((2 * p1[1])
+                + (-p0[1] + p2[1]) * t
+                + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2
+                + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+
+            resultado.push([lat, lng]);
+        }
+    }
+
+    resultado.push(puntos[puntos.length - 1]);
+    return resultado;
+};
+
+const limitarPuntosVisuales = (elementos, maximo) => {
+    if (elementos.length <= maximo) return elementos;
+
+    const resultado = [];
+    const salto = (elementos.length - 1) / (maximo - 1);
+    for (let i = 0; i < maximo; i++) {
+        resultado.push(elementos[Math.round(i * salto)]);
+    }
+
+    return resultado;
+};
+
+const limitarIndicesVisuales = (total, maximo) => {
+    if (total <= maximo) return Array.from({ length: total }, (_, index) => index);
+
+    const indices = [];
+    const salto = (total - 1) / (maximo - 1);
+    for (let i = 0; i < maximo; i++) {
+        indices.push(Math.round(i * salto));
+    }
+
+    return indices;
+};
+
+const distanciaMetrosEntre = (inicio, fin) => {
+    const radioTierra = 6371000;
+    const lat1 = inicio[0] * Math.PI / 180;
+    const lat2 = fin[0] * Math.PI / 180;
+    const deltaLat = (fin[0] - inicio[0]) * Math.PI / 180;
+    const deltaLng = (fin[1] - inicio[1]) * Math.PI / 180;
+    const a = Math.sin(deltaLat / 2) ** 2
+        + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+
+    return radioTierra * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const crearTrayectoEstimado = (coordenadasGps) => {
+    if (coordenadasGps.length < 2) return coordenadasGps;
+
+    const distanciaPromedio = coordenadasGps
+        .slice(1)
+        .reduce((total, punto, index) => total + distanciaMetrosEntre(coordenadasGps[index], punto), 0)
+        / (coordenadasGps.length - 1);
+
+    const coordenadasBase = limitarPuntosVisuales(coordenadasGps, 1500);
+
+    if (distanciaPromedio <= 250) {
+        return interpolarCurvaCatmullRom(coordenadasBase, 4);
+    }
+
+    const puntosGuia = [coordenadasBase[0]];
+
+    for (let i = 0; i < coordenadasBase.length - 1; i++) {
+        const inicio = coordenadasBase[i];
+        const fin = coordenadasBase[i + 1];
+        const latMedia = (inicio[0] + fin[0]) / 2;
+        const lngMedia = (inicio[1] + fin[1]) / 2;
+
+        if (i % 2 === 0) {
+            puntosGuia.push([inicio[0], lngMedia], [fin[0], lngMedia]);
+        } else {
+            puntosGuia.push([latMedia, inicio[1]], [latMedia, fin[1]]);
+        }
+
+        puntosGuia.push(fin);
+    }
+
+    return interpolarCurvaCatmullRom(puntosGuia);
+};
+
+const limitarPuntosAnimacion = (coordenadas, maximo = 300) => {
+    if (coordenadas.length <= maximo) return coordenadas;
+
+    const resultado = [];
+    const salto = (coordenadas.length - 1) / (maximo - 1);
+    for (let i = 0; i < maximo; i++) {
+        resultado.push(coordenadas[Math.round(i * salto)]);
+    }
+
+    return resultado;
+};
+
+const obtenerSesionActual = (posicionesOrdenDescendente) => {
+    if (posicionesOrdenDescendente.length < 2) return [...posicionesOrdenDescendente];
+
+    const sesion = [posicionesOrdenDescendente[0]];
+    for (let i = 1; i < posicionesOrdenDescendente.length; i++) {
+        const posicionMasNueva = posicionesOrdenDescendente[i - 1];
+        const posicionAnterior = posicionesOrdenDescendente[i];
+        const diferenciaMinutos = (
+            new Date(posicionMasNueva.recorded_at).getTime()
+            - new Date(posicionAnterior.recorded_at).getTime()
+        ) / 60000;
+
+        if (diferenciaMinutos > 30) break;
+        sesion.push(posicionAnterior);
+    }
+
+    return sesion;
+};
+
 // --- FUNCIONES DE MARCADORES ---
 const crearMarcadorEscolta = (user) => {
     const lat = parseFloat(user.latitude);
@@ -293,20 +427,26 @@ const mostrarHistorial = async (userId) => {
 
         // ✅ Dibujar ruta y marcadores si hay ubicaciones
         if (data.positions.length > 0) {
-            const coords = data.positions
+            const posicionesTrayecto = obtenerSesionActual(data.positions);
+            const coordsGps = posicionesTrayecto
                 .map(pos => [parseFloat(pos.latitude), parseFloat(pos.longitude)])
                 .reverse(); // Más reciente al final
 
             // Dibujar línea de trayectoria
-            const polyline = L.polyline(coords, {
+            const coordsEstimadas = crearTrayectoEstimado(coordsGps);
+
+            const polyline = L.polyline(coordsEstimadas, {
                 color: '#3b82f6', // Azul
                 weight: 4,
                 opacity: 0.7,
-                smoothFactor: 1
-            }).addTo(grupoRutasHistorial);
+                smoothFactor: 0.5
+            })
+            .bindTooltip('Trayecto estimado', { sticky: true })
+            .addTo(grupoRutasHistorial);
 
             // Dibujar marcadores pequeños en cada punto
-            coords.forEach((coord, index) => {
+            limitarIndicesVisuales(coordsGps.length, 200).forEach((index) => {
+                const coord = coordsGps[index];
                 const markerSmall = L.circleMarker(coord, {
                     radius: 6, // Tamaño del círculo
                     color: '#1d4ed8', // Borde azul oscuro
@@ -317,7 +457,7 @@ const mostrarHistorial = async (userId) => {
                 .bindPopup(`
                     <div>
                         <strong>Punto ${index + 1}</strong><br>
-                        ${dayjs(data.positions[data.positions.length - 1 - index].recorded_at).format('HH:mm:ss')}<br>
+                        ${dayjs(posicionesTrayecto[posicionesTrayecto.length - 1 - index].recorded_at).format('HH:mm:ss')}<br>
                         ${coord[0]}, ${coord[1]}
                     </div>
                 `)
@@ -435,15 +575,18 @@ const animarTrayecto = async (userId) => {
         if (!response.ok) throw new Error('Error al cargar historial');
 
         const data = await response.json();
-        if (data.positions.length < 2) {
+        const posicionesSesionActual = obtenerSesionActual(data.positions);
+        if (posicionesSesionActual.length < 2) {
             alert('No hay suficientes puntos para animar el trayecto.');
             return;
         }
 
         // Coordenadas en orden (más antiguo a más reciente)
-        const coords = data.positions
+        const coordsGps = posicionesSesionActual
             .sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at))
             .map(pos => [parseFloat(pos.latitude), parseFloat(pos.longitude)]);
+
+        const coords = limitarPuntosAnimacion(crearTrayectoEstimado(coordsGps));
 
         // Crear ícono de animación
         const animIcon = L.divIcon({
@@ -466,12 +609,14 @@ const animarTrayecto = async (userId) => {
 
             const [lat, lng] = coords[currentIndex];
             markerAnim.setLatLng([lat, lng]);
-            mapa.setView([lat, lng], 15); // Centrar y hacer zoom
+            if (!mapa.getBounds().pad(-0.15).contains([lat, lng])) {
+                mapa.panTo([lat, lng], { animate: true, duration: 0.25 });
+            }
 
             console.log(`Moviendo a punto ${currentIndex + 1}: ${lat}, ${lng}`);
 
             currentIndex++;
-        }, 1000); // 1 segundo por punto
+        }, 50);
     } catch (err) {
         console.error('Error en animación:', err);
         alert('No se pudo iniciar la animación del trayecto.');

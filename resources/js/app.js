@@ -4,6 +4,28 @@ import './echo';
 
 const MOVEMENT_INACTIVITY_MINUTES = 30;
 const notifiedMovementStarts = new Set();
+const lastRealtimePositionByUser = new Map();
+
+function showMovementToast(position, notificationKey) {
+    if (notifiedMovementStarts.has(notificationKey)) {
+        return;
+    }
+
+    notifiedMovementStarts.add(notificationKey);
+
+    if (typeof window.Swal !== 'undefined') {
+        window.Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'info',
+            title: `${position.user?.name || 'Un custodio'} está en movimiento`,
+            text: 'Ha iniciado el seguimiento de ubicación.',
+            showConfirmButton: false,
+            timer: 5000,
+            timerProgressBar: true,
+        });
+    }
+}
 
 async function notifyMovementStart(event) {
     const position = event?.position;
@@ -22,8 +44,24 @@ async function notifyMovementStart(event) {
         return;
     }
 
+    const eventTime = new Date(position.recorded_at).getTime();
+    if (Number.isNaN(eventTime)) {
+        return;
+    }
+
+    const previousEventTime = lastRealtimePositionByUser.get(position.user_id);
+    lastRealtimePositionByUser.set(position.user_id, eventTime);
+
+    if (previousEventTime !== undefined) {
+        const inactivityMinutes = (eventTime - previousEventTime) / 60000;
+        if (inactivityMinutes > MOVEMENT_INACTIVITY_MINUTES) {
+            showMovementToast(position, notificationKey);
+        }
+        return;
+    }
+
     try {
-        const response = await fetch(`/api/realtime-position/user/${encodeURIComponent(position.user_id)}/recent`, {
+        const response = await fetch(`/api/realtime-position/user/${encodeURIComponent(position.user_id)}/recent?limit=2`, {
             headers: {
                 Accept: 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
