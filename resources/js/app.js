@@ -15,9 +15,39 @@ const lastRealtimePositionByUser = new Map();
 const globalGeofenceAssignments = new Map();
 const globalGeofenceStates = new Map();
 let globalGeofencesReady = false;
+const receivedRealtimeToastKeys = new Set();
 
 function canReceiveCustodianNotifications() {
     return NOTIFICATION_ROLES.has(window.userRoleUpper || '');
+}
+
+function showPrivateRealtimeToast(notification) {
+    if (!notification || typeof window.Swal === 'undefined') return;
+
+    const notificationKey = notification.key || null;
+    if (notificationKey && receivedRealtimeToastKeys.has(notificationKey)) return;
+    if (notificationKey) receivedRealtimeToastKeys.add(notificationKey);
+
+    const allowedIcons = new Set(['success', 'error', 'warning', 'info', 'question']);
+    const icon = allowedIcons.has(notification.icon) ? notification.icon : 'info';
+
+    window.Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon,
+        title: notification.title || 'Nueva notificación',
+        text: notification.text || '',
+        showConfirmButton: false,
+        timer: 6000,
+        timerProgressBar: true,
+        didOpen: toast => {
+            if (!notification.url) return;
+            toast.style.cursor = 'pointer';
+            toast.addEventListener('click', () => {
+                window.location.href = notification.url;
+            });
+        },
+    });
 }
 
 function geofenceDistanceMeters(lat1, lng1, lat2, lng2) {
@@ -258,6 +288,11 @@ async function notifyMovementStart(event) {
 
 // Inicializar listeners de chat si estamos en una vista de conversación
 document.addEventListener('DOMContentLoaded', function() {
+    if (window.userId && typeof window.Echo !== 'undefined') {
+        window.Echo.private(`App.Models.User.${window.userId}`)
+            .listen('.ToastNotification', showPrivateRealtimeToast);
+    }
+
     // Buscar ID de conversación en múltiples lugares posibles
     if (canReceiveCustodianNotifications() && typeof window.Echo !== 'undefined') {
         initializeGlobalGeofences();
