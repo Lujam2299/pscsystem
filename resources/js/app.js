@@ -16,9 +16,129 @@ const globalGeofenceAssignments = new Map();
 const globalGeofenceStates = new Map();
 let globalGeofencesReady = false;
 const receivedRealtimeToastKeys = new Set();
+const NOTIFICATION_SOUND_STORAGE_KEY = 'erp-notification-sounds-enabled';
+let notificationAudioContext = null;
+let notificationSoundsEnabled = readNotificationSoundPreference();
 
 function canReceiveCustodianNotifications() {
     return NOTIFICATION_ROLES.has(window.userRoleUpper || '');
+}
+
+function readNotificationSoundPreference() {
+    try {
+        return window.localStorage.getItem(NOTIFICATION_SOUND_STORAGE_KEY) === 'true';
+    } catch (error) {
+        return false;
+    }
+}
+
+function saveNotificationSoundPreference() {
+    try {
+        window.localStorage.setItem(
+            NOTIFICATION_SOUND_STORAGE_KEY,
+            notificationSoundsEnabled ? 'true' : 'false',
+        );
+    } catch (error) {
+        // El sonido continúa funcionando aunque el navegador bloquee localStorage.
+    }
+}
+
+function getNotificationAudioContext() {
+    if (!notificationAudioContext) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return null;
+        notificationAudioContext = new AudioContextClass();
+    }
+
+    return notificationAudioContext;
+}
+
+async function unlockNotificationAudio() {
+    if (!notificationSoundsEnabled) return;
+
+    const context = getNotificationAudioContext();
+    if (context?.state === 'suspended') {
+        try {
+            await context.resume();
+        } catch (error) {
+            // El navegador permitirá reintentarlo con la siguiente interacción.
+        }
+    }
+}
+
+function emitNotificationTone(context, icon) {
+    const frequencies = {
+        success: [659.25, 880],
+        warning: [523.25, 659.25],
+        error: [392, 329.63],
+        info: [587.33, 783.99],
+        question: [523.25, 698.46],
+    };
+    const notes = frequencies[icon] || frequencies.info;
+    const startTime = context.currentTime;
+
+    notes.forEach((frequency, index) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        const noteStart = startTime + (index * 0.12);
+        const noteEnd = noteStart + 0.16;
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, noteStart);
+        gain.gain.setValueAtTime(0.0001, noteStart);
+        gain.gain.exponentialRampToValueAtTime(0.16, noteStart + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, noteEnd);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(noteStart);
+        oscillator.stop(noteEnd);
+    });
+}
+
+async function playNotificationSound(icon = 'info') {
+    if (!notificationSoundsEnabled) return;
+
+    const context = getNotificationAudioContext();
+    if (!context) return;
+
+    if (context.state === 'suspended') {
+        try {
+            await context.resume();
+        } catch (error) {
+            return;
+        }
+    }
+
+    if (context.state === 'running') {
+        emitNotificationTone(context, icon);
+    }
+}
+
+function updateNotificationSoundButton() {
+    const button = document.getElementById('notification-sound-toggle');
+    const icon = document.getElementById('notification-sound-icon');
+    if (!button || !icon) return;
+
+    button.setAttribute('aria-pressed', notificationSoundsEnabled ? 'true' : 'false');
+    button.title = notificationSoundsEnabled
+        ? 'Sonidos de notificación activados'
+        : 'Sonidos de notificación silenciados';
+    button.classList.toggle('bg-indigo-600', notificationSoundsEnabled);
+    button.classList.toggle('hover:bg-indigo-700', notificationSoundsEnabled);
+    button.classList.toggle('bg-gray-500', !notificationSoundsEnabled);
+    button.classList.toggle('hover:bg-gray-600', !notificationSoundsEnabled);
+    icon.className = notificationSoundsEnabled ? 'ti ti-volume' : 'ti ti-volume-off';
+}
+
+async function toggleNotificationSounds() {
+    notificationSoundsEnabled = !notificationSoundsEnabled;
+    saveNotificationSoundPreference();
+    updateNotificationSoundButton();
+
+    if (notificationSoundsEnabled) {
+        await unlockNotificationAudio();
+        await playNotificationSound('success');
+    }
 }
 
 function showPrivateRealtimeToast(notification) {
@@ -31,6 +151,7 @@ function showPrivateRealtimeToast(notification) {
     const allowedIcons = new Set(['success', 'error', 'warning', 'info', 'question']);
     const icon = allowedIcons.has(notification.icon) ? notification.icon : 'info';
 
+    playNotificationSound(icon);
     window.Swal.fire({
         toast: true,
         position: 'top-end',
@@ -119,6 +240,7 @@ function evaluateGlobalGeofences(position, allowNotification) {
                 if (sessionStorage.getItem(notificationKey)) return;
                 sessionStorage.setItem(notificationKey, '1');
 
+                playNotificationSound('success');
                 window.Swal.fire({
                     toast: true,
                     position: 'top-end',
@@ -182,6 +304,7 @@ function showMovementToast(position, notificationKey) {
     notifiedMovementStarts.add(notificationKey);
 
     if (typeof window.Swal !== 'undefined') {
+        playNotificationSound('info');
         window.Swal.fire({
             toast: true,
             position: 'top-end',
@@ -270,6 +393,7 @@ async function notifyMovementStart(event) {
         notifiedMovementStarts.add(notificationKey);
 
         if (typeof window.Swal !== 'undefined') {
+            playNotificationSound('info');
             window.Swal.fire({
                 toast: true,
                 position: 'top-end',
@@ -288,6 +412,14 @@ async function notifyMovementStart(event) {
 
 // Inicializar listeners de chat si estamos en una vista de conversación
 document.addEventListener('DOMContentLoaded', function() {
+    updateNotificationSoundButton();
+    document.getElementById('notification-sound-toggle')
+        ?.addEventListener('click', toggleNotificationSounds);
+    document.addEventListener('pointerdown', unlockNotificationAudio, {
+        once: true,
+        capture: true,
+    });
+
     if (window.userId && typeof window.Echo !== 'undefined') {
         window.Echo.private(`App.Models.User.${window.userId}`)
             .listen('.ToastNotification', showPrivateRealtimeToast);

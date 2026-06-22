@@ -90,6 +90,17 @@
         <x-footer></x-footer>
     </div>
 
+    <button
+        id="notification-sound-toggle"
+        type="button"
+        class="fixed bottom-5 right-5 z-[2000] inline-flex h-11 w-11 items-center justify-center rounded-full bg-gray-500 text-white shadow-lg transition hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+        aria-label="Activar o silenciar sonidos de notificación"
+        aria-pressed="false"
+        title="Sonidos de notificación silenciados"
+    >
+        <i id="notification-sound-icon" class="ti ti-volume-off" aria-hidden="true"></i>
+    </button>
+
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     @livewireScripts
