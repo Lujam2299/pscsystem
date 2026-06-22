@@ -30,7 +30,6 @@ class ChatWebController extends Controller
 
     public function storeMensaje(Request $request)
     {
-        dd(Auth::id());
         $request->validate([
             'conversation_id' => 'required|exists:conversations,id',
             'body' => 'required|string|max:1000',
