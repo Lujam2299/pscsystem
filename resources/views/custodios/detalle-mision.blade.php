@@ -225,10 +225,35 @@
     @push('scripts')
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script>
-            let mapaDetalle, grupoGeocercasDetalle;
+            let mapaDetalle, grupoGeocercasDetalle, grupoAgentesDetalle;
+            const marcadoresAgentesDetalle = {};
+            const estadosGeocercasDetalle = {};
+            const geocercasDetalleData = @json($geocercas->values());
+            const posicionesAgentesDetalleData = @json($posicionesAgentes);
+            const agentesAsignadosDetalle = new Set(@json($agentes->pluck('id')->values()));
+            const misionDetalleActiva = @json($misionActiva);
+            const nombreMisionDetalle = @json($mision->nombre_clave ?? 'Misión #' . $mision->id);
             const estadoMapaDetalle = {
                 inicializado: false
             };
+
+            function formatearNombreGeocercaDetalle(nombreCompleto) {
+                if (typeof nombreCompleto !== 'string' || !nombreCompleto.trim()) {
+                    return 'Geocerca de la misión';
+                }
+
+                const partes = nombreCompleto
+                    .split(',')
+                    .map(parte => parte.trim())
+                    .filter(Boolean);
+                const nombreLugar = partes[0];
+                const municipio = partes.find(parte => parte.toLowerCase().startsWith('municipio de '));
+                const ciudad = municipio
+                    ? municipio.replace(/^municipio de\s+/i, '').trim()
+                    : null;
+
+                return ciudad ? `${nombreLugar}, ${ciudad}` : nombreLugar;
+            }
 
             function crearGeocercaDetalle(centro, radioKm, tipo, nombre) {
                 const lat = parseFloat(centro.lat);
@@ -257,7 +282,7 @@
                 // Popup estilizado
                 const popupContent = `
                     <div class="p-1 min-w-[150px]">
-                        <h3 class="font-bold text-gray-800 text-sm mb-1">${nombre}</h3>
+                        <h3 class="font-bold text-gray-800 text-sm mb-1">${escaparHtmlDetalle(formatearNombreGeocercaDetalle(nombre))}</h3>
                         <div class="text-xs text-gray-600 space-y-1">
                             <p><span class="font-semibold">Tipo:</span> ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}</p>
                             <p><span class="font-semibold">Radio:</span> ${radioKm} km</p>
@@ -266,6 +291,142 @@
                 `;
                 circulo.bindPopup(popupContent);
                 return circulo;
+            }
+
+            function escaparHtmlDetalle(valor) {
+                const elemento = document.createElement('div');
+                elemento.textContent = valor ?? '';
+                return elemento.innerHTML;
+            }
+
+            function distanciaMetrosDetalle(lat1, lng1, lat2, lng2) {
+                const radioTierra = 6371000;
+                const aLat1 = lat1 * Math.PI / 180;
+                const aLat2 = lat2 * Math.PI / 180;
+                const deltaLat = (lat2 - lat1) * Math.PI / 180;
+                const deltaLng = (lng2 - lng1) * Math.PI / 180;
+                const a = Math.sin(deltaLat / 2) ** 2
+                    + Math.cos(aLat1) * Math.cos(aLat2) * Math.sin(deltaLng / 2) ** 2;
+
+                return radioTierra * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            }
+
+            function crearIconoAgenteDetalle(nombre) {
+                const inicial = (nombre || 'A').charAt(0).toUpperCase();
+                return L.divIcon({
+                    className: 'custom-escolta-icon',
+                    html: `<div style="
+                        background-color: #22c55e;
+                        color: white;
+                        border: 2px solid #111827;
+                        border-radius: 50%;
+                        width: 32px;
+                        height: 32px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: bold;
+                        box-shadow: 0 0 6px rgba(0,0,0,0.45);
+                    ">${escaparHtmlDetalle(inicial)}</div>`,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
+            }
+
+            function actualizarMarcadorAgenteDetalle(posicion) {
+                const userId = Number(posicion.user_id);
+                const lat = parseFloat(posicion.latitude);
+                const lng = parseFloat(posicion.longitude);
+                const nombre = posicion.user?.name || 'Agente';
+
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+                const contenidoPopup = `
+                    <div class="p-1 min-w-[150px]">
+                        <h3 class="font-bold text-gray-800 text-sm mb-1">${escaparHtmlDetalle(nombre)}</h3>
+                        <p class="text-xs text-gray-600">Última ubicación: ${escaparHtmlDetalle(posicion.recorded_at || '')}</p>
+                    </div>
+                `;
+
+                if (marcadoresAgentesDetalle[userId]) {
+                    marcadoresAgentesDetalle[userId]
+                        .setLatLng([lat, lng])
+                        .setPopupContent(contenidoPopup);
+                    return;
+                }
+
+                const marker = L.marker([lat, lng], {
+                    icon: crearIconoAgenteDetalle(nombre)
+                }).bindPopup(contenidoPopup);
+
+                grupoAgentesDetalle.addLayer(marker);
+                marcadoresAgentesDetalle[userId] = marker;
+            }
+
+            function mostrarToastIngresoDetalle(posicion, geocerca) {
+                if (typeof window.Swal === 'undefined') return;
+
+                const nombreAgente = posicion.user?.name || 'Un agente';
+                const nombreGeocercaFormateado = formatearNombreGeocercaDetalle(geocerca.nombre_referencia);
+                window.Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: `${nombreAgente} ingresó a ${nombreGeocercaFormateado}`,
+                    text: nombreMisionDetalle,
+                    showConfirmButton: false,
+                    timer: 6000,
+                    timerProgressBar: true
+                });
+            }
+
+            function procesarPosicionAgenteDetalle(posicion, permitirNotificacion = true) {
+                const userId = Number(posicion?.user_id);
+                if (!agentesAsignadosDetalle.has(userId)) return;
+
+                const lat = parseFloat(posicion.latitude);
+                const lng = parseFloat(posicion.longitude);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+                actualizarMarcadorAgenteDetalle(posicion);
+
+                geocercasDetalleData.forEach(geocerca => {
+                    const centroLat = parseFloat(geocerca.centro?.lat);
+                    const centroLng = parseFloat(geocerca.centro?.lng);
+                    const radioMetros = parseFloat(geocerca.radio_km) * 1000;
+                    if (!Number.isFinite(centroLat) || !Number.isFinite(centroLng) || !Number.isFinite(radioMetros)) {
+                        return;
+                    }
+
+                    const distancia = distanciaMetrosDetalle(lat, lng, centroLat, centroLng);
+                    const claveEstado = `${userId}:${geocerca.id}`;
+                    const estadoAnterior = estadosGeocercasDetalle[claveEstado];
+                    const estaDentro = distancia <= radioMetros;
+                    const margenSalida = Math.min(200, Math.max(50, radioMetros * 0.05));
+
+                    if (estadoAnterior === undefined) {
+                        estadosGeocercasDetalle[claveEstado] = estaDentro;
+                        return;
+                    }
+
+                    if (!estadoAnterior && estaDentro) {
+                        estadosGeocercasDetalle[claveEstado] = true;
+                        if (permitirNotificacion) {
+                            mostrarToastIngresoDetalle(posicion, geocerca);
+                        }
+                    } else if (estadoAnterior && distancia > radioMetros + margenSalida) {
+                        estadosGeocercasDetalle[claveEstado] = false;
+                    }
+                });
+            }
+
+            function escucharPosicionesMisionDetalle() {
+                if (!misionDetalleActiva || typeof window.Echo === 'undefined') return;
+
+                window.Echo.channel('realtime-positions.all')
+                    .listen('.NuevaUbicacionRealtime', event => {
+                        procesarPosicionAgenteDetalle(event?.position, true);
+                    });
             }
 
             function inicializarMapaDetalle() {
@@ -283,12 +444,17 @@
                 }).addTo(mapaDetalle);
 
                 grupoGeocercasDetalle = L.layerGroup().addTo(mapaDetalle);
+                grupoAgentesDetalle = L.layerGroup().addTo(mapaDetalle);
                 estadoMapaDetalle.inicializado = true;
 
-                const geocercasData = @json($geocercas);
-                cargarGeocercasDetalle(geocercasData);
+                cargarGeocercasDetalle(geocercasDetalleData);
+                posicionesAgentesDetalleData.forEach(posicion => {
+                    procesarPosicionAgenteDetalle(posicion, false);
+                });
 
-                document.getElementById('mapaDetalleEstado').textContent = 'Geocercas cargadas correctamente';
+                document.getElementById('mapaDetalleEstado').textContent = misionDetalleActiva
+                    ? 'Seguimiento en tiempo real activo'
+                    : 'Misión fuera de vigencia';
                 setTimeout(() => {
                     document.getElementById('mapaDetalleEstado').classList.add('opacity-0', 'transition-opacity', 'duration-500');
                 }, 3000);
@@ -332,7 +498,10 @@
                 }
             }
 
-            document.addEventListener('DOMContentLoaded', inicializarMapaDetalle);
+            document.addEventListener('DOMContentLoaded', function () {
+                inicializarMapaDetalle();
+                escucharPosicionesMisionDetalle();
+            });
 
             document.addEventListener('click', function(e) {
                 if (e.target.closest('#btn-centrar-mapa-detalle')) {

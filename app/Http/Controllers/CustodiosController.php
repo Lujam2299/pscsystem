@@ -12,6 +12,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Geocoder\Laravel\Facades\Geocoder;
 use App\Models\Geofence;
+use App\Models\RealtimePosition;
 
 class CustodiosController extends Controller
 {
@@ -232,15 +233,54 @@ class CustodiosController extends Controller
             // Cargar las geocercas asociadas a esta misión
             $geocercas = Geofence::where('mision_id', $misionId)->get();
 
-            // Opcional: Cargar agentes si necesitas mostrarlos
-            $agentesIds = json_decode($mision->agentes_id, true);
+            // Cargar agentes asignados admitiendo JSON y arreglos casteados.
+            $agentesIds = is_array($mision->agentes_id)
+                ? $mision->agentes_id
+                : (json_decode($mision->agentes_id, true) ?? []);
             $agentes = User::whereIn('id', $agentesIds)->get();
+
+            $ultimasPosiciones = RealtimePosition::query()
+                ->whereIn('user_id', $agentesIds)
+                ->whereIn('id', function ($query) use ($agentesIds) {
+                    $query->selectRaw('MAX(id)')
+                        ->from('realtime_positions')
+                        ->whereIn('user_id', $agentesIds)
+                        ->groupBy('user_id');
+                })
+                ->get()
+                ->keyBy('user_id');
+
+            $agentesPorId = $agentes->keyBy('id');
+            $posicionesAgentes = $ultimasPosiciones->map(function ($posicion) use ($agentesPorId) {
+                return [
+                    'user_id' => $posicion->user_id,
+                    'latitude' => $posicion->latitude,
+                    'longitude' => $posicion->longitude,
+                    'recorded_at' => $posicion->recorded_at?->toISOString(),
+                    'user' => [
+                        'id' => $posicion->user_id,
+                        'name' => $agentesPorId->get($posicion->user_id)?->name ?? 'Agente',
+                    ],
+                ];
+            })->values();
+
+            $ahora = Carbon::now();
+            $inicioMision = $mision->fecha_inicio
+                ? Carbon::parse($mision->fecha_inicio)->startOfDay()
+                : null;
+            $finMision = $mision->fecha_fin
+                ? Carbon::parse($mision->fecha_fin)->endOfDay()
+                : null;
+            $misionActiva = (!$inicioMision || $ahora->greaterThanOrEqualTo($inicioMision))
+                && (!$finMision || $ahora->lessThanOrEqualTo($finMision));
 
             // Retornar la vista con los datos
             return view('custodios.detalle-mision', [
                 'mision' => $mision,
                 'geocercas' => $geocercas,
                 'agentes' => $agentes ?? null, // Pasa agentes si los usas
+                'posicionesAgentes' => $posicionesAgentes,
+                'misionActiva' => $misionActiva,
             ]);
 
         } catch (\Exception $e) {
