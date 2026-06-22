@@ -3,8 +3,13 @@ import './bootstrap';
 import './echo';
 
 const MOVEMENT_INACTIVITY_MINUTES = 30;
+const NOTIFICATION_ROLES = new Set(['CUSTODIOS', 'AUXILIAR MONITORISTA']);
 const notifiedMovementStarts = new Set();
 const lastRealtimePositionByUser = new Map();
+
+function canReceiveCustodianNotifications() {
+    return NOTIFICATION_ROLES.has(window.userRoleUpper || '');
+}
 
 function showMovementToast(position, notificationKey) {
     if (notifiedMovementStarts.has(notificationKey)) {
@@ -28,6 +33,10 @@ function showMovementToast(position, notificationKey) {
 }
 
 async function notifyMovementStart(event) {
+    if (!canReceiveCustodianNotifications()) {
+        return;
+    }
+
     const position = event?.position;
 
     if (!position?.user_id || !position?.recorded_at) {
@@ -117,7 +126,7 @@ async function notifyMovementStart(event) {
 // Inicializar listeners de chat si estamos en una vista de conversación
 document.addEventListener('DOMContentLoaded', function() {
     // Buscar ID de conversación en múltiples lugares posibles
-    if (typeof window.Echo !== 'undefined') {
+    if (canReceiveCustodianNotifications() && typeof window.Echo !== 'undefined') {
         window.Echo.channel('realtime-positions.all')
             .listen('.NuevaUbicacionRealtime', notifyMovementStart);
     }

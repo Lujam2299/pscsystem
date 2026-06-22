@@ -364,6 +364,8 @@
             }
 
             function mostrarToastIngresoDetalle(posicion, geocerca) {
+                const rolesPermitidos = ['CUSTODIOS', 'AUXILIAR MONITORISTA'];
+                if (!rolesPermitidos.includes(window.userRoleUpper || '')) return;
                 if (typeof window.Swal === 'undefined') return;
 
                 const nombreAgente = posicion.user?.name || 'Un agente';

@@ -61,6 +61,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
         window.userId = @json(auth()->user()->id);
+        window.userRoleUpper = @json(strtoupper(trim(auth()->user()->rol ?? '')));
     </script>
 
     @livewireStyles
