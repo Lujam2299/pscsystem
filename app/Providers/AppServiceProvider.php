@@ -10,6 +10,8 @@ use App\Models\Incapacidad;
 use App\Models\Message;
 use App\Models\RiesgoTrabajo;
 use App\Models\SolicitudBajas;
+use App\Policies\SolicitudBajasPolicy;
+use Illuminate\Support\Facades\Gate;
 use App\Models\ValesComida;
 use App\Observers\AsistenciaObserver;
 use App\Observers\BuzonQuejaObserver;
@@ -39,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(SolicitudBajas::class, SolicitudBajasPolicy::class);
         Message::observe(MessageObserver::class);
         BuzonQueja::observe(BuzonQuejaObserver::class);
         Incapacidad::observe(IncapacidadObserver::class);

@@ -48,14 +48,16 @@ class HistorialFiniquitosNominas extends Component
 
     public function render()
     {
-        $query = SolicitudBajas::with('usuario.documentacionAltas')
+        $query = SolicitudBajas::with(['usuario.documentacionAltas', 'finiquito'])
+            ->where('por', 'Renuncia')
             ->whereNotNull('calculo_finiquito')
             /*->where('estatus', 'Aceptada')*/;
 
         // Filtro por nombre
         if (!empty($this->search)) {
-            $query->whereHas('usuario.documentacionAltas', function ($q) {
-                $q->whereRaw('name', 'like', ["%{$this->search}%"]);
+            $query->whereHas('usuario', function ($q) {
+                $q->where('name', 'like', "%{$this->search}%")
+                    ->orWhere('email', 'like', "%{$this->search}%");
             });
         }
 

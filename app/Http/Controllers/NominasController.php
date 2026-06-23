@@ -20,6 +20,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Models\Finiquito;
+use App\Services\FiniquitoCalculator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class NominasController extends Controller
 {
@@ -28,10 +32,13 @@ class NominasController extends Controller
     }
 
     public function verBajas(){
+        Gate::authorize('viewFiniquitos', SolicitudBajas::class);
+
         $bajas = SolicitudBajas::where('estatus', 'Aceptada')
             ->where('por', 'Renuncia')
             ->where('calculo_finiquito', null)
-            ->whereDate('fecha_baja', '>=', Carbon::today('America/Mexico_City')->subDays(10))
+            ->with('user')
+            ->orderByDesc('fecha_baja')
             ->paginate(10);
         return view('nominas.verBajas', compact('bajas'));
     }
@@ -48,59 +55,61 @@ class NominasController extends Controller
         return view('nominas.nuevasAltas', compact('solicitudes', 'users'));
     }
 
-    public function guardarCalculoFiniquito(Request $request)
+    public function guardarCalculoFiniquito(Request $request, FiniquitoCalculator $calculator)
     {
-        Log::info('Solicitud recibida para guardar imagen de finiquito.', [
-            'solicitud_id' => $request->input('solicitud_id')
+        $validated = $request->validate([
+            'imagen' => ['required', 'string', 'max:10485760', 'regex:/^data:image\/png;base64,/'],
+            'solicitud_id' => 'required|integer|exists:solicitud_bajas,id',
         ]);
 
-        try {
-            $request->validate([
-                'imagen' => 'required|string',
-                'solicitud_id' => 'required|integer|exists:solicitud_bajas,id',
-            ]);
+        $solicitud = SolicitudBajas::with('user.solicitudAlta')->findOrFail($validated['solicitud_id']);
+        Gate::authorize('processFiniquito', $solicitud);
 
-            $imagenBase64 = $request->input('imagen');
-            $solicitudId = $request->input('solicitud_id');
-
-            $solicitud = SolicitudBajas::find($solicitudId);
-            if (!$solicitud) {
-                Log::error("Solicitud con ID {$solicitudId} no encontrada.");
-                return response()->json(['success' => false, 'error' => 'Solicitud no encontrada.']);
-            }
-
-            if ($solicitud->calculo_finiquito && Storage::disk('public')->exists($solicitud->calculo_finiquito)) {
-                Storage::disk('public')->delete($solicitud->calculo_finiquito);
-                Log::info("Archivo anterior eliminado: {$solicitud->calculo_finiquito}");
-            }
-
-            $imagen = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $imagenBase64));
-            if (!$imagen) {
-                Log::error('No se pudo decodificar la imagen.');
-                return response()->json(['success' => false, 'error' => 'No se pudo decodificar la imagen.']);
-            }
-
-            $carpeta = "solicitudesBajas/{$solicitudId}";
-            Storage::disk('public')->makeDirectory($carpeta);
-
-            $nombreArchivo = 'finiquito_' . now()->format('Ymd_His') . '.png';
-            $rutaCompleta = "{$carpeta}/{$nombreArchivo}";
-
-            Storage::disk('public')->put($rutaCompleta, $imagen);
-            Log::info("Imagen guardada correctamente en: {$rutaCompleta}");
-
-            $solicitud->calculo_finiquito = $rutaCompleta;
-            $solicitud->observaciones = "Finiquito enviado a RH.";
-            $solicitud->save();
-
-            Log::info('Ruta del finiquito actualizada en la base de datos.');
-
-            return response()->json(['success' => true, 'ruta' => $rutaCompleta]);
-
-        } catch (\Exception $e) {
-            Log::error('Error al guardar imagen de finiquito: ' . $e->getMessage());
-            return response()->json(['success' => false, 'error' => 'Error interno.']);
+        if (!$solicitud->arch_renuncia) {
+            return response()->json(['success' => false, 'error' => 'Falta la renuncia firmada.'], 422);
         }
+
+        $encoded = substr($validated['imagen'], strpos($validated['imagen'], ',') + 1);
+        $imagen = base64_decode($encoded, true);
+        if ($imagen === false || !str_starts_with($imagen, "\x89PNG\r\n\x1a\n")) {
+            return response()->json(['success' => false, 'error' => 'La imagen del cálculo no es un PNG válido.'], 422);
+        }
+
+        try {
+            $calculo = $calculator->calculate($solicitud);
+        } catch (\DomainException $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 422);
+        }
+        $carpeta = "finiquitos/{$solicitud->id}";
+        $nombreArchivo = 'finiquito_' . now()->format('Ymd_His_u') . '.png';
+        $rutaCompleta = "{$carpeta}/{$nombreArchivo}";
+        if (!Storage::disk('local')->put($rutaCompleta, $imagen)) {
+            return response()->json(['success' => false, 'error' => 'No fue posible almacenar el documento.'], 500);
+        }
+        $rutaAnterior = $solicitud->calculo_finiquito;
+
+        try {
+            DB::transaction(function () use ($solicitud, $rutaCompleta, $calculo) {
+                $solicitud->update([
+                    'calculo_finiquito' => 'private:' . $rutaCompleta,
+                    'observaciones' => 'Finiquito enviado a RH.',
+                ]);
+
+                $this->persistCalculation($solicitud, $calculo);
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($rutaCompleta);
+            Log::error('Error al guardar finiquito.', ['exception' => $e]);
+            return response()->json(['success' => false, 'error' => 'No fue posible guardar el finiquito.'], 500);
+        }
+
+        $this->deletePrivateFiniquito($rutaAnterior);
+
+        return response()->json([
+            'success' => true,
+            'ruta' => route('finiquitos.archivo', $solicitud),
+            'total' => $calculo['total'],
+        ]);
     }
 
     public function asistenciasNominas(){
@@ -869,34 +878,95 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
         return view('nominas.registros');
     }
 
-    public function guardarFiniquitoManual(Request $request, $id)
+    public function guardarFiniquitoManual(Request $request, $id, FiniquitoCalculator $calculator)
 {
     $request->validate([
         'finiquito_archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120', // 5MB max
     ]);
 
-    $solicitud = SolicitudBajas::findOrFail($id);
+    $solicitud = SolicitudBajas::with('user.solicitudAlta')->findOrFail($id);
+    Gate::authorize('processFiniquito', $solicitud);
+
+    if (!$solicitud->arch_renuncia) {
+        return redirect()->back()->with('error', 'Falta la renuncia firmada.');
+    }
 
     if ($request->hasFile('finiquito_archivo')) {
-        $directorio = 'solicitudesBajas/' . $id;
-        Storage::disk('public')->makeDirectory($directorio);
+        $directorio = 'finiquitos/' . $id;
+        Storage::disk('local')->makeDirectory($directorio);
 
         $extension = $request->file('finiquito_archivo')->getClientOriginalExtension();
         $nombreArchivo = 'finiquito_' . date('Ymd_His') . '.' . $extension;
         $rutaCompleta = $directorio . '/' . $nombreArchivo;
 
-        $rutaArchivo = $request->file('finiquito_archivo')->storeAs($directorio, $nombreArchivo, 'public');
+        $rutaArchivo = $request->file('finiquito_archivo')->storeAs($directorio, $nombreArchivo, 'local');
+        $rutaAnterior = $solicitud->calculo_finiquito;
+        try {
+            $calculo = $calculator->calculate($solicitud);
+        } catch (\DomainException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
-        $solicitud->update([
-            'calculo_finiquito' => $rutaArchivo,
-            'observaciones' => 'Finiquito enviado a RH.'
-        ]);
+        try {
+            DB::transaction(function () use ($solicitud, $rutaArchivo, $calculo) {
+                $solicitud->update([
+                    'calculo_finiquito' => 'private:' . $rutaArchivo,
+                    'observaciones' => 'Finiquito enviado a RH.'
+                ]);
+                $this->persistCalculation($solicitud, $calculo);
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($rutaArchivo);
+            Log::error('Error al guardar finiquito manual.', ['exception' => $e]);
+            return redirect()->back()->with('error', 'No fue posible guardar el finiquito.');
+        }
+
+        $this->deletePrivateFiniquito($rutaAnterior);
 
         return redirect()->back()->with('success', 'Finiquito guardado correctamente.');
     }
 
     return redirect()->back()->with('error', 'No se pudo guardar el archivo.');
 }
+
+    public function descargarFiniquito(SolicitudBajas $solicitud)
+    {
+        Gate::authorize('viewFiniquitos', SolicitudBajas::class);
+        abort_unless($solicitud->por === 'Renuncia' && $solicitud->calculo_finiquito, 404);
+
+        $path = $solicitud->calculo_finiquito;
+        if (str_starts_with($path, 'private:')) {
+            $path = substr($path, 8);
+            abort_unless(Storage::disk('local')->exists($path), 404);
+            return response()->file(Storage::disk('local')->path($path));
+        }
+
+        $path = ltrim($path, '/');
+        abort_unless(Storage::disk('public')->exists($path), 404);
+        return response()->file(Storage::disk('public')->path($path));
+    }
+
+    private function persistCalculation(SolicitudBajas $solicitud, array $calculo): void
+    {
+        Finiquito::updateOrCreate(
+            ['baja_id' => $solicitud->id],
+            [
+                'monto' => $calculo['total'],
+                'salario_diario' => $calculo['employee']['daily_salary'],
+                'desglose' => $calculo,
+                'version_formula' => $calculo['version'],
+                'calculado_por' => auth()->id(),
+                'calculado_en' => now(),
+            ]
+        );
+    }
+
+    private function deletePrivateFiniquito(?string $path): void
+    {
+        if ($path && str_starts_with($path, 'private:')) {
+            Storage::disk('local')->delete(substr($path, 8));
+        }
+    }
 
     public function formularioSemanal(){
         return view('nominas.semanal');
@@ -975,6 +1045,7 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
     }
 
     public function historialFiniquitos(){
+        Gate::authorize('viewFiniquitos', SolicitudBajas::class);
         return view('nominas.historialFiniquitos');
     }
 }

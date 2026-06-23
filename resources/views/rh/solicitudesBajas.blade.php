@@ -195,7 +195,7 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                                 @if($solicitud->observaciones == 'Finiquito enviado a RH.')
-                                                    <a href="{{ asset('storage/' . $solicitud->calculo_finiquito) }}"
+                                                    <a href="{{ route('finiquitos.archivo', $solicitud) }}"
                                                        target="_blank"
                                                        class="inline-flex items-center justify-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-200 shadow-sm text-xs">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

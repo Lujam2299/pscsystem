@@ -84,6 +84,7 @@
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha Baja</th>
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipo</th>
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Archivo</th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Monto</th>
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
                     </tr>
                 </thead>
@@ -107,7 +108,7 @@
 
                             // === Archivo del Finiquito (¡ESTO FALTABA!) ===
                             $finiquitoPath = $finiquito->calculo_finiquito;
-                            $fileUrl = $this->getFileUrl($finiquitoPath);  // ← URL para el enlace
+                            $fileUrl = route('finiquitos.archivo', $finiquito);
                             $fileIcon = $this->getFileIcon($finiquitoPath); // ← Icono según extensión
                             $fileExt = strtolower(pathinfo($finiquitoPath, PATHINFO_EXTENSION)); // ← Extensión para mostrar
                         @endphp
@@ -170,6 +171,11 @@
                             </td>
 
                             {{-- Acciones --}}
+                            <td class="px-6 py-4 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                {{ $finiquito->finiquito ? '$'.number_format((float) $finiquito->finiquito->monto, 2) : '—' }}
+                            </td>
+
+                            {{-- Acciones --}}
                             <td class="px-6 py-4">
                                 @if($finiquito->calculo_finiquito && $fileUrl)
                                     <a
@@ -187,7 +193,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-12 text-center">
+                            <td colspan="6" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center">
                                     <i class="ti ti-file-x text-4xl text-gray-300 dark:text-gray-600 mb-3"></i>
                                     <p class="text-gray-500 dark:text-gray-400 font-medium">No se encontraron registros</p>
@@ -234,5 +240,4 @@
 </style>
 @endpush
 </div>
-
 

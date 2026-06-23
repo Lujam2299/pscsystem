@@ -19,7 +19,7 @@
 
                         <div class="flex items-center space-x-2">
                             <div class="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 px-3 py-1 rounded-full">
-                                <span class="text-sm font-medium">{{ $bajas->count() }}</span>
+                                <span class="text-sm font-medium">{{ $bajas->total() }}</span>
                                 <span class="text-xs">bajas</span>
                             </div>
                         </div>
@@ -106,7 +106,7 @@
                                     @foreach($bajas as $solicitud)
                                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                {{ $loop->iteration }}
+                                                {{ $bajas->firstItem() + $loop->index }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="flex items-center">
@@ -143,6 +143,11 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                                                 {{ \Carbon\Carbon::parse($solicitud->fecha_baja)->format('d/m/Y') }}
+                                                @if(\Carbon\Carbon::parse($solicitud->fecha_baja)->lt(now('America/Mexico_City')->subDays(10)))
+                                                    <span class="ml-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                                        Atrasada
+                                                    </span>
+                                                @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 @php

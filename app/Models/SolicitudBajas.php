@@ -39,5 +39,10 @@ class SolicitudBajas extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function finiquito()
+    {
+        return $this->hasOne(Finiquito::class, 'baja_id');
+    }
+
 
 }

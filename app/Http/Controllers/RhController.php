@@ -116,79 +116,30 @@ class RhController extends Controller
         return view('rh.historialSolicitudesBajas', compact('solicitudes'));
     }
 
-    public function detalleSolicitudBaja($id)
+    public function detalleSolicitudBaja($id, \App\Services\FiniquitoCalculator $calculator)
 {
-    $solicitud = SolicitudBajas::find($id);
-    $userId = $solicitud->user_id;
-    $user = User::find($userId);
-    $dias = 0;
-    $diasDisponibles = 0;
+    $solicitud = SolicitudBajas::with('user.solicitudAlta')->findOrFail($id);
+    $user = $solicitud->user;
 
-    $antiguedad = (int) floor(Carbon::parse($user->fecha_ingreso)->floatDiffInYears(now()));
-
-    if ($antiguedad < 2) {
-        $dias = 12;
-    } elseif ($antiguedad == 2) {
-        $dias = 14;
-    } elseif ($antiguedad == 3) {
-        $dias = 16;
-    } elseif ($antiguedad == 4) {
-        $dias = 18;
-    } elseif ($antiguedad == 5) {
-        $dias = 20;
-    } elseif ($antiguedad > 5 && $antiguedad <= 10) {
-        $dias = 22;
-    } elseif ($antiguedad > 10 && $antiguedad <= 15) {
-        $dias = 24;
-    } elseif ($antiguedad > 15 && $antiguedad <= 20) {
-        $dias = 26;
-    } elseif ($antiguedad > 20 && $antiguedad <= 25) {
-        $dias = 28;
-    } elseif ($antiguedad > 25 && $antiguedad <= 30) {
-        $dias = 30;
-    } else {
-        $dias = 32;
-    }
-
-    $diasDisponibles = $dias;
-    $diasUtilizados = 0;
-    $fechaIngreso = Carbon::parse($user->fecha_ingreso);
-    $hoy = now('America/Mexico_City');
-
-    $aniversario = Carbon::createFromDate(
-        $hoy->year,
-        $fechaIngreso->month,
-        $fechaIngreso->day
-    );
-
-    if ($aniversario->isFuture()) {
-        $aniversario->subYear();
-    }
-
-    $vacacionesTomadas = SolicitudVacaciones::where('user_id', $user->id)
-        ->whereIn('estatus', ['Aceptada', 'En Proceso'])
-        ->where('created_at', '>=', $aniversario)
-        ->get();
-
-    foreach ($vacacionesTomadas as $vacacion) {
-        $diasDisponibles -= $vacacion->dias_solicitados;
-        $diasUtilizados += $vacacion->dias_solicitados;
-    }
-
-    $inicioAño = Carbon::create($hoy->year, 1, 1);
-
-    if ($fechaIngreso->year < $hoy->year) {
-        $diasTrabajadosAnio = ceil($inicioAño->diffInDays($hoy));
-    } else {
-        $diasTrabajadosAnio = ceil($fechaIngreso->diffInDays($hoy));
-    }
-
-    $diasVacacionesProporcionales = round(($dias * $diasTrabajadosAnio) / 365, 2);
-    $aguinaldoProporcional = round((15 * $diasTrabajadosAnio) / 365, 2);
-    $primaVacacional = round($diasVacacionesProporcionales * 0.25, 2);
-
-    $solicitudAlta = SolicitudAlta::find($user->sol_alta_id);
+    $solicitudAlta = $user->solicitudAlta;
     $documentacion = DocumentacionAltas::where('solicitud_id', $user->sol_alta_id)->first();
+    $calculoFiniquito = null;
+    $errorCalculoFiniquito = null;
+    if ($solicitud->estatus === 'Aceptada' && $solicitud->por === 'Renuncia') {
+        try {
+            $calculoFiniquito = $calculator->calculate($solicitud);
+        } catch (\DomainException $e) {
+            $errorCalculoFiniquito = $e->getMessage();
+        }
+    }
+
+    // Compatibilidad con las tarjetas existentes, usando el mismo resultado central.
+    $dias = $calculoFiniquito['vacation']['vested_entitlement_days'] ?? 0;
+    $diasDisponibles = $calculoFiniquito['vacation']['payable_days'] ?? 0;
+    $diasTrabajadosAnio = $calculoFiniquito['vacation']['elapsed_days'] ?? 0;
+    $diasVacacionesProporcionales = $calculoFiniquito['vacation']['proportional_days'] ?? 0;
+    $aguinaldoProporcional = $calculoFiniquito['aguinaldo']['proportional_days'] ?? 0;
+    $primaVacacional = $calculoFiniquito['vacation']['premium_amount'] ?? 0;
 
     return view('rh.detalleSolicitudBaja', compact(
         'solicitud',
@@ -200,7 +151,9 @@ class RhController extends Controller
         'diasTrabajadosAnio',
         'diasVacacionesProporcionales',
         'aguinaldoProporcional',
-        'primaVacacional'
+        'primaVacacional',
+        'calculoFiniquito',
+        'errorCalculoFiniquito'
     ));
 }
 

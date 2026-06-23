@@ -338,54 +338,36 @@ class AdminController extends Controller
         return redirect()->route('dashboard')->with('success', 'Nóminas del último periodo generadas correctamente.');
     }
 
-    public function registrarFiniquitos()
+    public function registrarFiniquitos(\App\Services\FiniquitoCalculator $calculator)
     {
+        \Illuminate\Support\Facades\Gate::authorize('viewFiniquitos', SolicitudBajas::class);
+
         $solicitudes = SolicitudBajas::with(['user', 'user.solicitudAlta'])
             ->where('estatus', 'Aceptada')
-            ->where('por', 'like', '%renuncia%')
+            ->where('por', 'Renuncia')
             ->get();
 
         foreach ($solicitudes as $solicitud) {
             if (Finiquito::where('baja_id', $solicitud->id)->exists()) continue;
 
-            $user = $solicitud->user;
-            $alta = $user->solicitudAlta;
-            if (!$alta) continue;
-
-            $fechaBaja = Carbon::parse($solicitud->fecha_baja);
-            $fechaIngreso = Carbon::parse($user->fecha_ingreso);
-            $ultimaAsistencia = $solicitud->ultima_asistencia
-                ? Carbon::parse($solicitud->ultima_asistencia)
-                : $fechaBaja;
-
-            $diasTrabajadosAnio = $fechaIngreso->diffInDays($fechaBaja) + 1;
-            $diasNoLaborados = $ultimaAsistencia->diffInDays($fechaBaja);
-            $descuentoNoLaborados = $diasNoLaborados * $alta->sd;
-
-            $diasDisponibles = $alta->dias_vacaciones_disponibles ?? 6;
-            $factorVacaciones = $diasDisponibles / 365;
-            $diasVacaciones = $diasTrabajadosAnio * $factorVacaciones;
-            $montoVacaciones = $diasVacaciones * $alta->sd;
-            $primaVacacional = $montoVacaciones * 0.25;
-
-            $factorAguinaldo = 15 / 365;
-            $inicioAnio = now()->startOfYear();
-            $diasTrabAnio = $fechaIngreso->greaterThanOrEqualTo($inicioAnio)
-                ? $fechaIngreso->diffInDays($ultimaAsistencia) + 1
-                : $inicioAnio->diffInDays($ultimaAsistencia) + 1;
-
-            $diasAguinaldo = $diasTrabAnio * $factorAguinaldo;
-            $montoAguinaldo = $diasAguinaldo * $alta->sd;
-            $primaAguinaldo = $montoAguinaldo * 0.25;
-
-            $descuentoNoEntregados = $solicitud->descuento ?? 0;
-
-            $finiquito = $montoVacaciones + $primaVacacional + $montoAguinaldo + $primaAguinaldo
-                - $descuentoNoLaborados - $descuentoNoEntregados;
+            try {
+                $calculo = $calculator->calculate($solicitud);
+            } catch (\DomainException $e) {
+                Log::warning('No fue posible calcular un finiquito.', [
+                    'solicitud_id' => $solicitud->id,
+                    'motivo' => $e->getMessage(),
+                ]);
+                continue;
+            }
 
             Finiquito::create([
                 'baja_id' => $solicitud->id,
-                'monto' => round($finiquito, 2)
+                'monto' => $calculo['total'],
+                'salario_diario' => $calculo['employee']['daily_salary'],
+                'desglose' => $calculo,
+                'version_formula' => $calculo['version'],
+                'calculado_por' => auth()->id(),
+                'calculado_en' => now(),
             ]);
         }
 

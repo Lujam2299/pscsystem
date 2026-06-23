@@ -1,45 +1,23 @@
 @php
-    use Carbon\Carbon;
+    $salarioFiniquito = $calculoFiniquito['salary'] ?? [];
+    $vacacionesFiniquito = $calculoFiniquito['vacation'] ?? [];
+    $aguinaldoFiniquito = $calculoFiniquito['aguinaldo'] ?? [];
 
-    $hoy = Carbon::now('America/Mexico_City');
-    $inicioAnio = now()->startOfYear();
-
-    $fechaIngreso = Carbon::parse($user->fecha_ingreso);
-    $ultimaAsistencia = Carbon::parse($solicitud->ultima_asistencia);
-    $fechaBaja = Carbon::parse($solicitud->fecha_baja ?? now());
-
-    $inicioMes = $fechaBaja->copy()->startOfMonth();
-    $quincena = $fechaBaja->copy()->day(15);
-
-    if ($fechaBaja->lessThan($quincena)) {
-        $diasQuincena = $inicioMes->diffInDays($fechaBaja);
-    } else {
-        $diasQuincena = $quincena->diffInDays($fechaBaja);
-    }
-
-    $diasTrabajadosAnio = $fechaIngreso->diffInDays($fechaBaja) + 1;
-    $diasNoLaborados = $ultimaAsistencia->diffInDays($fechaBaja);
-    $diasNoPagados = $diasQuincena * $solicitudAlta->sd;
-
-    $descuentoNoLaborados = $diasNoLaborados * $solicitudAlta->sd;
-
-    $factorVacaciones = $diasDisponibles / 365;
-    $diasVacaciones = $diasTrabajadosAnio * $factorVacaciones;
-    $montoVacaciones = $diasVacaciones * $solicitudAlta->sd;
-    $primaVacacional = $montoVacaciones * 0.25;
-
-    $factorAguinaldo = 15 / 365;
-
-    $descuentoNoEntregados = $solicitud->descuento;
-
-    if ($fechaIngreso->greaterThanOrEqualTo($inicioAnio)) {
-        $diasTrabajAnio = $fechaIngreso->diffInDays($ultimaAsistencia) + 1;
-    } else {
-        $diasTrabajAnio = $inicioAnio->diffInDays($ultimaAsistencia) + 1;
-    }
-    $diasAguinaldo = $diasTrabajAnio * $factorAguinaldo;
-    $montoAguinaldo = $diasAguinaldo * $solicitudAlta->sd;
-    $primaAguinaldo = $montoAguinaldo * 0.25;
+    // Alias de presentación: todos provienen de la calculadora única del servidor.
+    $diasQuincena = $salarioFiniquito['scheduled_days'] ?? 0;
+    $diasNoPagados = $salarioFiniquito['gross_amount'] ?? 0;
+    $diasNoLaborados = $salarioFiniquito['non_worked_days'] ?? 0;
+    $descuentoNoLaborados = $salarioFiniquito['non_worked_deduction'] ?? 0;
+    $factorVacaciones = ($vacacionesFiniquito['next_entitlement_days'] ?? 0) / max(1, $vacacionesFiniquito['period_days'] ?? 365);
+    $diasTrabajadosAnio = $vacacionesFiniquito['elapsed_days'] ?? 0;
+    $diasVacaciones = $vacacionesFiniquito['payable_days'] ?? 0;
+    $montoVacaciones = $vacacionesFiniquito['amount'] ?? 0;
+    $primaVacacional = $vacacionesFiniquito['premium_amount'] ?? 0;
+    $factorAguinaldo = 15 / max(1, $aguinaldoFiniquito['year_days'] ?? 365);
+    $diasTrabAnio = $aguinaldoFiniquito['worked_days'] ?? 0;
+    $diasAguinaldo = $aguinaldoFiniquito['proportional_days'] ?? 0;
+    $montoAguinaldo = $aguinaldoFiniquito['amount'] ?? 0;
+    $descuentoNoEntregados = $calculoFiniquito['deductions']['general'] ?? 0;
 @endphp
 
 <style>
@@ -228,38 +206,83 @@
         border-radius: 0.375rem;
         margin-top: 0.5rem;
     }
+    .detail-shell { background: radial-gradient(circle at top right, rgba(239,68,68,.06), transparent 28rem), #f8fafc; min-height: calc(100vh - 4rem); }
+    .dark .detail-shell { background: radial-gradient(circle at top right, rgba(239,68,68,.08), transparent 28rem), #0f172a; }
+    .detail-card { border: 1px solid #e2e8f0; border-radius: 1rem; background: #fff; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+    .dark .detail-card { border-color: #334155; background: #1e293b; }
+    .card-section { transition: border-color 160ms ease, box-shadow 160ms ease; }
+    .card-section:hover { transform: none; border-color: #cbd5e1; box-shadow: 0 8px 24px rgba(15,23,42,.06); }
+    .detail-card-header { display: flex; align-items: center; gap: .75rem; padding: 1.125rem 1.5rem; border-bottom: 1px solid #e2e8f0; }
+    .dark .detail-card-header { border-color: #334155; }
+    .detail-card-icon { display: inline-flex; width: 2.25rem; height: 2.25rem; align-items: center; justify-content: center; border-radius: .75rem; background: #fef2f2; color: #dc2626; }
+    .detail-field { border-radius: .75rem; background: #f8fafc; padding: .875rem 1rem; border: 1px solid #f1f5f9; }
+    .dark .detail-field { background: rgba(15,23,42,.55); border-color: #334155; }
+    .detail-field-label { display: block; margin-bottom: .25rem; color: #64748b; font-size: .7rem; line-height: 1rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .detail-field-value { color: #0f172a; font-size: .925rem; line-height: 1.35rem; font-weight: 600; }
+    .dark .detail-field-value { color: #f8fafc; }
+    .document-link { justify-content: space-between; gap: .75rem; padding: .8rem 1rem; background: #fff; color: #334155; border: 1px solid #e2e8f0; }
+    .dark .document-link { background: rgba(15,23,42,.45); color: #e2e8f0; border-color: #334155; }
+    .document-link:hover { background: #f8fafc; border-color: #fca5a5; color: #b91c1c; transform: none; }
+    .action-button { min-height: 2.75rem; justify-content: center; padding: .7rem 1.1rem; border-radius: .75rem; box-shadow: none; }
+    .action-button:hover { transform: translateY(-1px); }
+    .employee-grid > div, .termination-grid > div { border-radius: .75rem; background: #f8fafc; padding: .875rem 1rem; border: 1px solid #f1f5f9; }
+    .dark .employee-grid > div, .dark .termination-grid > div { background: rgba(15,23,42,.55); border-color: #334155; }
+    .employee-grid > div > p:first-child, .termination-grid > div > p:first-child { margin-bottom: .25rem; color: #64748b; font-size: .7rem; line-height: 1rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .employee-grid > div > p:last-child, .termination-grid > div > p:last-child { color: #0f172a; font-size: .925rem; line-height: 1.35rem; font-weight: 600; }
+    .dark .employee-grid > div > p:last-child, .dark .termination-grid > div > p:last-child { color: #f8fafc; }
+    .detail-card > .border-b { padding: 1.125rem 1.5rem; }
+    .detail-card > .border-b h2 { color: #0f172a; font-size: 1rem; line-height: 1.5rem; font-weight: 700; }
+    .dark .detail-card > .border-b h2 { color: #f8fafc; }
+    .detail-card > .border-b + .p-6 { padding: 1.25rem 1.5rem; }
 </style>
 
 <x-app-layout>
     <x-navbar />
 
-    <div class="py-6 px-4 sm:px-6">
-        <div class="max-w-7xl mx-auto">
+    <div class="detail-shell px-3 py-6 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-7xl">
+            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                    <a href="{{ route('nominas.verBajas') }}" class="inline-flex items-center gap-1.5 font-medium hover:text-red-600">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                        Bajas y finiquitos
+                    </a>
+                    <span>/</span>
+                    <span>Detalle #{{ $solicitud->id }}</span>
+                </div>
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Actualizado {{ optional($solicitud->updated_at)->format('d/m/Y H:i') }}</span>
+            </div>
             <!-- Header con foto y título -->
-            <div class="bg-gradient-to-r from-red-600 to-red-800 rounded-2xl shadow-xl overflow-hidden mb-8">
-                <div class="p-6 flex flex-col md:flex-row items-center">
-                    <div class="mb-4 md:mb-0 md:mr-6">
+            <div class="detail-card mb-6 overflow-hidden border-t-4 border-t-red-600">
+                <div class="flex flex-col items-center gap-5 p-5 sm:p-7 md:flex-row">
+                    <div class="shrink-0">
                         @if($documentacion && $documentacion->arch_foto)
     <img src="{{ asset($documentacion->arch_foto) }}"
          alt="Foto del solicitante"
-         class="w-24 h-24 rounded-full border-4 border-white/20 shadow-lg object-cover">
+         class="h-20 w-20 rounded-2xl border-4 border-white object-cover shadow-md ring-1 ring-slate-200 dark:border-slate-800 dark:ring-slate-700">
 @else
-    <div class="w-24 h-24 rounded-full border-4 border-white/20 shadow-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 ring-1 ring-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:ring-slate-600">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
     </div>
 @endif
                     </div>
-                    <div class="text-center md:text-left text-white">
-                        <h1 class="text-3xl font-bold mb-2">{{ $user->name }}</h1>
-                        <p class="text-blue-100 text-lg">Solicitud de Baja - {{ $solicitud->por ?? 'No especificado' }}</p>
-                        <div class="mt-2">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/20 text-white">
+                    <div class="flex-1 text-center md:text-left">
+                        <div class="mb-2 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                            <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">{{ $user->name }}</h1>
+                            <span class="status-badge {{ $solicitud->estatus === 'Aceptada' ? 'status-aceptada' : ($solicitud->estatus === 'Rechazada' ? 'status-rechazada' : 'status-en-proceso') }}">{{ $solicitud->estatus }}</span>
+                        </div>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $user->empresa ?? 'Empresa no registrada' }} · {{ $user->punto ?? 'Punto no registrado' }}</p>
+                        <div class="mt-3 flex flex-wrap justify-center gap-2 md:justify-start">
+                            <span class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                                {{ $solicitud->por ?? 'No especificado' }}
+                            </span>
+                            <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
-                                Fecha de Baja: {{ \Carbon\Carbon::parse($solicitud->fecha_baja)->format('d/m/Y') }}
+                                Baja: {{ \Carbon\Carbon::parse($solicitud->fecha_baja)->format('d/m/Y') }}
                             </span>
                         </div>
                     </div>
@@ -267,20 +290,22 @@
             </div>
 
             <!-- Información General -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
                 <!-- Datos del Empleado -->
                 <div class="lg:col-span-2">
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg card-section">
-                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-                            <h2 class="text-xl font-bold text-gray-800 dark:text-white flex items-center">
+                    <div class="detail-card card-section overflow-hidden">
+                        <div class="detail-card-header">
+                            <span class="detail-card-icon">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
+                            </span>
+                            <h2 class="text-base font-bold text-slate-900 dark:text-white">
                                 Información del Empleado
                             </h2>
                         </div>
                         <div class="p-6">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="employee-grid grid grid-cols-1 gap-3 md:grid-cols-2">
                                 <div>
                                     <p class="text-gray-500 dark:text-gray-400 text-sm">Empresa</p>
                                     <p class="font-medium text-gray-900 dark:text-white">{{ $user->empresa }}</p>
@@ -317,7 +342,7 @@
                 <!-- Estado y Documentos -->
                 <div class="space-y-6">
                     <!-- Estado -->
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg card-section">
+                    <div class="detail-card card-section overflow-hidden">
                         <div class="p-6 border-b border-gray-200 dark:border-gray-700">
                             <h2 class="text-xl font-bold text-gray-800 dark:text-white flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -344,7 +369,7 @@
                     </div>
 
                     <!-- Documentos -->
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg card-section">
+                    <div class="detail-card card-section overflow-hidden">
                         <div class="p-6 border-b border-gray-200 dark:border-gray-700">
                             <h2 class="text-xl font-bold text-gray-800 dark:text-white flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -395,7 +420,7 @@
             </div>
 
             <!-- Detalles de la Baja -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg mb-8 card-section">
+            <div class="detail-card card-section mb-6 overflow-hidden">
                 <div class="p-6 border-b border-gray-200 dark:border-gray-700">
                     <h2 class="text-xl font-bold text-gray-800 dark:text-white flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -405,7 +430,7 @@
                     </h2>
                 </div>
                 <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="termination-grid grid grid-cols-1 gap-3 md:grid-cols-2">
                         <div>
                             <p class="text-gray-500 dark:text-gray-400 text-sm">Motivo de Baja</p>
                             <p class="font-medium text-gray-900 dark:text-white text-lg">{{ $solicitud->por ?? 'No especificado' }}</p>
@@ -418,7 +443,7 @@
                         </div>
                         <div class="md:col-span-2">
                             <p class="text-gray-500 dark:text-gray-400 text-sm">Motivo (opcional)</p>
-                            <p class="font-medium text-gray-900 dark:text-white whitespace-pre-line bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                            <p class="whitespace-pre-line">
                                 {{ $solicitud->motivo ?? 'Sin detalles adicionales' }}
                             </p>
                         </div>
@@ -426,8 +451,33 @@
                 </div>
             </div>
 
+            @if($calculoFiniquito)
+                <section class="detail-card mb-6 overflow-hidden">
+                    <div class="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6">
+                        <div>
+                            <div class="mb-2 flex items-center gap-2">
+                                <span class="detail-card-icon">
+                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 5a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h14z" /></svg>
+                                </span>
+                                <h2 class="font-bold text-slate-900 dark:text-white">Resumen de finiquito</h2>
+                            </div>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Estimación generada por la fórmula {{ $calculoFiniquito['version'] }}. El desglose completo está disponible en las acciones.</p>
+                        </div>
+                        <div class="rounded-xl bg-emerald-50 px-5 py-3 text-left ring-1 ring-emerald-200 sm:text-right dark:bg-emerald-950/30 dark:ring-emerald-800">
+                            <span class="block text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Total calculado</span>
+                            <strong class="mt-1 block text-2xl text-emerald-800 dark:text-emerald-300">${{ number_format($calculoFiniquito['total'], 2) }}</strong>
+                        </div>
+                    </div>
+                </section>
+            @endif
+
             <!-- Acciones -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg card-section">
+            @if($errorCalculoFiniquito)
+                <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+                    No se puede calcular el finiquito: {{ $errorCalculoFiniquito }}
+                </div>
+            @endif
+            <div class="detail-card card-section overflow-hidden">
                 <div class="p-6 border-b border-gray-200 dark:border-gray-700">
                     <h2 class="text-xl font-bold text-gray-800 dark:text-white flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -437,13 +487,13 @@
                     </h2>
                 </div>
                 <div class="p-6">
-                    <div class="flex flex-wrap gap-4 justify-center">
-                        @if (Auth::user()->rol == 'admin' ||
+                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        @if ($calculoFiniquito && (Auth::user()->rol == 'admin' ||
                                 in_array(Auth::user()->rol, ['AUXILIAR NOMINAS', 'Auxiliar Nominas']) ||
                                 (isset(Auth::user()->solicitudAlta) &&
-                                    in_array(Auth::user()->solicitudAlta->rol, ['AUXILIAR NOMINAS', 'Auxiliar Nominas'])))
+                                    in_array(Auth::user()->solicitudAlta->rol, ['AUXILIAR NOMINAS', 'Auxiliar Nominas']))))
                             <button type="button" onclick="mostrarFiniquito({{ $solicitud->id }})"
-                                    class="action-button btn-primary" disabled>
+                                    class="action-button btn-primary">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
@@ -459,7 +509,7 @@
                             </button>
                         @endif
                         @if(in_array(Auth::user()->rol, ['AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH', 'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH', 'admin', 'Admin']))
-                            <a href="{{ route('rh.aceptarBaja', $solicitud->id) }}"
+                            <!--<a href="{{ route('rh.aceptarBaja', $solicitud->id) }}"
                                class="action-button btn-success">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -479,7 +529,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                                 Rechazar
-                            </a>
+                            </a>-->
                         @endif
                         @if (
                             ($solicitud->estatus == 'En Proceso' && $solicitud->por == 'Renuncia') ||
@@ -769,14 +819,14 @@
                         <tr><td style="padding: 8px;">Días trabajados</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">{{ number_format($diasQuincena) }}</td><td style="padding: 8px; text-align: center;">${{ number_format($user->solicitudAlta->sd, 2) }}</td><td style="padding: 8px; text-align: center;">${{ number_format($diasNoPagados, 2) }}</td></tr>
                         <tr><td style="padding: 8px;">Extras</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td></tr>
                         <tr><td style="padding: 8px;">Festivo</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td></tr>
-                        <tr><td style="padding: 8px;">Vacaciones 2025-2026</td><td style="padding: 8px; text-align: center;">{{ number_format($factorVacaciones, 9) }}</td><td style="padding: 8px; text-align: center;">{{ $diasTrabajadosAnio }}</td><td style="padding: 8px; text-align: center;">{{ number_format($diasVacaciones, 2) }}</td><td style="padding: 8px; text-align: center;">${{ number_format($user->solicitudAlta->sd, 2) }}</td><td style="padding: 8px; text-align: center;">${{ number_format($montoVacaciones, 2) }}</td></tr>
-                        <tr><td style="padding: 8px;">Prima vacacional 2025-2026</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">25%</td><td style="padding: 8px; text-align: center;">${{ number_format($primaVacacional, 2) }}</td></tr>
-                        <tr><td style="padding: 8px;">Aguinaldo 2025</td><td style="padding: 8px; text-align: center;">{{ number_format($factorAguinaldo, 8) }}</td><td style="padding: 8px; text-align: center;">{{ $diasTrabajAnio }}</td><td style="padding: 8px; text-align: center;">{{ number_format($diasAguinaldo, 2) }}</td><td style="padding: 8px; text-align: center;">${{ number_format($user->solicitudAlta->sd, 2) }}</td><td style="padding: 8px; text-align: center;">${{ number_format($montoAguinaldo, 2) }}</td></tr>
+                        <tr><td style="padding: 8px;">Vacaciones pendientes y proporcionales</td><td style="padding: 8px; text-align: center;">{{ number_format($factorVacaciones, 9) }}</td><td style="padding: 8px; text-align: center;">{{ $diasTrabajadosAnio }}</td><td style="padding: 8px; text-align: center;">{{ number_format($diasVacaciones, 2) }}</td><td style="padding: 8px; text-align: center;">${{ number_format($user->solicitudAlta->sd, 2) }}</td><td style="padding: 8px; text-align: center;">${{ number_format($montoVacaciones, 2) }}</td></tr>
+                        <tr><td style="padding: 8px;">Prima vacacional</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">25%</td><td style="padding: 8px; text-align: center;">${{ number_format($primaVacacional, 2) }}</td></tr>
+                        <tr><td style="padding: 8px;">Aguinaldo proporcional {{ \Carbon\Carbon::parse($solicitud->fecha_baja)->year }}</td><td style="padding: 8px; text-align: center;">{{ number_format($factorAguinaldo, 8) }}</td><td style="padding: 8px; text-align: center;">{{ $diasTrabAnio }}</td><td style="padding: 8px; text-align: center;">{{ number_format($diasAguinaldo, 2) }}</td><td style="padding: 8px; text-align: center;">${{ number_format($user->solicitudAlta->sd, 2) }}</td><td style="padding: 8px; text-align: center;">${{ number_format($montoAguinaldo, 2) }}</td></tr>
                         <tr style="background-color: #dbeafe;"><td colspan="5" style="padding: 12px; text-align: right; font-weight: bold;">SUBTOTAL</td><td style="padding: 12px; text-align: center; font-weight: bold;">${{ number_format($diasNoPagados + $montoVacaciones + $montoAguinaldo + $primaVacacional, 2) }}</td></tr>
                         <tr><td style="padding: 8px;">Días pagados no laborados</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">{{ number_format($diasNoLaborados, 2) }}</td><td style="padding: 8px; text-align: center;">${{ number_format($user->solicitudAlta->sd, 2) }}</td><td style="padding: 8px; text-align: center;">${{ number_format($descuentoNoLaborados, 2) }}</td></tr>
                         <tr><td style="padding: 8px;">Deducción general</td><td colspan="4" style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">${{ number_format($descuentoNoEntregados, 2) }}</td></tr>
                         <tr><td style="padding: 8px;">Adelanto de Nómina</td><td colspan="4" style="padding: 8px; text-align: center;">-</td><td style="padding: 8px; text-align: center;">-</td></tr>
-                        <tr style="background-color: #10b981; color: white;"><td colspan="5" style="padding: 12px; text-align: right; font-weight: bold;">TOTAL</td><td style="padding: 12px; text-align: center; font-weight: bold;">${{ number_format($diasNoPagados + $montoVacaciones + $montoAguinaldo + $primaVacacional - $descuentoNoLaborados - $descuentoNoEntregados, 2) }}</td></tr>
+                        <tr style="background-color: #10b981; color: white;"><td colspan="5" style="padding: 12px; text-align: right; font-weight: bold;">TOTAL</td><td style="padding: 12px; text-align: center; font-weight: bold;">${{ number_format($calculoFiniquito['total'] ?? 0, 2) }}</td></tr>
                     </tbody>
                 </table>
                 ${!tieneRenuncia ? '<div style="background-color: #fee2e2; color: #991b1b; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #fecaca;"><strong>⚠️ Advertencia:</strong> No se puede enviar el finiquito porque falta el archivo de renuncia firmada.</div>' : ''}

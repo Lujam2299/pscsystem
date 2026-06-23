@@ -114,7 +114,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/tablero_custodios', [AdminController::class, 'tableroCustodios'])->name('admin.custodiosDashboard');
     Route::get('/admin_vacaciones', [AdminController::class, 'solicitudesVacaciones'])->name('admin.solicitudesVacaciones');
     Route::get('/registrar_nominas', [AdminController::class, 'registrarNominas'])->name('registrarNominas');
-    Route::get('/registrar_finiquitos', [AdminController::class, 'registrarFiniquitos'])->name('registrarFiniquitos');
+    Route::post('/registrar_finiquitos', [AdminController::class, 'registrarFiniquitos'])->name('registrarFiniquitos');
     Route::post('/admin/import/unify-duplicates', [ImportController::class, 'unifyDuplicates'])->name('admin.import.unify-duplicates');
 
     //Usuario Supervisor
@@ -351,6 +351,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/nuevas_altas', [NominasController::class, 'nuevasAltas'])->name('nominas.nuevasAltas');
     Route::post('/guardar-calculo-finiquito', [NominasController::class, 'guardarCalculoFiniquito'])->name('guardar.calculo.finiquito');
     Route::post('/guardar_finiquito/{id}', [NominasController::class, 'guardarFiniquitoManual'])->name('guardarFiniquitoManual');
+    Route::get('/finiquitos/{solicitud}/archivo', [NominasController::class, 'descargarFiniquito'])->name('finiquitos.archivo');
     Route::get('/asistencias_nominas', [NominasController::class, 'asistenciasNominas'])->name('nominas.asistencias');
     Route::get('/vacaciones_nominas', [NominasController::class, 'vacacionesNominas'])->name('nominas.vacaciones');
     Route::get('/nominas_vacaciones', [NominasController::class, 'vacacionesIndex'])->name('nominas.vacaciones');
