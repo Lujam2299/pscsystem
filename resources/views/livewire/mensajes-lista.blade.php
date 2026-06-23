@@ -1,6 +1,5 @@
 <div wire:key="lista-conversaciones-{{ count($conversaciones) }}-{{ $conversaciones->pluck('id')->sum() }}"
-     class="h-full flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800"
-     wire:poll.{{ $enablePolling ? '5s' : '0s' }}="cargarConversaciones">
+     class="h-full flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
 
     {{-- HEADER: Título y Acciones --}}
     <div class="px-4 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white/80 backdrop-blur-sm sticky top-0 z-10">
@@ -22,6 +21,15 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
             </svg>
         </button>
+    </div>
+
+    <div class="border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+        <label class="relative block">
+            <span class="sr-only">Buscar conversaciones</span>
+            <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+            <input wire:model.live.debounce.300ms="buscarConversacion" type="search" placeholder="Buscar conversaciones..."
+                   class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-3 text-sm text-gray-800 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+        </label>
     </div>
 
     {{-- BUSCADOR DESPLEGABLE --}}
@@ -149,7 +157,16 @@
                         </div>
                     </div>
 
+                    @if(!$conv->latestMessage)
+                    <button type="button" @click.stop="showMenu = !showMenu"
+                            class="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 opacity-100 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-gray-700 dark:hover:text-gray-200 lg:opacity-0 lg:group-hover:opacity-100"
+                            aria-label="Opciones de conversación">
+                        <i class="ti ti-dots-vertical" aria-hidden="true"></i>
+                    </button>
+                    @endif
+
                     {{-- Menú Contextual (Click Derecho) --}}
+                    @if(!$conv->latestMessage)
                     <div x-show="showMenu"
                          x-transition:enter="transition ease-out duration-100"
                          x-transition:enter-start="transform opacity-0 scale-95"
@@ -163,6 +180,7 @@
                             Eliminar conversación
                         </button>
                     </div>
+                    @endif
                 </div>
             </div>
         @empty
@@ -226,6 +244,11 @@
                 position: 'top-end'
             });
         });
+
+        if (window.Echo && window.userId) {
+            window.Echo.private(`App.Models.User.${window.userId}`)
+                .listen('.ConversationUpdated', () => Livewire.dispatch('forzarRender'));
+        }
     });
 </script>
 @endpush

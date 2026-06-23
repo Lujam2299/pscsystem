@@ -13,15 +13,16 @@ class MensajesLista extends Component
     public $buscarUsuario = '';
     public $usuariosFiltrados = [];
     public $mostrarBuscador = false;
-    public $enablePolling = true;
+    public $buscarConversacion = '';
+    public $selectedConversationId = null;
 
     protected $listeners = [
-        'forzarRender' => '$refresh',
+        'forzarRender' => 'cargarConversaciones',
         'eliminarConversacionJS' => 'eliminarConversacion',
         'MensajeEnviado' => 'actualizarUltimoMensaje',
         'mensajeEnviadoEnConversacion' => 'actualizarConversacionEnLista',
-        'conversacionSeleccionada' => 'detenerPolling',
-        'cerrarConversacion' => 'iniciarPolling',
+        'conversacionSeleccionada' => 'marcarSeleccionada',
+        'cerrarConversacion' => 'limpiarSeleccion',
     ];
 
     public function mount()
@@ -39,34 +40,48 @@ public function cargarConversaciones()
             },
             'latestMessage'
         ])
-        ->orderByDesc('updated_at')
+        ->when(mb_strlen(trim($this->buscarConversacion)) >= 2, function ($query) {
+            $term = trim($this->buscarConversacion);
+            $query->where(function ($query) use ($term) {
+                $query->where('title', 'like', "%{$term}%")
+                    ->orWhereHas('users', fn ($users) => $users->where('users.name', 'like', "%{$term}%"));
+            });
+        })->orderByDesc('updated_at')
         ->get();
 }
 
-    public function actualizarUltimoMensaje($data)
+    public function updatedBuscarConversacion(): void
     {
         $this->cargarConversaciones();
     }
 
-    public function actualizarConversacionEnLista($data)
+    public function actualizarUltimoMensaje($data = null)
     {
         $this->cargarConversaciones();
     }
 
-    public function detenerPolling($id)
+    public function actualizarConversacionEnLista($conversation_id = null)
     {
-        $this->enablePolling = false;
+        $this->cargarConversaciones();
     }
 
-    public function iniciarPolling()
+    public function marcarSeleccionada($id)
     {
-        $this->enablePolling = true;
+        $this->selectedConversationId = $id;
+        $this->cargarConversaciones();
+    }
+
+    public function limpiarSeleccion()
+    {
+        $this->selectedConversationId = null;
     }
 
     public function updatedBuscarUsuario($value)
     {
         if (strlen($value) >= 2) {
             $this->usuariosFiltrados = User::where('id', '!=', auth()->id())
+                ->where('estatus', 'Activo')
+                ->when(auth()->user()->rol !== 'admin', fn ($query) => $query->where('empresa', auth()->user()->empresa))
                 ->where('name', 'like', '%'.$value.'%')
                 ->with('documentacionAltas')
                 ->take(5)
@@ -80,7 +95,8 @@ public function cargarConversaciones()
 
     public function iniciarConversacion($usuarioId)
     {
-        $existe = Conversation::whereHas('users', fn($q) => $q->where('users.id', $usuarioId))
+        $existe = Conversation::where('is_group', false)
+            ->whereHas('users', fn($q) => $q->where('users.id', $usuarioId))
             ->whereHas('users', fn($q) => $q->where('users.id', auth()->id()))
             ->first();
 
@@ -99,8 +115,8 @@ public function cargarConversaciones()
 
     public function seleccionarConversacion($conversationId)
     {
-        \Log::info('Seleccionando conversación:', ['conversation_id' => $conversationId]);
         $this->dispatch('conversacionSeleccionada', id: $conversationId);
+        $this->dispatch('abrir-chat-movil');
     }
 
     public function eliminarConversacion($payload)
@@ -112,7 +128,9 @@ public function cargarConversaciones()
             return;
         }
 
-        $conv->messages()->delete();
+        // Sin un estado por usuario no es seguro borrar historiales compartidos.
+        abort_if($conv->messages()->exists(), 422, 'Solo se pueden eliminar conversaciones vacías.');
+
         $conv->users()->detach();
         $conv->delete();
 
@@ -134,10 +152,6 @@ public function cargarConversaciones()
 
     public function render()
     {
-        if ($this->enablePolling) {
-            $this->cargarConversaciones();
-        }
-
         return view('livewire.mensajes-lista');
     }
 }

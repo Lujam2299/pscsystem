@@ -2,7 +2,11 @@
 <x-app-layout>
     <x-navbar />
 
-    <div class="h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
+    <div x-data="{ mobileChatOpen: false, connectionState: window.EchoConnectionState || 'disconnected' }"
+         @abrir-chat-movil.window="mobileChatOpen = true"
+         @cerrar-chat-movil.window="mobileChatOpen = false"
+         @echo-state-change.window="connectionState = $event.detail.state"
+         class="flex h-[calc(100dvh-4rem)] min-h-[520px] flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
 
         {{-- HEADER PRINCIPAL DE LA APP --}}
         <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between shadow-sm z-10">
@@ -28,12 +32,13 @@
             </div>
 
             {{-- Indicador de Estado (Opcional, visual) --}}
-            <div class="hidden md:flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-full text-xs font-medium border border-green-100 dark:border-green-800">
+            <div class="hidden items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium md:flex"
+                 :class="connectionState === 'connected' ? 'border-green-100 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400' : 'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400'">
                 <span class="relative flex h-2 w-2">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  <span x-show="connectionState === 'connected'" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2" :class="connectionState === 'connected' ? 'bg-green-500' : 'bg-amber-500'"></span>
                 </span>
-                Conectado
+                <span x-text="connectionState === 'connected' ? 'Conectado' : 'Reconectando'"></span>
             </div>
         </header>
 
@@ -42,12 +47,12 @@
             <div class="max-w-7xl mx-auto h-full grid grid-cols-1 lg:grid-cols-12 gap-4">
 
                 {{-- COLUMNA IZQUIERDA: LISTA DE CHATS --}}
-                <div class="lg:col-span-4 flex flex-col h-full bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div :class="mobileChatOpen ? 'hidden lg:flex' : 'flex'" class="lg:col-span-4 flex-col h-full bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                     @livewire('mensajes-lista')
                 </div>
 
                 {{-- COLUMNA DERECHA: VENTANA DE CHAT --}}
-                <div class="lg:col-span-8 flex flex-col h-full bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden relative">
+                <div :class="mobileChatOpen ? 'flex' : 'hidden lg:flex'" class="lg:col-span-8 flex-col h-full bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden relative">
                     {{-- Overlay para móvil si no hay chat seleccionado (opcional, depende de tu lógica UX) --}}
                     @livewire('mensajes-chat')
                 </div>

@@ -7,9 +7,11 @@ use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class ChatWebController extends Controller
 {
+    use AuthorizesRequests;
     public function index()
     {
         $user = Auth::user();
@@ -21,7 +23,7 @@ class ChatWebController extends Controller
 
     public function show(Conversation $conversation)
     {
-        abort_unless($conversation->users->contains(Auth::id()), 403);
+        $this->authorize('view', $conversation);
 
         $conversation->load(['messages.user', 'users']);
 
@@ -35,8 +37,11 @@ class ChatWebController extends Controller
             'body' => 'required|string|max:1000',
         ]);
 
+        $conversation = Conversation::findOrFail($request->integer('conversation_id'));
+        $this->authorize('view', $conversation);
+
         $mensaje = Message::create([
-            'conversation_id' => $request->conversation_id,
+            'conversation_id' => $conversation->id,
             'user_id' => Auth::id(),
             'body' => $request->body,
         ]);
@@ -48,7 +53,10 @@ class ChatWebController extends Controller
 
     public function crear()
 {
-    $usuarios = User::where('id', '!=', auth()->id())->get();
+    $usuarios = User::where('id', '!=', auth()->id())
+        ->where('estatus', 'Activo')
+        ->when(auth()->user()->rol !== 'admin', fn ($query) => $query->where('empresa', auth()->user()->empresa))
+        ->get();
 
     return view('chat.crear', compact('usuarios'));
 }
@@ -65,14 +73,17 @@ public function storeConversacion(Request $request)
     $conversation = $authUser->conversations()
         ->where('is_group', false)
         ->whereHas('users', function ($q) use ($otherUserId) {
-            $q->where('user_id', $otherUserId);
+            $q->where('users.id', $otherUserId);
         })
         ->first();
 
     if (!$conversation) {
         $conversation = \App\Models\Conversation::create(['is_group' => false]);
 
-        $conversation->users()->attach([$authUser->id, $otherUserId]);
+        $conversation->users()->attach([
+            $authUser->id => ['api_user_id' => $authUser->id],
+            $otherUserId => ['api_user_id' => $otherUserId],
+        ]);
     }
 
     return redirect()->route('mensajes.show', $conversation);

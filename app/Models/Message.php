@@ -48,26 +48,10 @@ class Message extends Model
         static::created(function ($message) {
             $message->conversation->touch(); // Actualiza updated_at de la conversación
 
-            // Incrementar unread_count para otros usuarios en la conversación
-            $otherUsers = $message->conversation->users->where('id', '!=', $message->user_id);
-
-            foreach ($otherUsers as $user) {
-                $conversationUser = DB::table('conversation_user')
-                    ->where('conversation_id', $message->conversation_id)
-                    ->where('api_user_id', $user->id)
-                    ->first();
-
-                if ($conversationUser) {
-                    DB::table('conversation_user')
-                        ->where('conversation_id', $message->conversation_id)
-                        ->where('api_user_id', $user->id)
-                        ->increment('unread_count');
-
-                    \Log::info("Incrementado unread_count para user: {$user->id}, conv: {$message->conversation_id}");
-                } else {
-                    \Log::info("No encontrado registro en conversation_user para user: {$user->id}, conv: {$message->conversation_id}");
-                }
-            }
+            DB::table('conversation_user')
+                ->where('conversation_id', $message->conversation_id)
+                ->where('api_user_id', '!=', $message->user_id)
+                ->increment('unread_count');
         });
     }
 }

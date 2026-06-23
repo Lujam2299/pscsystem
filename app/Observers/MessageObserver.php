@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Message;
+use App\Events\ConversationUpdated;
 use App\Services\RealtimeToast;
 use Illuminate\Support\Str;
 
@@ -23,5 +24,8 @@ class MessageObserver
             ],
             (int) $message->user_id,
         );
+
+        $recipientIds = $message->conversation->users->pluck('id')->map(fn ($id) => (int) $id)->all();
+        broadcast(new ConversationUpdated($message, $recipientIds))->toOthers();
     }
 }

@@ -5,7 +5,7 @@ namespace App\Events;
 use App\Models\Message;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow; // Usaremos ShouldBroadcast
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -24,8 +24,7 @@ class MensajeEnviado implements ShouldBroadcastNow
 
     public function broadcastOn()
     {
-        \Log::info('Canal de broadcast:', ['channel' => 'conversacion.' . $this->message->conversation_id]);
-        return new PrivateChannel('conversacion.' . $this->message->conversation_id);
+        return new PresenceChannel('conversacion.' . $this->message->conversation_id);
     }
 
     public function broadcastAs()
