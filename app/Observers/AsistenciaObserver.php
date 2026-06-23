@@ -11,6 +11,16 @@ class AsistenciaObserver
 
     public function created(Asistencia $asistencia): void
     {
+        $this->notificar($asistencia, 'Nuevo registro de asistencia', 'Se ha recibido un registro de asistencia del punto ');
+    }
+
+    public function updated(Asistencia $asistencia): void
+    {
+        $this->notificar($asistencia, 'Asistencia actualizada', 'Se actualizó el registro de asistencia del punto ');
+    }
+
+    private function notificar(Asistencia $asistencia, string $titulo, string $mensaje): void
+    {
         $asistencia->loadMissing('usuario');
         $punto = $asistencia->punto
             ?: $asistencia->usuario?->punto
@@ -18,9 +28,9 @@ class AsistenciaObserver
 
         RealtimeToast::toRoles(self::ROLES, [
             'icon' => 'success',
-            'title' => 'Nuevo registro de asistencia',
-            'text' => 'Se ha recibido un registro de asistencia del punto ' . $punto,
-            'key' => 'asistencia:' . $asistencia->id,
+            'title' => $titulo,
+            'text' => $mensaje.$punto,
+            'key' => 'asistencia:'.$asistencia->id.':'.$asistencia->updated_at?->getTimestamp(),
         ]);
     }
 }

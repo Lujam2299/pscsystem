@@ -2,20 +2,22 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class TiemposExtra extends Model
 {
     use HasFactory;
+
     protected $fillable = [
+        'asistencia_id',
         'user_id',
         'fecha',
         'hora_inicio',
         'hora_fin',
         'total_horas',
         'autorizado_por',
-        'observaciones'
+        'observaciones',
     ];
 
     public function user()
@@ -23,4 +25,8 @@ class TiemposExtra extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function asistencia()
+    {
+        return $this->belongsTo(Asistencia::class);
+    }
 }

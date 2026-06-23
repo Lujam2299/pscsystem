@@ -1,12 +1,14 @@
 <?php
 
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Asistencia extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'user_id',
         'fecha',
@@ -21,6 +23,7 @@ class Asistencia extends Model
         'punto',
         'empresa',
     ];
+
     public function usuario()
     {
         return $this->belongsTo(User::class, 'user_id');
@@ -31,4 +34,8 @@ class Asistencia extends Model
         return $this->hasMany(\App\Models\AsistenciaPunto::class);
     }
 
+    public function tiemposExtra()
+    {
+        return $this->hasMany(TiemposExtra::class);
+    }
 }
