@@ -202,36 +202,52 @@
     ]);
 @endphp
 
-<div class="flex h-screen bg-gray-50 dark:bg-gray-900 font-sans overflow-hidden">
+<div x-data="{ sidebarOpen: false, sidebarCollapsed: false, summaryTab: 'personal', chartTab: 'nomina' }"
+     class="relative flex min-h-screen bg-slate-50 font-sans dark:bg-gray-900">
 
-    {{-- SIDEBAR MEJORADO --}}
-    <aside class="w-72 flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300 z-20 shadow-xl">
-        <div class="p-6 border-b border-gray-100 dark:border-gray-700">
-            <h2 class="text-2xl font-bold text-gray-800 dark:text-white tracking-tight">
+    <div x-cloak x-show="sidebarOpen" x-transition.opacity @click="sidebarOpen = false"
+         class="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm md:hidden" aria-hidden="true"></div>
+
+    {{-- Navegación lateral --}}
+    <aside class="fixed inset-y-0 left-0 z-50 flex w-72 -translate-x-full flex-shrink-0 flex-col border-r border-gray-200 bg-white shadow-2xl transition-all duration-300 dark:border-gray-700 dark:bg-gray-800 md:sticky md:top-0 md:h-screen md:translate-x-0 md:shadow-lg"
+           :class="{ 'translate-x-0': sidebarOpen, 'md:w-20': sidebarCollapsed, 'md:w-72': !sidebarCollapsed }">
+        <div class="flex items-center justify-between border-b border-gray-100 p-5 dark:border-gray-700">
+            <div x-show="!sidebarCollapsed || sidebarOpen" x-transition.opacity>
+            <h2 class="text-xl font-bold tracking-tight text-gray-800 dark:text-white">
                 Panel <span class="text-blue-600">Admin</span>
             </h2>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 uppercase tracking-wider">SGI v1.1</p>
+            <p class="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">SGI v1.1</p>
+            </div>
+            <button type="button" @click="sidebarOpen = false" class="inline-flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 md:hidden" aria-label="Cerrar menú">
+                <i class="ti ti-x text-xl" aria-hidden="true"></i>
+            </button>
+            <button type="button" @click="sidebarCollapsed = !sidebarCollapsed"
+                    class="hidden h-10 w-10 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-gray-700 md:inline-flex"
+                    :aria-label="sidebarCollapsed ? 'Expandir menú' : 'Contraer menú'">
+                <i class="ti text-xl" :class="sidebarCollapsed ? 'ti-layout-sidebar-left-expand' : 'ti-layout-sidebar-left-collapse'" aria-hidden="true"></i>
+            </button>
         </div>
 
         <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
-            @foreach ($cards as $card)
+            @php
+                $cardsAgrupadas = collect($cards)->groupBy(fn ($card) => match(true) {
+                    in_array($card['titulo'], ['Mensajes', 'Buzón de Quejas y Sugerencias']) => 'Comunicación',
+                    in_array($card['titulo'], ['Nóminas', 'IMSS', 'Contabilidad']) => 'Finanzas y cumplimiento',
+                    in_array($card['titulo'], ['RRHH', 'Vacaciones', 'Gestión de Usuarios', 'Nuevas Altas']) => 'Personas',
+                    default => 'Operación',
+                });
+            @endphp
+            @foreach ($cardsAgrupadas as $grupo => $cardsGrupo)
+                <p x-show="!sidebarCollapsed || sidebarOpen" class="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400 first:pt-0">
+                    {{ $grupo }}
+                </p>
+            @foreach ($cardsGrupo as $card)
                 @php
                     $isDisabled = $card['disabled'] ?? false;
                     // Determinar si está activo de forma segura
                     $isActive = isset($card['ruta']) && request()->fullUrlIs('*'.parse_url($card['ruta'], PHP_URL_PATH).'*');
 
-                    // Mapeo de colores para iconos y badges basado en la clase original
-                    $iconColorClass = match(true) {
-                        Str::contains($card['color'], 'blue') => 'text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400',
-                        Str::contains($card['color'], 'yellow') => 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/30 dark:text-yellow-400',
-                        Str::contains($card['color'], 'indigo') => 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400',
-                        Str::contains($card['color'], 'orange') => 'text-orange-600 bg-orange-50 dark:bg-orange-900/30 dark:text-orange-400',
-                        Str::contains($card['color'], 'red') => 'text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400',
-                        Str::contains($card['color'], 'green') => 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400',
-                        Str::contains($card['color'], 'pink') => 'text-pink-600 bg-pink-50 dark:bg-pink-900/30 dark:text-pink-400',
-                        Str::contains($card['color'], 'purple') => 'text-purple-600 bg-purple-50 dark:bg-purple-900/30 dark:text-purple-400',
-                        default => 'text-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-gray-400',
-                    };
+                    $iconColorClass = 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-300';
                 @endphp
 
                 @if ($isDisabled)
@@ -240,7 +256,7 @@
                             <div class="flex-shrink-0 w-8 h-8 rounded-lg {{ $iconColorClass }} flex items-center justify-center">
                                 <i class="ti ti-{{ $card['icono'] }} text-lg"></i>
                             </div>
-                            <span>{{ $card['titulo'] }}</span>
+                            <span x-show="!sidebarCollapsed || sidebarOpen">{{ $card['titulo'] }}</span>
                         </div>
                     </div>
 
@@ -253,11 +269,11 @@
                             <div class="flex-shrink-0 w-8 h-8 rounded-lg {{ $iconColorClass }} flex items-center justify-center transition-transform group-hover:scale-110">
                                 <i class="ti ti-{{ $card['icono'] }} text-lg"></i>
                             </div>
-                            <span class="truncate">{{ $card['titulo'] }}</span>
+                            <span x-show="!sidebarCollapsed || sidebarOpen" class="truncate">{{ $card['titulo'] }}</span>
                         </div>
                         @if (isset($card['notificaciones']) && $card['notificaciones'] > 0)
                             <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white transform translate-x-1 bg-red-500 rounded-full">
-                                {{ $card['notificaciones'] }}
+                                {{ $card['notificaciones'] > 99 ? '99+' : $card['notificaciones'] }}
                             </span>
                         @endif
                         <button type="submit" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"></button>
@@ -266,11 +282,10 @@
                 @else
                     <a href="{{ $card['ruta'] ?? '#' }}"
                        @if (isset($card['onclick'])) onclick="{{ $card['onclick'] }}; return false;" @endif
-                       @if (in_array($card['titulo'], ['RRHH', 'Nóminas', 'IMSS']))
-                           @click.prevent="$dispatch('cambiar-menu', { menu: '{{ strtolower(str_replace(' ', '_', $card['titulo'])) }}' })"
-                       @endif
                        id="{{ Str::slug($card['titulo']) }}"
-                       class="group flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200
+                       title="{{ $card['titulo'] }}"
+                       @click="sidebarOpen = false"
+                       class="group flex min-h-11 items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200
                               {{ $isActive
                                   ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800'
                                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white' }}">
@@ -279,25 +294,28 @@
                             <div class="flex-shrink-0 w-8 h-8 rounded-lg {{ $isActive ? 'bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300' : $iconColorClass }} flex items-center justify-center transition-transform group-hover:scale-110">
                                 <i class="ti ti-{{ $card['icono'] }} text-lg"></i>
                             </div>
-                            <span class="truncate">{{ $card['titulo'] }}</span>
+                            <span x-show="!sidebarCollapsed || sidebarOpen" class="truncate">{{ $card['titulo'] }}</span>
                         </div>
 
                         @if (isset($card['notificaciones']) && $card['notificaciones'] > 0)
-                            <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-500 rounded-full shadow-sm ring-2 ring-white dark:ring-gray-800">
-                                {{ $card['notificaciones'] }}
+                            <span x-show="!sidebarCollapsed || sidebarOpen"
+                                  class="inline-flex min-w-6 items-center justify-center rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold leading-none text-white shadow-sm ring-2 ring-white dark:ring-gray-800"
+                                  aria-label="{{ $card['notificaciones'] }} pendientes">
+                                {{ $card['notificaciones'] > 99 ? '99+' : $card['notificaciones'] }}
                             </span>
                         @endif
                     </a>
                 @endif
             @endforeach
+            @endforeach
         </nav>
 
-        <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        <div class="border-t border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md">
                     {{ substr(Auth::user()->name, 0, 1) }}
                 </div>
-                <div class="flex-1 min-w-0">
+                <div x-show="!sidebarCollapsed || sidebarOpen" class="min-w-0 flex-1">
                     <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
                         {{ Auth::user()->name }}
                     </p>
@@ -310,25 +328,50 @@
     </aside>
 
     {{-- MAIN CONTENT --}}
-    <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <main class="flex min-w-0 flex-1 flex-col bg-slate-50 dark:bg-gray-900">
 
         {{-- TOP SECTION: KPI CARDS --}}
-        <div class="flex-1 overflow-y-auto p-6 scroll-smooth">
+        <div class="flex-1 p-4 scroll-smooth sm:p-6 lg:p-8">
 
-            {{-- Header Mobile/Tablet Title --}}
-            <div class="mb-6 md:hidden">
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Dashboard General</h1>
+            <div class="mx-auto mb-6 flex max-w-7xl items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <button type="button" @click="sidebarOpen = true"
+                            class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 md:hidden"
+                            aria-label="Abrir menú de módulos">
+                        <i class="ti ti-menu-2 text-xl" aria-hidden="true"></i>
+                    </button>
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600 dark:text-blue-400">Panel administrativo</p>
+                        <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">Dashboard General</h1>
+                        <p class="mt-1 hidden text-sm text-gray-500 dark:text-gray-400 sm:block">Hola, {{ strtok(Auth::user()->name, ' ') }}. Este es el panorama general del sistema.</p>
+                    </div>
+                </div>
+                <div class="hidden rounded-xl border border-gray-200 bg-white px-4 py-2 text-right shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:block">
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Actualizado</p>
+                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ now()->locale('es')->isoFormat('D MMM YYYY') }}</p>
+                </div>
             </div>
 
-            <div x-data="{ slide: 1 }" class="relative max-w-7xl mx-auto">
+            <div class="relative mx-auto max-w-7xl">
 
-                {{-- Slider Container --}}
-                <div class="overflow-hidden rounded-2xl">
-                    <div :class="`flex transition-transform duration-500 ease-out transform ${slide === 1 ? 'translate-x-0' : '-translate-x-full md:-translate-x-1/2'}`"
-                         style="width: 200%;">
+                <div class="mb-5 flex overflow-x-auto rounded-xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-800" role="tablist" aria-label="Resumen del dashboard">
+                    <button type="button" @click="summaryTab = 'personal'" :aria-selected="(summaryTab === 'personal').toString()"
+                            :class="summaryTab === 'personal' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'"
+                            class="min-h-11 flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition" role="tab">
+                        <i class="ti ti-users mr-1.5" aria-hidden="true"></i> Personal
+                    </button>
+                    <button type="button" @click="summaryTab = 'finanzas'" :aria-selected="(summaryTab === 'finanzas').toString()"
+                            :class="summaryTab === 'finanzas' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'"
+                            class="min-h-11 flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition" role="tab">
+                        <i class="ti ti-cash-banknote mr-1.5" aria-hidden="true"></i> Resumen financiero
+                    </button>
+                </div>
+
+                <div class="rounded-2xl">
+                    <div>
 
                         {{-- SLIDE 1: KPIs Principales --}}
-                        <div class="w-1/2 px-2 md:px-4">
+                        <div x-show="summaryTab === 'personal'" x-transition.opacity class="px-0 md:px-1" role="tabpanel">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
                                 {{-- Card: Activos --}}
@@ -435,7 +478,7 @@
                         </div>
 
                         {{-- SLIDE 2: Livewire Components --}}
-                        <div class="w-1/2 px-2 md:px-4">
+                        <div x-cloak x-show="summaryTab === 'finanzas'" x-transition.opacity class="px-0 md:px-1" role="tabpanel">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
                                 @livewire('nominamensual')
                                 @livewire('finiquitomensual')
@@ -462,79 +505,37 @@
                     </div>
                 </div>
 
-                {{-- Slider Controls --}}
-                <div class="flex justify-center items-center mt-6 gap-4">
-                    <button type="button" @click="slide = 1"
-                            class="p-2 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            :class="{ 'opacity-50 cursor-not-allowed': slide === 1 }">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </button>
-
-                    <div class="flex space-x-2">
-                        <div class="h-2 w-2 rounded-full transition-colors duration-300" :class="slide === 1 ? 'bg-blue-600 w-6' : 'bg-gray-300 dark:bg-gray-600'"></div>
-                        <div class="h-2 w-2 rounded-full transition-colors duration-300" :class="slide === 2 ? 'bg-blue-600 w-6' : 'bg-gray-300 dark:bg-gray-600'"></div>
-                    </div>
-
-                    <button type="button" @click="slide = 2"
-                            class="p-2 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            :class="{ 'opacity-50 cursor-not-allowed': slide === 2 }">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                    </button>
-                </div>
-
             </div>
 
-            {{-- BOTTOM SECTION: Carousel Charts --}}
-            <div class="max-w-7xl mx-auto mt-8 pb-8">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-1 relative">
-                    <div class="overflow-hidden rounded-xl" id="carouselContainer">
-                        <div id="carouselSlides" class="flex transition-transform duration-500 ease-in-out">
-                            <div class="w-full flex-shrink-0 p-4">
-                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 min-h-[300px]">
-                                    @livewire('nominastotales')
-                                </div>
-                            </div>
-                            <div class="w-full flex-shrink-0 p-4">
-                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 min-h-[300px]">
-                                    @livewire('destajo-mensual')
-                                </div>
-                            </div>
-                            <div class="w-full flex-shrink-0 p-4">
-                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 min-h-[300px]">
-                                    @livewire('graficasfiniquitos')
-                                </div>
-                            </div>
-                            <div class="w-full flex-shrink-0 p-4">
-                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 min-h-[300px]">
-                                    @livewire('graficas-altas')
-                                </div>
-                            </div>
-                        </div>
+            {{-- Gráficas por pestañas --}}
+            <div class="mx-auto mt-8 max-w-7xl pb-8">
+                <div class="mb-4">
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600 dark:text-blue-400">Análisis</p>
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white">Indicadores financieros y operativos</h2>
+                </div>
+                <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-gray-700 dark:bg-gray-800" role="tablist" aria-label="Gráficas administrativas">
+                    <div class="grid min-w-[620px] grid-cols-4 gap-2">
+                        @foreach ([
+                            ['id' => 'nomina', 'titulo' => 'Nómina', 'icono' => 'cash-banknote'],
+                            ['id' => 'destajos', 'titulo' => 'Destajos', 'icono' => 'currency-dollar'],
+                            ['id' => 'finiquitos', 'titulo' => 'Finiquitos', 'icono' => 'file-dollar'],
+                            ['id' => 'personal', 'titulo' => 'Personal', 'icono' => 'users'],
+                        ] as $tab)
+                            <button type="button" @click="chartTab = '{{ $tab['id'] }}'; $nextTick(() => window.dispatchEvent(new Event('resize')))"
+                                    :aria-selected="(chartTab === '{{ $tab['id'] }}').toString()"
+                                    :class="chartTab === '{{ $tab['id'] }}' ? 'bg-slate-900 text-white shadow-sm dark:bg-blue-600' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'"
+                                    class="min-h-11 rounded-xl px-4 py-2.5 text-sm font-semibold transition" role="tab">
+                                <i class="ti ti-{{ $tab['icono'] }} mr-1.5" aria-hidden="true"></i>{{ $tab['titulo'] }}
+                            </button>
+                        @endforeach
                     </div>
-
-                    {{-- Carousel Arrows --}}
-                    <button onclick="prevSlide()" class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 p-2 rounded-full shadow-lg border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition z-10">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </button>
-                    <button onclick="nextSlide()" class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 p-2 rounded-full shadow-lg border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition z-10">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                    </button>
                 </div>
 
-                {{-- Carousel Indicators --}}
-                <div class="flex justify-center mt-4 space-x-2">
-                    @for ($i = 0; $i < 4; $i++)
-                        <button onclick="goToSlide({{ $i }})"
-                                class="indicator-dot w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-600 hover:bg-blue-400 transition-all duration-300 focus:outline-none"></button>
-                    @endfor
+                <div class="mt-4 min-h-[420px] rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-4">
+                    <div x-show="chartTab === 'nomina'" x-transition.opacity role="tabpanel">@livewire('nominastotales')</div>
+                    <div x-cloak x-show="chartTab === 'destajos'" x-transition.opacity role="tabpanel">@livewire('destajo-mensual')</div>
+                    <div x-cloak x-show="chartTab === 'finiquitos'" x-transition.opacity role="tabpanel">@livewire('graficasfiniquitos')</div>
+                    <div x-cloak x-show="chartTab === 'personal'" x-transition.opacity role="tabpanel">@livewire('graficas-altas')</div>
                 </div>
             </div>
 
@@ -602,52 +603,5 @@
                     }
                 });
         }
-    </script>
-    <script>
-        let currentSlide = 0;
-        const totalSlides = 4;
-        const carousel = document.getElementById('carouselSlides');
-        const indicators = document.querySelectorAll('.indicator-dot');
-
-        function updateCarousel() {
-            if(carousel) {
-                carousel.style.transform = `translateX(-${currentSlide * 100}%)`;
-            }
-
-            indicators.forEach((dot, index) => {
-                if (index === currentSlide) {
-                    dot.classList.remove('bg-gray-300', 'dark:bg-gray-600', 'w-2.5', 'h-2.5');
-                    dot.classList.add('bg-blue-600', 'w-6', 'h-2.5');
-                } else {
-                    dot.classList.remove('bg-blue-600', 'w-6', 'h-2.5');
-                    dot.classList.add('bg-gray-300', 'dark:bg-gray-600', 'w-2.5', 'h-2.5');
-                }
-            });
-
-            if (window.nominaChart) {
-                setTimeout(() => {
-                    window.nominaChart.update();
-                }, 300);
-            }
-        }
-
-        function nextSlide() {
-            currentSlide = (currentSlide + 1) % totalSlides;
-            updateCarousel();
-        }
-
-        function prevSlide() {
-            currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
-            updateCarousel();
-        }
-
-        function goToSlide(index) {
-            currentSlide = index;
-            updateCarousel();
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            updateCarousel();
-        });
     </script>
 @endpush

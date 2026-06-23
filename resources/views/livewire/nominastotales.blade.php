@@ -1,7 +1,7 @@
-<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+<div class="rounded-xl bg-white p-3 dark:bg-gray-800 sm:p-5">
+    <div class="mb-6 flex flex-col gap-4 border-b border-gray-100 pb-5 dark:border-gray-700 md:flex-row md:items-center md:justify-between">
         <div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+            <h2 class="flex items-center text-xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-2xl">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -12,7 +12,7 @@
 
         <div class="flex flex-col sm:flex-row gap-2">
             <a href="{{ route('nominas.registros') }}"
-               class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 text-sm">
+               class="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
@@ -20,7 +20,7 @@
             </a>
 
             @if ($readyToLoad && $total > 0)
-                <div class="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg p-3 text-white text-center">
+                <div class="rounded-xl bg-slate-900 p-3 text-center text-white dark:bg-blue-600">
                     <div class="text-xs opacity-90">Total Nómina</div>
                     <div class="text-lg font-bold">${{ number_format($total, 2) }}</div>
                 </div>

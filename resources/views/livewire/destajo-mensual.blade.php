@@ -1,7 +1,7 @@
-<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+<div class="rounded-xl bg-white p-3 dark:bg-gray-800 sm:p-5">
+    <div class="mb-6 flex flex-col gap-4 border-b border-gray-100 pb-5 dark:border-gray-700 md:flex-row md:items-center md:justify-between">
         <div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+            <h2 class="flex items-center text-xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-2xl">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
@@ -11,7 +11,7 @@
         </div>
 
         @if ($readyToLoad && $total > 0)
-            <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-4 text-white">
+            <div class="rounded-xl bg-slate-900 p-3 text-center text-white dark:bg-blue-600">
                 <div class="text-xs opacity-90">Total Acumulado</div>
                 <div class="text-2xl font-bold">${{ number_format($total, 2) }}</div>
             </div>

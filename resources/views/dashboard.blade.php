@@ -11,21 +11,8 @@
     </div>
     @else
     @endif
-    <div class="mt-4 ml-4">
-        <!-- El x-data es el que corrompe los charts para que no rendericen -->
-        <div x-data="{ menu: 'admin' }" x-on:cambiar-menu.window="menu = $event.detail.menu" class="mb-4">
-            <div x-show="menu === 'rrhh'" x-cloak>
-                <x-rh-navbar />
-            </div>
-            <div x-show="menu === 'nóminas'" x-cloak>
-                <x-nominas-navbar />
-            </div>
-            <div x-show="menu === 'imss'" x-cloak>
-                <x-auxadmin-navbar />
-            </div>
-        </div>
+    <div>
         <x-admin-navbar></x-admin-navbar>
-        <!--funciona siempre y cuando este fuera de div x-data-->
     </div>
     @else
     <div class="px-2 py-4 sm:py-6 sm:px-4">

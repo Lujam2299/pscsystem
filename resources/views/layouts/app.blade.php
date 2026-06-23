@@ -69,7 +69,7 @@
 </head>
 
 <body class="font-sans antialiased">
-    <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div class="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-900">
         @include('layouts.navigation')
 
         <!-- Page Heading -->
@@ -82,7 +82,7 @@
         @endisset
 
         <!-- Page Content -->
-        <main class="bg-blue-50 dark:bg-gray-900 min-h-screen">
+        <main class="flex-1 bg-blue-50 dark:bg-gray-900">
         {{ $slot}}
 
 

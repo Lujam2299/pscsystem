@@ -1,7 +1,6 @@
-<div
-    class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-t-4 border-green-500 hover:shadow-xl transform hover:-translate-y-1 transition">
-    <div class="flex items-center gap-4">
-        <div class="p-3 bg-green-100 dark:bg-green-900 rounded-full">
+<div class="h-full rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 sm:p-6">
+    <div class="flex h-full items-start gap-4">
+        <div class="rounded-xl bg-emerald-50 p-3 dark:bg-emerald-900/30">
             <!-- Icono de tarjeta bancaria -->
             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600 dark:text-green-300" fill="none"
                 viewBox="0 0 24 24" stroke="currentColor">
@@ -10,10 +9,10 @@
             </svg>
         </div>
         <div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Suma de pagos de Nómina</h3>
-            <p class="text-3xl font-bold text-gray-800 dark:text-gray-200">
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Nómina del periodo</p>
+            <h3 class="mt-1 text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">
                 ${{ number_format($totalMesActual, 2) }}
-            </p>
+            </h3>
             <div
                 class="text-sm mt-1 flex items-center gap-1 {{ $variacion >= 0 ? 'text-red-600' : 'text-green-500' }}">
                 @if ($variacion > 0)
@@ -29,7 +28,8 @@
                         <path d="M4 9h12v2H4z" />
                     </svg>
                 @endif
-                <span>{{ $variacion >= 0 ? '+' : '' }}{{ $variacion }}% vs periodo pasado</span>
+                <span class="font-medium">{{ $variacion >= 0 ? '+' : '' }}{{ $variacion }}%</span>
+                <span class="text-gray-500 dark:text-gray-400">vs. periodo anterior</span>
             </div>
         </div>
     </div>
