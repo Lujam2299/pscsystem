@@ -73,6 +73,7 @@ function emitNotificationTone(context, icon) {
         error: [392, 329.63],
         info: [587.33, 783.99],
         question: [523.25, 698.46],
+        panic: [880, 659.25, 880, 659.25],
     };
     const notes = frequencies[icon] || frequencies.info;
     const startTime = context.currentTime;
@@ -83,7 +84,7 @@ function emitNotificationTone(context, icon) {
         const noteStart = startTime + (index * 0.12);
         const noteEnd = noteStart + 0.16;
 
-        oscillator.type = 'sine';
+        oscillator.type = icon === 'panic' ? 'square' : 'sine';
         oscillator.frequency.setValueAtTime(frequency, noteStart);
         gain.gain.setValueAtTime(0.0001, noteStart);
         gain.gain.exponentialRampToValueAtTime(0.16, noteStart + 0.02);
@@ -151,7 +152,10 @@ function showPrivateRealtimeToast(notification) {
     const allowedIcons = new Set(['success', 'error', 'warning', 'info', 'question']);
     const icon = allowedIcons.has(notification.icon) ? notification.icon : 'info';
 
-    playNotificationSound(icon);
+    const isUrgent = notification.urgent === true;
+    const sound = notification.sound === 'panic' ? 'panic' : icon;
+
+    playNotificationSound(sound);
     window.Swal.fire({
         toast: true,
         position: 'top-end',
@@ -159,15 +163,48 @@ function showPrivateRealtimeToast(notification) {
         title: notification.title || 'Nueva notificación',
         text: notification.text || '',
         showConfirmButton: false,
-        timer: 6000,
+        timer: isUrgent ? 10000 : 6000,
         timerProgressBar: true,
         didOpen: toast => {
+            if (isUrgent) {
+                toast.style.border = '2px solid #dc2626';
+                toast.style.borderLeftWidth = '8px';
+                toast.style.background = '#fff1f2';
+                toast.style.color = '#7f1d1d';
+                toast.style.boxShadow = '0 12px 30px rgba(185, 28, 28, 0.35)';
+
+                toast.animate?.([
+                    { transform: 'translateX(0)' },
+                    { transform: 'translateX(-7px)' },
+                    { transform: 'translateX(7px)' },
+                    { transform: 'translateX(0)' },
+                ], {
+                    duration: 320,
+                    iterations: 2,
+                });
+            }
+
             if (!notification.url) return;
             toast.style.cursor = 'pointer';
             toast.addEventListener('click', () => {
                 window.location.href = notification.url;
             });
         },
+    });
+}
+
+function showPanicAlert(event) {
+    const alert = event?.alert;
+    if (!alert?.id) return;
+
+    showPrivateRealtimeToast({
+        icon: 'error',
+        sound: 'panic',
+        urgent: true,
+        title: '🚨 ALERTA DE PÁNICO',
+        text: `${alert.user_name || 'Un usuario'} activó el botón de pánico. Haz clic para abrir el mapa.`,
+        url: '/mapa',
+        key: `panic:${alert.id}`,
     });
 }
 
@@ -433,6 +470,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 notifyMovementStart(event);
                 evaluateGlobalGeofences(event?.position, true);
             });
+
+        window.Echo.channel('panic-alerts.all')
+            .listen('.NuevaAlertaPanico', showPanicAlert);
     }
 
     const conversationElement = document.querySelector('[data-conversation-id]') ||
