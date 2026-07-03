@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Livewire;
 
+use App\Exports\GastosMisionSpreadsheetExport;
 use App\Livewire\GastosCrud;
 use App\Models\Gastos;
 use App\Models\Misiones;
@@ -100,6 +101,43 @@ class GastosCrudTest extends TestCase
         $this->assertCount(0, $componente->render()->getData()['misiones']);
     }
 
+    public function test_genera_una_hoja_por_agente_y_clasifica_los_importes(): void
+    {
+        $agente = $this->crearUsuario('Agente Reporte');
+        $mision = Misiones::create([
+            'agentes_id' => [(string) $agente->id],
+            'cliente' => 'Cliente Reporte',
+            'nombre_clave' => 'Operación Centro',
+            'fecha_inicio' => '2026-06-20',
+            'fecha_fin' => '2026-07-25',
+        ]);
+
+        $this->crearGastoClasificado($agente, '2026-06-21', 100, 'Viaticos', 'alimentos');
+        $this->crearGastoClasificado($agente, '2026-06-22', 500, 'Gasolina', 'gasolina', 'tag');
+        $this->crearGastoClasificado(
+            $agente,
+            '2026-06-23',
+            75,
+            'Viaticos',
+            'estacionamiento',
+            'efectivo',
+            'Parking aeropuerto'
+        );
+
+        $spreadsheet = app(GastosMisionSpreadsheetExport::class)->createSpreadsheet($mision);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $this->assertSame('Agente '.$agente->id, $sheet->getTitle());
+        $this->assertSame(100.0, $sheet->getCell('G7')->getValue());
+        $this->assertSame(500.0, $sheet->getCell('K8')->getValue());
+        $this->assertSame(75.0, $sheet->getCell('D9')->getValue());
+        $this->assertSame('Parking aeropuerto', $sheet->getCell('C9')->getValue());
+        $this->assertSame('=SUM(A7,D7:K7)', $sheet->getCell('L7')->getValue());
+        $this->assertSame('=SUM(L7:L37)', $sheet->getCell('L38')->getValue());
+
+        $spreadsheet->disconnectWorksheets();
+    }
+
     private function crearUsuario(string $nombre): User
     {
         return User::create([
@@ -120,6 +158,29 @@ class GastosCrudTest extends TestCase
             'Hora' => '07:00:00',
             'Evidencia' => null,
             'Tipo' => 'Viaticos',
+        ]);
+    }
+
+    private function crearGastoClasificado(
+        User $agente,
+        string $fecha,
+        float $monto,
+        string $tipo,
+        string $categoria,
+        ?string $metodoPago = null,
+        ?string $descripcion = null
+    ): Gastos {
+        return Gastos::create([
+            'user_id' => $agente->id,
+            'user_name' => $agente->name,
+            'Monto' => $monto,
+            'Fecha' => $fecha,
+            'Hora' => '07:00:00',
+            'Evidencia' => null,
+            'Tipo' => $tipo,
+            'Categoria' => $categoria,
+            'Metodo_pago' => $metodoPago,
+            'Descripcion' => $descripcion,
         ]);
     }
 
@@ -154,6 +215,9 @@ class GastosCrudTest extends TestCase
             $table->time('Hora')->nullable();
             $table->string('Evidencia')->nullable();
             $table->string('Tipo')->nullable();
+            $table->string('Categoria')->nullable();
+            $table->string('Metodo_pago')->nullable();
+            $table->string('Descripcion')->nullable();
             $table->string('user_name')->nullable();
             $table->decimal('Litros', 10, 2)->nullable();
             $table->decimal('Km', 10, 2)->nullable();

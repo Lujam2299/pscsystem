@@ -152,10 +152,12 @@
                                                 Desglose
                                             </button>
 
-                                            <button type="button" disabled
-                                                class="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-white bg-green-600 rounded-md cursor-not-allowed opacity-50"
-                                                title="La exportación se implementará próximamente">
-                                                <i class="ti ti-file-spreadsheet"></i>
+                                            <button type="button" wire:click="exportarExcel({{ $mision->id }})"
+                                                wire:loading.attr="disabled" wire:target="exportarExcel({{ $mision->id }})"
+                                                class="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:cursor-wait disabled:opacity-50"
+                                                title="Generar reporte Excel de la misión">
+                                                <i wire:loading.remove wire:target="exportarExcel({{ $mision->id }})" class="ti ti-file-spreadsheet"></i>
+                                                <i wire:loading wire:target="exportarExcel({{ $mision->id }})" class="ti ti-loader-2 animate-spin"></i>
                                                 Excel
                                             </button>
                                         </div>
@@ -202,7 +204,7 @@
                                                                 <thead class="bg-white dark:bg-gray-800">
                                                                     <tr>
                                                                         <th class="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-300">Fecha y hora</th>
-                                                                        <th class="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-300">Tipo</th>
+                                                                        <th class="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-300">Categoría</th>
                                                                         <th class="px-4 py-2 text-xs font-medium text-right text-gray-500 uppercase dark:text-gray-300">Monto</th>
                                                                         <th class="px-4 py-2 text-xs font-medium text-center text-gray-500 uppercase dark:text-gray-300">Comprobante</th>
                                                                         <th class="px-4 py-2 text-xs font-medium text-center text-gray-500 uppercase dark:text-gray-300">Detalle</th>
@@ -215,7 +217,20 @@
                                                                                 {{ $gasto->Fecha?->format('d/m/Y') ?? 'Sin fecha' }}
                                                                                 <span class="block text-xs text-gray-500">{{ $gasto->Hora ?: 'Sin hora' }}</span>
                                                                             </td>
-                                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200">{{ $gasto->Tipo ?: 'Sin tipo' }}</td>
+                                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200">
+                                                                                <span class="font-medium">{{ $gasto->categoria_etiqueta }}</span>
+                                                                                <span class="block text-xs text-gray-500 dark:text-gray-400">
+                                                                                    {{ $gasto->Tipo ?: 'Sin tipo' }}
+                                                                                    @if ($gasto->Metodo_pago)
+                                                                                        · {{ strtoupper($gasto->Metodo_pago) }}
+                                                                                    @endif
+                                                                                </span>
+                                                                                @if ($gasto->Descripcion)
+                                                                                    <span class="block mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                                                        {{ $gasto->Descripcion }}
+                                                                                    </span>
+                                                                                @endif
+                                                                            </td>
                                                                             <td class="px-4 py-2 text-sm font-semibold text-right text-gray-900 whitespace-nowrap dark:text-white">
                                                                                 ${{ number_format((float) $gasto->Monto, 2) }}
                                                                             </td>

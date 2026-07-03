@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Exports\GastosMisionSpreadsheetExport;
 use App\Models\Gastos;
 use App\Models\Misiones;
 use App\Models\User;
@@ -68,6 +69,13 @@ class GastosCrud extends Component
 
         $this->filtro_estatus = 'activas';
         $this->resetPage();
+    }
+
+    public function exportarExcel(int $misionId, GastosMisionSpreadsheetExport $exportador)
+    {
+        $mision = Misiones::query()->findOrFail($misionId);
+
+        return $exportador->download($mision);
     }
 
     public function render()
