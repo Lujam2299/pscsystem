@@ -169,32 +169,19 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @php
-                                        $estatus = $mision->estatus ?? 'En Curso';
-                                        $statusConfig = match($estatus) {
-                                            'En Curso' => ['bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200', 'check'],
-                                            'Completada' => ['bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200', 'check-circle'],
-                                            'Cancelada' => ['bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200', 'x'],
-                                            default => ['bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200', 'help'],
-                                        };
+                                        $estatus = $mision->estado_normalizado;
+                                        $statusTone = \App\Support\Custodios\MissionStatus::tone($mision->estatus);
                                     @endphp
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusConfig[0] }}">
-                                        @if($statusConfig[1] == 'check')
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                            </svg>
-                                        @elseif($statusConfig[1] == 'check-circle')
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        @elseif($statusConfig[1] == 'x')
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        @endif
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusTone }}">
                                         {{ $estatus }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                    <a href="{{ route('admin.detalleMision', $mision->id) }}"
+                                       class="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition duration-200 shadow-sm mr-2"
+                                       title="Ver detalle y actualizar estado">
+                                        Ver
+                                    </a>
                                     @if ($mision->arch_mision)
                                         <a href="{{ asset('storage/' . $mision->arch_mision) }}"
                                            target="_blank"

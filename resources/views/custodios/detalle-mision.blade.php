@@ -45,12 +45,38 @@
 
                         <div class="p-6 space-y-6">
                             {{-- Estatus --}}
-                            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Estatus Actual</span>
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                    {{ ($mision->estatus ?? '') == 'Activa' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
-                                    {{ $mision->estatus ?? 'Desconocido' }}
-                                </span>
+                            <div class="p-3 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-700 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Estatus actual</span>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ \App\Support\Custodios\MissionStatus::tone($mision->estatus) }}">
+                                        {{ $mision->estado_normalizado }}
+                                    </span>
+                                </div>
+
+                                @if(count($mision->transiciones_estado) > 0)
+                                    <form method="POST" action="{{ route('misiones.estado.update', $mision) }}" class="flex flex-col sm:flex-row gap-2">
+                                        @csrf
+                                        @method('PATCH')
+                                        <label for="estatus" class="sr-only">Nuevo estado</label>
+                                        <select id="estatus" name="estatus" required
+                                                class="flex-1 rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white">
+                                            <option value="" selected disabled>Seleccionar nuevo estado</option>
+                                            @foreach($mision->transiciones_estado as $estado)
+                                                <option value="{{ $estado }}">{{ $estado }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="submit"
+                                                class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                                            Actualizar
+                                        </button>
+                                    </form>
+                                @else
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Este estado es terminal y no admite más cambios.</p>
+                                @endif
+
+                                @error('estatus')
+                                    <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                @enderror
                             </div>
 
                             {{-- Datos Principales --}}

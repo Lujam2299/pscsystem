@@ -7,6 +7,7 @@ use App\Models\Misiones;
 use App\Models\PermisoEspecial;
 use App\Models\SolicitudVacaciones;
 use App\Models\User;
+use App\Support\Custodios\MissionStatus;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -117,13 +118,13 @@ class CustodiosAvailabilityService
                 $query->whereNull('fecha_fin')
                     ->orWhereDate('fecha_fin', '>=', $start->toDateString());
             })
-            ->where(function ($query): void {
-                $query->whereNull('estatus')
-                    ->orWhereRaw("UPPER(TRIM(estatus)) <> 'CANCELADA'");
-            })
-            ->get(['id', 'agentes_id']);
+            ->get(['id', 'agentes_id', 'estatus']);
 
         foreach ($missions as $mission) {
+            if (MissionStatus::isCancelled($mission->estatus)) {
+                continue;
+            }
+
             foreach (array_intersect($agentIds, $mission->agentesIdsNormalizados()) as $agentId) {
                 $addReason((int) $agentId, "misión #{$mission->id}");
             }

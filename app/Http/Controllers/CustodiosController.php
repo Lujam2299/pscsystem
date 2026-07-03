@@ -14,6 +14,9 @@ use Geocoder\Laravel\Facades\Geocoder;
 use App\Models\Geofence;
 use App\Models\RealtimePosition;
 use App\Services\CustodiosAvailabilityService;
+use App\Support\Custodios\MissionStatus;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CustodiosController extends Controller
 {
@@ -176,7 +179,7 @@ class CustodiosController extends Controller
                 'salida' => $request->input('vuelo_salida', []),
             ]),
 
-            'estatus' => 'Pendiente',
+            'estatus' => MissionStatus::SCHEDULED,
         ]);
     } catch (\Exception $e) {
         Log::error('Error al guardar misión:', [
@@ -608,6 +611,34 @@ public function update(
 
     return redirect()->route('dashboard')->with('success', 'Misión actualizada exitosamente.');
 }
+
+    public function updateStatus(Request $request, Misiones $mision)
+    {
+        $validated = $request->validate([
+            'estatus' => ['required', 'string', Rule::in(MissionStatus::all())],
+        ]);
+
+        $currentStatus = MissionStatus::normalize($mision->estatus);
+        $nextStatus = MissionStatus::normalize($validated['estatus']);
+
+        if (! MissionStatus::canTransition($currentStatus, $nextStatus)) {
+            throw ValidationException::withMessages([
+                'estatus' => "No se permite cambiar de {$currentStatus} a {$nextStatus}.",
+            ]);
+        }
+
+        $mision->update(['estatus' => $nextStatus]);
+
+        Log::info('Estado de misión actualizado', [
+            'mision_id' => $mision->id,
+            'estado_anterior' => $currentStatus,
+            'estado_nuevo' => $nextStatus,
+            'usuario_id' => $request->user()?->id,
+            'usuario_email' => $request->user()?->email,
+        ]);
+
+        return back()->with('success', "Estado actualizado a {$nextStatus}.");
+    }
 
     public function mostrarItinerarios(Misiones $mision)
     {

@@ -70,6 +70,7 @@ class CustodiosAccessTest extends TestCase
             'custodios.misionesTerminadas',
             'misiones.edit',
             'misiones.update',
+            'misiones.estado.update',
             'misiones.itinerarios.show',
             'misiones.itinerarios.pdf',
             'misiones.gastos.show',

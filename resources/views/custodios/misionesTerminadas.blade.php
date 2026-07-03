@@ -78,6 +78,9 @@
                                                 Fecha Fin
                                             </div>
                                         </th>
+                                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                            Estado
+                                        </th>
                                         <th scope="col" class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             <div class="flex items-center justify-center">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -115,8 +118,18 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                                                 {{ \Carbon\Carbon::parse($mision->fecha_fin)->format('d/m/Y') }}
                                             </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold {{ \App\Support\Custodios\MissionStatus::tone($mision->estatus) }}">
+                                                    {{ $mision->estado_normalizado }}
+                                                </span>
+                                            </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                                 <div class="flex items-center justify-center gap-2">
+                                                    <a href="{{ route('admin.detalleMision', $mision->id) }}"
+                                                        class="inline-flex items-center justify-center rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-sky-700"
+                                                        title="Ver detalle de la misiÃ³n">
+                                                        Ver
+                                                    </a>
                                                     {{-- Botón Ver Itinerarios --}}
                                                     @if($mision->itinerarios && !empty($mision->itinerarios))
                                                         {{-- Estado: Habilitado --}}

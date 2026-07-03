@@ -419,6 +419,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/misiones_terminadas', [CustodiosController::class, 'misionesTerminadas'])->name('custodios.misionesTerminadas');
         Route::get('/misiones/{mision}/editar', [CustodiosController::class, 'edit'])->name('misiones.edit');
         Route::put('/misiones/{mision}', [CustodiosController::class, 'update'])->name('misiones.update');
+        Route::patch('/misiones/{mision}/estado', [CustodiosController::class, 'updateStatus'])
+            ->name('misiones.estado.update');
         Route::prefix('misiones/{mision}/itinerarios')->name('misiones.itinerarios.')->group(function () {
             Route::get('/', [CustodiosController::class, 'mostrarItinerarios'])->name('show');
             Route::get('/pdf', [CustodiosController::class, 'downloadItinerarios'])->name('pdf');

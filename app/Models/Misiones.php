@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Custodios\MissionStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class Misiones extends Model
@@ -45,6 +46,17 @@ class Misiones extends Model
     public function geofences()
     {
         return $this->hasMany(Geofence::class, 'mision_id');
+    }
+
+    public function getEstadoNormalizadoAttribute(): string
+    {
+        return MissionStatus::normalize($this->estatus);
+    }
+
+    /** @return array<int, string> */
+    public function getTransicionesEstadoAttribute(): array
+    {
+        return MissionStatus::transitionsFrom($this->estatus);
     }
 
     public function getNombresAgentesAttribute(): string
