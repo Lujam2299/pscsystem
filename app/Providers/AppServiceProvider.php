@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Livewire\UsuariosLista;
 use App\Models\Asistencia;
 use App\Models\BuzonQueja;
 use App\Models\Eventuales;
@@ -10,8 +11,6 @@ use App\Models\Incapacidad;
 use App\Models\Message;
 use App\Models\RiesgoTrabajo;
 use App\Models\SolicitudBajas;
-use App\Policies\SolicitudBajasPolicy;
-use Illuminate\Support\Facades\Gate;
 use App\Models\ValesComida;
 use App\Observers\AsistenciaObserver;
 use App\Observers\BuzonQuejaObserver;
@@ -22,9 +21,11 @@ use App\Observers\MessageObserver;
 use App\Observers\RiesgoTrabajoObserver;
 use App\Observers\SolicitudBajasObserver;
 use App\Observers\ValesComidaObserver;
+use App\Policies\SolicitudBajasPolicy;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
-use App\Http\Livewire\UsuariosLista;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -42,6 +43,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(SolicitudBajas::class, SolicitudBajasPolicy::class);
+        Gate::define('view-traccar-monitoring', function ($user) {
+            $rol = Str::lower(Str::ascii(trim((string) ($user->rol ?? ''))));
+
+            return Str::contains($rol, ['admin', 'monitor']);
+        });
+
         Message::observe(MessageObserver::class);
         BuzonQueja::observe(BuzonQuejaObserver::class);
         Incapacidad::observe(IncapacidadObserver::class);

@@ -1,42 +1,39 @@
 <?php
 
-use App\Exports\AltasSpreadsheetExport;
 use App\Exports\AltasPorCorteExport;
+use App\Exports\AltasSpreadsheetExport;
 use App\Exports\BajasSpreadsheetExport;
-use App\Exports\VacacionesSpreadsheetExport;
 use App\Exports\VacacionesCortesExport;
-use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\VacacionesSpreadsheetExport;
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\SupervisorController;
-use App\Http\Controllers\RhController;
-use App\Http\Controllers\ImportController;
-use App\Http\Controllers\MonitoreoController;
 use App\Http\Controllers\AuxadminController;
-use App\Http\Controllers\NominasController;
-use App\Http\Controllers\CustodiosController;
+use App\Http\Controllers\AuxcontController;
+use App\Http\Controllers\BajaAcuseController;
+use App\Http\Controllers\CedulaController;
 use App\Http\Controllers\ChatWebController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\RiesgoTrabajoController;
+use App\Http\Controllers\CustodiosController;
+use App\Http\Controllers\GraficosController;
+use App\Http\Controllers\ImportController;
 use App\Http\Controllers\IncapacidadController;
 use App\Http\Controllers\IncapacidadReporteController;
-use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\CedulaController;
-use App\Http\Controllers\SipareController;
-use App\Http\Controllers\GraficosController;
-use App\Http\Controllers\BajaAcuseController;
-use App\Http\Controllers\AuxcontController;
 use App\Http\Controllers\JuridicoController;
+use App\Http\Controllers\MonitoreoController;
+use App\Http\Controllers\NominasController;
 use App\Http\Controllers\OperacionesController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RealtimePositionController;
 use App\Http\Controllers\ReingresoController;
+use App\Http\Controllers\RhController;
+use App\Http\Controllers\RiesgoTrabajoController;
+use App\Http\Controllers\SipareController;
+use App\Http\Controllers\SupervisorController;
+use App\Http\Controllers\TraccarMonitoringController;
+use App\Http\Controllers\UserController;
 use App\Models\Unidades;
 use App\Models\User;
-use App\Livewire\KardexVacaciones;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -48,7 +45,7 @@ Route::get('/dashboard', function () {
 
 Route::middleware(['auth'])->post('/generate-api-token', function (Request $request) {
     $request->validate([
-        'token_name' => 'required|string|max:255'
+        'token_name' => 'required|string|max:255',
     ]);
 
     $user = auth()->user();
@@ -65,7 +62,7 @@ Route::middleware(['auth'])->post('/generate-api-token', function (Request $requ
             'id' => $user->id,
             'name' => $user->name,
         ],
-        'message' => 'Token generado exitosamente. ¡Guárdalo ahora!'
+        'message' => 'Token generado exitosamente. ¡Guárdalo ahora!',
     ]);
 });
 
@@ -73,23 +70,23 @@ Route::middleware(['auth'])->get('/my-api-token', function () {
     $user = auth()->user();
 
     // Genera un token temporal
-    $token = $user->createToken('mobile_app_token_' . now()->format('Y-m-d_H-i-s'));
+    $token = $user->createToken('mobile_app_token_'.now()->format('Y-m-d_H-i-s'));
 
     return response()->json([
         'token' => $token->plainTextToken,
         'user' => $user->only(['id', 'name', 'email']),
-        'expires_at' => now()->addHours(24)
+        'expires_at' => now()->addHours(24),
     ]);
 });
 
 Route::middleware('auth')->group(function () {
 
-    //Broadcast::routes(['middleware' => ['web', 'auth']]);
+    // Broadcast::routes(['middleware' => ['web', 'auth']]);
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    //Usuario Admnistrador
+    // Usuario Admnistrador
     Route::get('/users', [ProfileController::class, 'mostrarUsuarios'])->name('admin.verUsuarios');
     Route::get('/users/registrarUsuario', [UserController::class, 'crearUsuario'])->name('admin.crearUsuarioForm');
     Route::post('/guardarUsuario', [UserController::class, 'registrarUsuario'])->name('registrarUsuario');
@@ -117,7 +114,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/registrar_finiquitos', [AdminController::class, 'registrarFiniquitos'])->name('registrarFiniquitos');
     Route::post('/admin/import/unify-duplicates', [ImportController::class, 'unifyDuplicates'])->name('admin.import.unify-duplicates');
 
-    //Usuario Supervisor
+    // Usuario Supervisor
     Route::get('/nuevoUsuario', [SupervisorController::class, 'nuevoUsuarioForm'])->name('sup.nuevoUsuarioForm');
     Route::post('/infoUsuario', [SupervisorController::class, 'guardarInfo'])->name('sup.guardarInfo');
     Route::get('/subir-archivos/{id}', [SupervisorController::class, 'subirArchivosForm'])->name('sup.subirArchivosForm');
@@ -155,8 +152,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/asistencias/finalizar', [SupervisorController::class, 'finalizarAsistencia'])->name('asistencias.finalizar');
     Route::get('/sup-alta-usuario', [SupervisorController::class, 'formAlta'])->name('sup.formAlta');
 
-
-    //usuario Recursos Humanos
+    // usuario Recursos Humanos
     Route::get('/solicitudes_altas', [RhController::class, 'solicitudesAltas'])->name('rh.solicitudesAltas');
     Route::get('/solicitudes_altas/{id}', [RhController::class, 'detalleSolicitud'])->name('rh.detalleSolicitud');
     Route::get('/aceptar_solicitud/{id}', [RhController::class, 'aceptarSolicitud'])->name('rh.aceptarSolicitud');
@@ -189,28 +185,29 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/usuarios-vacaciones/{fecha}', [RHController::class, 'obtenerUsuariosEnVacaciones'])->name('api.usuarios.vacaciones');
     Route::get('/api/usuarios-permisos/{fecha}', [RHController::class, 'obtenerUsuariosConPermisos'])->name('api.usuarios.permisos');
     Route::get('/api/verificar-asistencia/{fecha}', [RHController::class, 'verificarAsistenciaExistente'])
-    ->name('api.verificar.asistencia');
+        ->name('api.verificar.asistencia');
 
     Route::get('/kardex-vacaciones-pdf', function () {
         return view('kardex.vacaciones');
     })->name('kardex.vacaciones');
 
     Route::get('/descargar-bajas', function () {
-        return (new BajasSpreadsheetExport())->generateFile();
+        return (new BajasSpreadsheetExport)->generateFile();
     })->name('exportar.bajas');
 
     Route::get('/descargar-altas', function () {
-        return (new AltasSpreadsheetExport())->generateFile();
+        return (new AltasSpreadsheetExport)->generateFile();
     })->name('exportar.altas');
 
     Route::get('/descargar-vacaciones', function () {
-        return (new VacacionesSpreadsheetExport())->generateFile();
+        return (new VacacionesSpreadsheetExport)->generateFile();
     })->name('exportar.vacaciones');
 
     Route::get('/descargar-vacaciones-cortes', function () {
         $inicio = request()->query('inicio');
-        $fin    = request()->query('fin');
-        return (new VacacionesCortesExport())->generateFile($inicio, $fin);
+        $fin = request()->query('fin');
+
+        return (new VacacionesCortesExport)->generateFile($inicio, $fin);
     })->name('exportar.vacacionesCortes');
 
     Route::get('/exportar-asistencias', function () {
@@ -223,7 +220,7 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/admin/procesar-reingresos', [ReingresoController::class, 'procesarReingresos'])->name('reingresos.procesar');
 
-    //Usuario 'User'
+    // Usuario 'User'
     Route::get('/solicitar_baja', [UserController::class, 'solicitarBajaForm'])->name('user.solicitarBajaForm');
     Route::post('/registrar_solicitud_baja/{id}', [UserController::class, 'solicitarBaja'])->name('user.registrarSolicitudBaja');
     Route::get('/solicitar_vacaciones_form', [UserController::class, 'solicitarVacacionesForm'])->name('user.solicitarVacacionesForm');
@@ -234,21 +231,33 @@ Route::middleware('auth')->group(function () {
     Route::post('/enviar_sugerencia/{id}', [UserController::class, 'enviarSugerencia'])->name('user.enviarSugerencia');
 
     Route::get('/api/dias-utilizados/{userId}/{periodo}', function ($userId, $periodo) {
-    $diasUtilizados = \App\Models\SolicitudVacaciones::where('user_id', $userId)
-        ->where('periodo', $periodo)
-        ->sum('dias_solicitados');
+        $diasUtilizados = \App\Models\SolicitudVacaciones::where('user_id', $userId)
+            ->where('periodo', $periodo)
+            ->sum('dias_solicitados');
 
-    return response()->json(['dias_utilizados' => $diasUtilizados]);
-})->name('api.dias.utilizados');
+        return response()->json(['dias_utilizados' => $diasUtilizados]);
+    })->name('api.dias.utilizados');
 
     Route::post('/api/usuarios/buscar', [UserController::class, 'buscarUsuarios'])
-    ->name('api.usuarios.buscar');
+        ->name('api.usuarios.buscar');
 
     /*
      * MONITORISTA
      */
     Route::get('/ver_deducciones', [MonitoreoController::class, 'verDeducciones'])->name('monitoreo.deducciones');
     Route::get('/mapa', [MonitoreoController::class, 'mapa'])->name('monitoreo.mapa');
+    Route::prefix('/monitoreo/unidades-gps')
+        ->name('monitoreo.unidades-gps.')
+        ->middleware('can:view-traccar-monitoring')
+        ->group(function () {
+            Route::get('/', [TraccarMonitoringController::class, 'index'])->name('index');
+            Route::get('/data', [TraccarMonitoringController::class, 'data'])
+                ->middleware('throttle:30,1')
+                ->name('data');
+            Route::post('/socket-token', [TraccarMonitoringController::class, 'socketToken'])
+                ->middleware('throttle:10,1')
+                ->name('socket-token');
+        });
     Route::get('/vehiculos', function () {
         return view('vehiculos.crud');
     })->name('vehiculos.index');
@@ -274,11 +283,12 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/gasolinas', [MonitoreoController::class, 'gasolinasIndex'])->name('gasolinas.index');
     Route::get('/api/placas', function (\Illuminate\Http\Request $request) {
-    $q = $request->get('q');
-    $placas = Unidades::where('placas', 'like', "%{$q}%")
-        ->limit(10)
-        ->pluck('placas')
-        ->toArray();
+        $q = $request->get('q');
+        $placas = Unidades::where('placas', 'like', "%{$q}%")
+            ->limit(10)
+            ->pluck('placas')
+            ->toArray();
+
         return response()->json(['placas' => $placas]);
     });
 
@@ -289,7 +299,7 @@ Route::middleware('auth')->group(function () {
             ->limit(10)
             ->select('id', 'name')
             ->get()
-            ->map(fn($u) => ['id' => $u->id, 'name' => $u->name])
+            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])
             ->toArray();
 
         return response()->json(['users' => $users]);
@@ -305,7 +315,7 @@ Route::middleware('auth')->group(function () {
         ->name('admin.geocercasActivasRealtime');
     Route::get('/detalle-mision/{mision}', [CustodiosController::class, 'verDetalleMision'])->name('admin.detalleMision');
 
-    //Usuario Aux Admin
+    // Usuario Aux Admin
     Route::get('/nuevas_altas_elementos', [AuxadminController::class, 'nuevasAltas'])->name('aux.nuevasAltas');
     Route::post('/subida_documentacion/{id}', [AuxadminController::class, 'guardarAcuses'])->name('documentacion.subir');
     Route::get('/listado_usuarios', [AuxadminController::class, 'listadoUsuarios'])->name('aux.usuariosList');
@@ -329,23 +339,22 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/riesgos-trabajo/actualizar', [RiesgoTrabajoController::class, 'actualizar'])->name('riesgos-trabajo.actualizar');
 
-    //nuevass rutas
+    // nuevass rutas
     Route::get('/riesgos-trabajo', [RiesgoTrabajoController::class, 'index'])->name('aux.riesgosTrabajo');
     Route::get('/riesgos-trabajo/generar/{user}', [RiesgoTrabajoController::class, 'create'])->name('aux.generarRiesgoForm');
     Route::post('/riesgos-trabajo/guardar', [RiesgoTrabajoController::class, 'store'])->name('aux.guardarRiesgo');
-    //nuevas rutas incapacidades
+    // nuevas rutas incapacidades
     Route::get('/incapacidades', [IncapacidadController::class, 'index'])->name('aux.incapacidadesList');
     Route::get('/incapacidades/generar/{user}', [IncapacidadController::class, 'create'])->name('aux.generarIncapacidadForm');
     Route::post('/incapacidades/guardar', [IncapacidadController::class, 'store'])->name('aux.guardarIncapacidad');
-    //historial incapacidades
+    // historial incapacidades
     Route::get('/aux/historial-incapacidades', [IncapacidadController::class, 'showIncapacidadesHistory'])->name('aux.historialIncapacidades');
     Route::get('/aux/historial-riesgos-trabajo', [RiesgoTrabajoController::class, 'showHistorialRiesgosTrabajo'])->name('aux.historialRiesgosTrabajo');
     Route::get('/reporte/incapacidades', [IncapacidadReporteController::class, 'generarPdf'])->name('reporte.incapacidades.pdf');
-    //graficas
+    // graficas
     Route::get('/graficos', [GraficosController::class, 'index'])->name('auxadmin.index');
 
-
-    //Usuario nominas
+    // Usuario nominas
     Route::get('/antiguedades', [NominasController::class, 'antiguedades'])->name('nominas.usersAntiguedades');
     Route::get('/finiquitos', [NominasController::class, 'verBajas'])->name('nominas.verBajas');
     Route::get('/nuevas_altas', [NominasController::class, 'nuevasAltas'])->name('nominas.nuevasAltas');
@@ -391,7 +400,7 @@ Route::middleware('auth')->group(function () {
         return response()->json(['ok' => true]);
     })->name('notificaciones.leer');
 
-    //Custodios
+    // Custodios
     Route::get('/nueva_mision', [CustodiosController::class, 'nuevaMisionForm'])->name('custodios.nuevaMisionForm');
     Route::post('/agentes-disponibles', [CustodiosController::class, 'obtenerAgentesDisponibles']);
     Route::post('/guardarMision', [CustodiosController::class, 'guardarMision'])->name('misiones.store');
@@ -409,14 +418,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [CustodiosController::class, 'mostrarGastos'])->name('show');
         Route::get('/pdf', [CustodiosController::class, 'downloadGastos'])->name('pdf');
     });
-    //Route::get('mensajes', [CustodiosController::class,'mensajesIndex'])->name('custodios.mensajes');
+    // Route::get('mensajes', [CustodiosController::class,'mensajesIndex'])->name('custodios.mensajes');
 
-    //Usuario Auxiliar Contabilidad
+    // Usuario Auxiliar Contabilidad
     Route::get('/Lista_finiquitos', [AuxContController::class, 'listaFiniquitos'])->name('auxcont.finiquitos');
     Route::post('/subir-cheque/{id}', [AuxcontController::class, 'subirCheque'])->name('subir.cheque');
     Route::put('/solicitud_bajas/{id}/actualizar_cheque', [AuxcontController::class, 'actualizarCheque']);
     Route::get('historial_cheques', [AuxcontController::class, 'historialCheques'])->name('auxcont.finiquitos.historial');
-    Route::get('/eventuales',[AuxcontController::class, 'eventualesList'])->name('auxcont.eventuales');
+    Route::get('/eventuales', [AuxcontController::class, 'eventualesList'])->name('auxcont.eventuales');
     Route::get('/vales-comida', [AuxcontController::class, 'valesComida'])->name('auxcont.valesComida');
     Route::post('/vales-comida/{id}/aceptar', [AuxcontController::class, 'aceptarSolicitudVales'])->name('vales.comida.aceptar');
     Route::post('/vales-comida/{id}/rechazar', [AuxcontController::class, 'rechazarSolicitudVales'])->name('vales.comida.rechazar');
@@ -428,18 +437,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/exportar-vales-comida', [AuxcontController::class, 'exportarValesComida'])->name('vales.comida.exportar');
     Route::get('/exportar-registros-eventuales', [AuxcontController::class, 'exportarRegistrosEventuales'])->name('registros.eventuales.exportar');
 
-    //Usuario Juridico
+    // Usuario Juridico
     Route::get('lista_nuevasBajas', [JuridicoController::class, 'listaNuevasBajas'])->name('juridico.nuevasBajas');
     Route::post('/actualizar-motivo-baja', [JuridicoController::class, 'actualizarMotivoBaja'])->name('actualizar.motivo.baja');
 
-    //Usuario Operaciones
+    // Usuario Operaciones
     Route::get('/eventuales_list', [OperacionesController::class, 'eventualesList'])->name('operaciones.eventuales');
     Route::post('/operaciones/registrar-eventual', [OperacionesController::class, 'storeRegistroEventual'])->name('operaciones.registrar.eventual');
     Route::get('/vales', [OperacionesController::class, 'valesIndex'])->name('operaciones.valesComida');
     Route::get('/pagos_eventuales', [OperacionesController::class, 'pagosEventuales'])->name('operaciones.pagosEventuales');
     Route::post('/operaciones/subir-pago-eventual/{id}', [OperacionesController::class, 'subirPagoEventual'])->name('operaciones.subir.pago.eventual');
     Route::get('/historial-pagos-eventuales', [OperacionesController::class, 'historialPagosEventuales'])->name('operaciones.historialPagosEventuales');
-    Route::get('/vales-comida/crear',[OperacionesController::class, 'createValeComida'])->name('vales.comida.crear');
+    Route::get('/vales-comida/crear', [OperacionesController::class, 'createValeComida'])->name('vales.comida.crear');
     Route::get('/vales_pendientes', [operacionesController::class, 'valesPendientes'])->name('operaciones.valesPendientes');
 
     Route::get('/vales-comida/{id}/comprobantes', [OperacionesController::class, 'mostrarFormularioComprobantes'])->name('vales.comprobantes.formulario');
@@ -464,15 +473,15 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/api/empleados/buscar', [OperacionesController::class, 'buscarEmpleados'])->name('api.empleados.buscar');
 
-    //Mensajería
+    // Mensajería
     Route::get('/mensajes/nuevo', [ChatWebController::class, 'crear'])->name('mensajes.crearChat');
     Route::post('/mensajes/nuevo', [ChatWebController::class, 'storeConversacion'])->name('mensajes.nueva');
     Route::get('/mensajes', [ChatWebController::class, 'index'])->name('mensajes.index');
     Route::get('/mensajes/{conversation}', [ChatWebController::class, 'show'])->name('mensajes.show');
     Route::post('/mensajes/enviar', [ChatWebController::class, 'storeMensaje'])->name('mensajes.store');
 
-    //Ubicaciones en tiempo real
+    // Ubicaciones en tiempo real
     Route::get('/api/realtime-position/user/{id}/recent', [RealtimePositionController::class, 'getUserRecentPositions']);
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

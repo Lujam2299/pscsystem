@@ -19,6 +19,13 @@
             'theme' => 'indigo',
             'desc' => 'Rastreo GPS y geocercas'
         ],
+        [
+            'titulo' => 'Unidades GPS',
+            'ruta' => route('monitoreo.unidades-gps.index'),
+            'icono' => 'satellite',
+            'theme' => 'teal',
+            'desc' => 'Seguimiento de unidades mediante Traccar'
+        ],
 
         // --- COSTOS OPERATIVOS ---
         [

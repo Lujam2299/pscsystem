@@ -30,6 +30,7 @@ class Misiones extends Model
         'lng',
         'estatus',
     ];
+
     protected $casts = [
         'ubicacion' => 'array',
         'agentes_id' => 'array',
@@ -48,15 +49,9 @@ class Misiones extends Model
 
     public function getNombresAgentesAttribute(): string
     {
-        if (!$this->agentes_id) {
-            return '';
-        }
+        $ids = $this->agentesIdsNormalizados();
 
-        $ids = is_string($this->agentes_id)
-            ? json_decode($this->agentes_id, true)
-            : $this->agentes_id;
-
-        if (!is_array($ids) || empty($ids)) {
+        if (empty($ids)) {
             return '';
         }
 
@@ -66,26 +61,50 @@ class Misiones extends Model
     }
 
     /**
+     * Obtiene los IDs de agentes como enteros y soporta registros históricos
+     * cuyo contenido JSON quedó codificado más de una vez.
+     *
+     * @return array<int, int>
+     */
+    public function agentesIdsNormalizados(): array
+    {
+        $ids = $this->agentes_id;
+
+        for ($intento = 0; $intento < 2 && is_string($ids); $intento++) {
+            $decodificado = json_decode($ids, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return [];
+            }
+
+            $ids = $decodificado;
+        }
+
+        if (! is_array($ids)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_map(
+            'intval',
+            array_filter($ids, fn ($id) => is_numeric($id) && (int) $id > 0)
+        )));
+    }
+
+    /**
      * Accessor para verificar si la misión tiene gastos registrados
      * dentro de su rango de fechas y con sus agentes asignados
      */
     public function getHasGastosAttribute(): bool
     {
-        // Obtener IDs de agentes asignados
-        $agentesIds = $this->agentes_id;
-
-        // Si es string (JSON), decodificar
-        if (is_string($agentesIds)) {
-            $agentesIds = json_decode($agentesIds, true);
-        }
+        $agentesIds = $this->agentesIdsNormalizados();
 
         // Validar que sea un array con datos
-        if (!is_array($agentesIds) || empty($agentesIds)) {
+        if (! is_array($agentesIds) || empty($agentesIds) || ! $this->fecha_inicio || ! $this->fecha_fin) {
             return false;
         }
 
         // Verificar existencia de gastos en el rango de fechas
-        return \App\Models\Gasto::whereIn('user_id', $agentesIds)
+        return Gastos::whereIn('user_id', $agentesIds)
             ->whereBetween('Fecha', [$this->fecha_inicio, $this->fecha_fin])
             ->exists();
     }
@@ -96,17 +115,13 @@ class Misiones extends Model
      */
     public function getGastosDelPeriodoAttribute()
     {
-        $agentesIds = $this->agentes_id;
+        $agentesIds = $this->agentesIdsNormalizados();
 
-        if (is_string($agentesIds)) {
-            $agentesIds = json_decode($agentesIds, true);
-        }
-
-        if (!is_array($agentesIds) || empty($agentesIds)) {
+        if (! is_array($agentesIds) || empty($agentesIds) || ! $this->fecha_inicio || ! $this->fecha_fin) {
             return collect([]);
         }
 
-        return \App\Models\Gasto::whereIn('user_id', $agentesIds)
+        return Gastos::whereIn('user_id', $agentesIds)
             ->whereBetween('Fecha', [$this->fecha_inicio, $this->fecha_fin])
             ->orderBy('Fecha', 'asc')
             ->orderBy('Hora', 'asc')

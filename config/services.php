@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'traccar' => [
+        'api_url' => env('TRACCAR_API_URL', 'http://127.0.0.1:8082/api'),
+        'websocket_url' => env('TRACCAR_WS_URL', 'wss://gps.spyt.com.mx/api/socket'),
+        'token' => env('TRACCAR_API_TOKEN'),
+        'timeout' => (int) env('TRACCAR_TIMEOUT', 5),
+        'socket_token_ttl' => (int) env('TRACCAR_SOCKET_TOKEN_TTL', 1),
+    ],
+
 ];

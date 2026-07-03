@@ -1,311 +1,298 @@
 <div class="py-6 mx-auto">
-  <x-navbar />
+    <x-navbar />
 
-  <x-livewire.monitoreo-layout :breadcrumb-items="$breadcrumbItems" :title-main="$titleMain" :help-text="$helpText">
-
-    <div class="container mx-auto">
-
-      {{-- Mensajes de éxito o error --}}
-      @if (session()->has('message'))
-      <div x-data="{ show: true }" x-init="setTimeout(() => show = false, 3000)" x-show="show"
-        class="relative px-4 py-3 mb-4 text-green-900 bg-green-100 border-t-4 border-green-500 rounded-b shadow-md"
-        role="alert" @keydown.escape.window="show = false">
-        <div class="flex items-center gap-2">
-          <i class="text-lg ti ti-circle-check text-green-600"></i>
-          <p class="text-sm">{{ session('message') }}</p>
-        </div>
-        <button type="button" @click="show = false"
-          class="absolute text-xl leading-none top-2 right-2 focus:outline-none">&times;</button>
-      </div>
-      @endif
-
-      {{-- Sección de Filtros --}}
-      <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-        {{-- Filtros Izquierda --}}
-        <div class="flex flex-wrap items-center gap-4">
-          <div>
-            <label for="perPage" class="mr-2 text-gray-700 dark:text-gray-200">Mostrar:</label>
-            <select wire:model.live="perPage" id="perPage"
-              class="px-2 py-1 text-gray-700 bg-white border border-gray-300 rounded form-select focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
-              <option value="10">10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
-          </div>
-
-          <div>
-            <label for="filtro_fecha_inicio" class="mr-2 text-gray-700 dark:text-gray-200">Fecha inicio:</label>
-            <input type="date" wire:model.live="filtro_fecha_inicio" id="filtro_fecha_inicio"
-              class="px-2 py-1 text-gray-700 bg-white border border-gray-300 rounded form-input focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
-          </div>
-
-          <div>
-            <label for="filtro_fecha_fin" class="mr-2 text-gray-700 dark:text-gray-200">Fecha fin:</label>
-            <input type="date" wire:model.live="filtro_fecha_fin" id="filtro_fecha_fin"
-              class="px-2 py-1 text-gray-700 bg-white border border-gray-300 rounded form-input focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
-          </div>
-
-          <div>
-            <label for="filtro_punto" class="mr-2 text-gray-700 dark:text-gray-200">Punto:</label>
-            <input type="text" wire:model.live="filtro_punto" id="filtro_punto" placeholder="Buscar punto..."
-              class="px-2 py-1 text-gray-700 bg-white border border-gray-300 rounded form-input focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
-          </div>
-
-          <div>
-            <label for="filtro_placas" class="mr-2 text-gray-700 dark:text-gray-200">Placas:</label>
-            <input type="text" wire:model.live="filtro_placas" id="filtro_placas" placeholder="Buscar placas..."
-              class="px-2 py-1 text-gray-700 bg-white border border-gray-300 rounded form-input focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
-          </div>
-
-          <div>
-            <label for="filtro_tipo" class="mr-2 text-gray-700 dark:text-gray-200">Tipo:</label>
-            <select wire:model.live="filtro_tipo" id="filtro_tipo"
-              class="px-2 py-1 text-gray-700 bg-white border border-gray-300 rounded form-select focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
-              <option value="">Todos</option>
-              <option value="Gasolina">Gasolina</option>
-              <option value="Viaticos">Viáticos</option>
-              {{-- Agrega otros tipos si los hay --}}
-            </select>
-          </div>
-
-          <div>
-            <label for="filtro_usuario_rol" class="mr-2 text-gray-700 dark:text-gray-200">Rol:</label>
-            <select wire:model.live="filtro_usuario_rol" id="filtro_usuario_rol"
-              class="px-2 py-1 text-gray-700 bg-white border border-gray-300 rounded form-select focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
-              <option value="">Todos</option>
-              @foreach($rolesDisponibles as $rol)
-              <option value="{{ $rol }}">{{ Str::title(strtolower($rol)) }}</option>
-              @endforeach
-            </select>
-          </div>
-        </div>
-
-        {{-- Acciones Derecha --}}
-        <div class="flex items-center gap-2">
-          {{-- Botón para Exportar a Excel (placeholder) --}}
-          <button
-            class="flex items-center gap-2 px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700 disabled:opacity-50"
-            title="Exportar a Excel" disabled>
-            <i class="ti ti-file-export"></i>
-            Exportar
-          </button>
-        </div>
-      </div>
-
-      {{-- Tabla de Gastos --}}
-      <div class="overflow-x-auto">
-        <table
-          class="min-w-full bg-white border border-gray-200 rounded shadow table-auto dark:bg-gray-800 dark:border-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-200">Fecha/Hora</th>
-              <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-200">Usuario</th>
-              <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-200">Punto</th>
-              <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-200">Tipo</th>
-              <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-200">Monto</th>
-              <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-200">Detalles</th>
-              <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-200">Evidencia</th>
-              <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-200">Acciones</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            @forelse ($gastos as $gasto)
-            <tr wire:key='gasto-{{ $gasto->id }}' class="hover:bg-gray-50 dark:hover:bg-gray-750">
-              <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 whitespace-nowrap">
-                {{ $gasto->Fecha->format('d/m/Y') }}<br>
-                <span class="text-xs text-gray-500">{{ $gasto->Hora }}</span>
-              </td>
-              <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200">
-                {{ $gasto->user->name ?? $gasto->user_name ?? 'N/A' }}
-                @if($gasto->user && $gasto->user->rol)
-                <br>
-                <span
-                  class="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded dark:bg-blue-900 dark:text-blue-100">
-                  {{ Str::title(strtolower($gasto->user->rol)) }}
-                </span>
-                @endif
-              </td>
-              <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200">
-                {{ $gasto->user->punto ?? ($gasto->user->solicitudAlta->punto ?? 'N/A') }}
-              </td>
-              <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200">
-                @php
-                $tipo = strtolower($gasto->tipo ?? '');
-                $badgeInfo = match($tipo) {
-                'carga gasolina', 'gasolina' => [
-                'text' => 'Gasolina',
-                'icon' => 'ti-gas-station',
-                'colorClass' => 'text-blue-700 bg-blue-100 dark:bg-blue-900 dark:text-blue-100'
-                ],
-                'viaticos', 'viáticos' => [
-                'text' => 'Viáticos',
-                'icon' => 'ti-wallet',
-                'colorClass' => 'text-purple-700 bg-purple-100 dark:bg-purple-900 dark:text-purple-100'
-                ],
-                default => [
-                'text' => ucfirst($gasto->Tipo ?? 'N/A'),
-                'icon' => 'ti-receipt-2',
-                'colorClass' => 'text-gray-700 bg-gray-100 dark:bg-gray-600 dark:text-gray-100'
-                ]
-                };
-                @endphp
-                <span
-                  class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full {{ $badgeInfo['colorClass'] }}">
-                  <i class="mr-1 text-xs ti {{ $badgeInfo['icon'] }}"></i>
-                  {{ $badgeInfo['text'] }}
-                </span>
-              </td>
-              <td class="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">
-                ${{ number_format($gasto->Monto, 2) }}
-              </td>
-              <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200">
-                @if($gasto->Tipo === 'Gasolina')
-                <div class="text-xs space-y-1">
-                  <!-- Kilometraje -->
-                  <div class="flex items-center">
-                    <i class="ti ti-road-sign text-blue-500 mr-1.5"></i>
-                    <span class="ml-1 font-medium">
-                      {{ $gasto->Km !== null ? number_format($gasto->Km, 0, '.', ',') . ' Km' : 'N/A' }}
-                    </span>
-                  </div>
-
-                  @php
-                  $antes = $gasto->Gasolina_antes_carga !== null ? (int)round($gasto->Gasolina_antes_carga) : null;
-                  $despues = $gasto->Gasolina_despues_carga !== null ? (int)round($gasto->Gasolina_despues_carga) :
-                  null;
-
-                  // Determinar el tope dinámicamente según el valor más alto registrado
-                  $nivelesPosibles = [4, 8, 10, 16];
-                  $maxRegistrado = max($antes ?? 0, $despues ?? 0, 1);
-
-                  // Buscar el nivel posible más cercano hacia arriba
-                  $maxValue = collect($nivelesPosibles)
-                  ->filter(fn($n) => $n >= $maxRegistrado)
-                  ->sort()
-                  ->first() ?? max($nivelesPosibles);
-
-                  @endphp
-
-                  <!-- Gasolina -->
-                  <div class="flex items-center">
-                    <i class="ti ti-gas-station text-blue-700 mr-1.5"></i>
-                    <span class="font-medium">Gasolina:</span>
-                    @if ($antes !== null and $despues !== null)
-                    <span class="ml-1 font-mono">
-                      <div class="flex items-center">
-                        {{ $antes }} <i class="ti ti-caret-right-filled" aria-hidden="true"></i> {{ $despues
-                        }}
-                      </div>
-                    </span>
-                    @else
-                    <span class="ml-1 font-mono">N/A</span>
-                    @endif
-                  </div>
-                  <!-- Indicadores de nivel acotados visualmente -->
-                  @php
-                  $maxDisplay = 10;
-                  $showEllipsis = $maxValue > $maxDisplay;
-
-                  // Determinar valores a mostrar
-                  if ($showEllipsis && $antes !== null && $despues !== null) {
-                  // Mostrar: 1, antes, después, maxValue (con puntos suspensivos)
-                  $indices = array_unique([1, $antes, $despues, $maxValue]);
-                  sort($indices);
-
-                  // Construir display array con puntos suspensivos
-                  $display = [];
-                  $last = null;
-                  foreach ($indices as $idx) {
-                  if ($last !== null && $idx > $last + 1) {
-                  $display[] = '‥';
-                  }
-                  $display[] = $idx;
-                  $last = $idx;
-                  }
-                  } else {
-                  // Mostrar todos los números de 1 a maxValue
-                  $display = range(1, min($maxValue, $maxDisplay));
-                  if ($maxValue > $maxDisplay) {
-                  $display[] = '‥';
-                  $display[] = $maxValue;
-                  }
-                  }
-                  @endphp
-                  <div class="flex items-center">
-                    <div class="flex space-x-0.5">
-                      @foreach ($display as $val)
-                      @if ($val === '...')
-                      <span class="pr-2 text-xs font-mono text-gray-400">...</span>
-                      @elseif ($val == $antes)
-                      <span class="pr-2 text-sm font-bold text-amber-500 font-mono">{{ $val }}</span>
-                      @elseif ($val == $despues)
-                      <span class="pr-2 text-sm font-bold font-mono text-green-500">{{ $val }}</span>
-                      @else
-                      <span class="pr-2 text-xs font-mono text-gray-300 dark:text-gray-600">{{ $val }}</span>
-                      @endif
-                      @endforeach
+    <x-livewire.monitoreo-layout :breadcrumb-items="$breadcrumbItems" :title-main="$titleMain" :help-text="$helpText">
+        <div class="container mx-auto space-y-5">
+            <section class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
+                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+                    <div>
+                        <label for="filtro_estatus" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Estatus
+                        </label>
+                        <select id="filtro_estatus" wire:model.live="filtro_estatus"
+                            class="w-full px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200">
+                            <option value="activas">Activas</option>
+                            <option value="terminadas">Terminadas</option>
+                        </select>
                     </div>
-                  </div>
+
+                    <div>
+                        <label for="filtro_fecha_inicio" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Desde
+                        </label>
+                        <input id="filtro_fecha_inicio" type="date" wire:model.live="filtro_fecha_inicio"
+                            class="w-full px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200">
+                    </div>
+
+                    <div>
+                        <label for="filtro_fecha_fin" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Hasta
+                        </label>
+                        <input id="filtro_fecha_fin" type="date" wire:model.live="filtro_fecha_fin"
+                            class="w-full px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200">
+                    </div>
+
+                    <div>
+                        <label for="filtro_busqueda" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Misión o cliente
+                        </label>
+                        <input id="filtro_busqueda" type="search" wire:model.live.debounce.400ms="filtro_busqueda"
+                            placeholder="ID, nombre clave o cliente"
+                            class="w-full px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200">
+                    </div>
+
+                    <div>
+                        <label for="filtro_agente" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Agente
+                        </label>
+                        <input id="filtro_agente" type="search" wire:model.live.debounce.400ms="filtro_agente"
+                            placeholder="Nombre del agente"
+                            class="w-full px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200">
+                    </div>
+
+                    <div class="flex items-end gap-2">
+                        <div class="flex-1">
+                            <label for="perPage" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-200">
+                                Mostrar
+                            </label>
+                            <select id="perPage" wire:model.live="perPage"
+                                class="w-full px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+
+                        <button type="button" wire:click="limpiarFiltros"
+                            class="inline-flex items-center justify-center px-3 py-2 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600"
+                            title="Limpiar filtros">
+                            <i class="ti ti-filter-off"></i>
+                        </button>
+                    </div>
                 </div>
-                @else
-                <div class="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                  <i class="ti ti-info-circle mr-1"></i>
-                  <span>Sin detalles adicionales</span>
+
+                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                    El rango busca misiones cuyo periodo coincida con las fechas seleccionadas y limita a ese mismo rango los gastos del desglose.
+                </p>
+            </section>
+
+            <div wire:loading.flex class="items-center gap-2 text-sm text-blue-600 dark:text-blue-300">
+                <i class="ti ti-loader-2 animate-spin"></i>
+                Actualizando resultados...
+            </div>
+
+            <section wire:loading.class="opacity-60" class="overflow-hidden bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-4 py-3 text-xs font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-200">Misión</th>
+                                <th class="px-4 py-3 text-xs font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-200">Cliente</th>
+                                <th class="px-4 py-3 text-xs font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-200">Periodo</th>
+                                <th class="px-4 py-3 text-xs font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-200">Estatus</th>
+                                <th class="px-4 py-3 text-xs font-semibold tracking-wide text-center text-gray-600 uppercase dark:text-gray-200">Agentes</th>
+                                <th class="px-4 py-3 text-xs font-semibold tracking-wide text-center text-gray-600 uppercase dark:text-gray-200">Gastos</th>
+                                <th class="px-4 py-3 text-xs font-semibold tracking-wide text-right text-gray-600 uppercase dark:text-gray-200">Total</th>
+                                <th class="px-4 py-3 text-xs font-semibold tracking-wide text-center text-gray-600 uppercase dark:text-gray-200">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody x-data="{ misionAbierta: null }" class="divide-y divide-gray-200 dark:divide-gray-700">
+                            @forelse ($misiones as $mision)
+                                @php
+                                    $resumen = $resumenMisiones[$mision->id] ?? [
+                                        'agentes' => [],
+                                        'cantidad_gastos' => 0,
+                                        'total' => 0,
+                                        'estatus' => 'N/A',
+                                    ];
+                                @endphp
+
+                                <tr wire:key="mision-{{ $mision->id }}" class="hover:bg-gray-50 dark:hover:bg-gray-750">
+                                    <td class="px-4 py-3 text-sm text-gray-800 dark:text-gray-100">
+                                        <div class="font-semibold">Misión #{{ $mision->id }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                                            {{ $mision->nombre_clave ?: ($mision->tipo_servicio ?: 'Sin nombre clave') }}
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
+                                        {{ $mision->cliente ?: 'Sin cliente registrado' }}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-700 whitespace-nowrap dark:text-gray-200">
+                                        {{ \Carbon\Carbon::parse($mision->fecha_inicio)->format('d/m/Y') }}
+                                        <span class="mx-1 text-gray-400">—</span>
+                                        {{ \Carbon\Carbon::parse($mision->fecha_fin)->format('d/m/Y') }}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <span @class([
+                                            'inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full',
+                                            'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' => $resumen['estatus'] === 'Activa',
+                                            'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-100' => $resumen['estatus'] !== 'Activa',
+                                        ])>
+                                            {{ $resumen['estatus'] }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-center text-gray-700 dark:text-gray-200">
+                                        {{ count($resumen['agentes']) }}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-center text-gray-700 dark:text-gray-200">
+                                        {{ $resumen['cantidad_gastos'] }}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm font-semibold text-right text-gray-900 whitespace-nowrap dark:text-white">
+                                        ${{ number_format($resumen['total'], 2) }}
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <button type="button"
+                                                @click="misionAbierta = misionAbierta === {{ $mision->id }} ? null : {{ $mision->id }}"
+                                                :aria-expanded="misionAbierta === {{ $mision->id }}"
+                                                class="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-100"
+                                                title="Ver agentes y gastos">
+                                                <i class="ti ti-list-details"></i>
+                                                Desglose
+                                            </button>
+
+                                            <button type="button" disabled
+                                                class="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-white bg-green-600 rounded-md cursor-not-allowed opacity-50"
+                                                title="La exportación se implementará próximamente">
+                                                <i class="ti ti-file-spreadsheet"></i>
+                                                Excel
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr wire:key="desglose-{{ $mision->id }}" x-show="misionAbierta === {{ $mision->id }}" x-cloak
+                                    class="bg-gray-50/70 dark:bg-gray-900/40">
+                                    <td colspan="8" class="p-0">
+                                        <div id="desglose-mision-{{ $mision->id }}">
+                                            <div class="flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-blue-700 dark:text-blue-300">
+                                                <span class="flex items-center gap-2">
+                                                    <i class="ti ti-list-details"></i>
+                                                Ver agentes y gastos de la misión #{{ $mision->id }}
+                                                </span>
+                                                <button type="button" @click="misionAbierta = null"
+                                                    class="inline-flex items-center justify-center w-8 h-8 text-gray-500 rounded hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700"
+                                                    title="Cerrar desglose">
+                                                    <i class="ti ti-x"></i>
+                                                </button>
+                                            </div>
+
+                                            <div class="px-4 pb-5 space-y-4">
+                                                @forelse ($resumen['agentes'] as $agente)
+                                                    <article class="overflow-hidden bg-white border border-gray-200 rounded-lg dark:bg-gray-800 dark:border-gray-700">
+                                                        <header class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-700">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="inline-flex items-center justify-center w-8 h-8 text-blue-700 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-100">
+                                                                    <i class="ti ti-user-shield"></i>
+                                                                </span>
+                                                                <div>
+                                                                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $agente['nombre'] }}</h3>
+                                                                    <p class="text-xs text-gray-500 dark:text-gray-300">Agente #{{ $agente['id'] }}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                                                                {{ $agente['gastos']->count() }} gasto(s) ·
+                                                                ${{ number_format((float) $agente['gastos']->sum('Monto'), 2) }}
+                                                            </div>
+                                                        </header>
+
+                                                        <div class="overflow-x-auto">
+                                                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                                                <thead class="bg-white dark:bg-gray-800">
+                                                                    <tr>
+                                                                        <th class="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-300">Fecha y hora</th>
+                                                                        <th class="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-300">Tipo</th>
+                                                                        <th class="px-4 py-2 text-xs font-medium text-right text-gray-500 uppercase dark:text-gray-300">Monto</th>
+                                                                        <th class="px-4 py-2 text-xs font-medium text-center text-gray-500 uppercase dark:text-gray-300">Comprobante</th>
+                                                                        <th class="px-4 py-2 text-xs font-medium text-center text-gray-500 uppercase dark:text-gray-300">Detalle</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                                                    @forelse ($agente['gastos'] as $gasto)
+                                                                        <tr wire:key="mision-{{ $mision->id }}-gasto-{{ $gasto->id }}">
+                                                                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap dark:text-gray-200">
+                                                                                {{ $gasto->Fecha?->format('d/m/Y') ?? 'Sin fecha' }}
+                                                                                <span class="block text-xs text-gray-500">{{ $gasto->Hora ?: 'Sin hora' }}</span>
+                                                                            </td>
+                                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200">{{ $gasto->Tipo ?: 'Sin tipo' }}</td>
+                                                                            <td class="px-4 py-2 text-sm font-semibold text-right text-gray-900 whitespace-nowrap dark:text-white">
+                                                                                ${{ number_format((float) $gasto->Monto, 2) }}
+                                                                            </td>
+                                                                            <td class="px-4 py-2 text-center">
+                                                                                @php
+                                                                                    $evidenciaExiste = $gasto->Evidencia
+                                                                                        && Storage::disk('public')->exists($gasto->Evidencia);
+                                                                                @endphp
+
+                                                                                @if ($evidenciaExiste)
+                                                                                    <a href="{{ asset('storage/' . $gasto->Evidencia) }}" target="_blank" rel="noopener noreferrer"
+                                                                                        class="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-300">
+                                                                                        <i class="ti {{ strtolower(pathinfo($gasto->Evidencia, PATHINFO_EXTENSION)) === 'pdf' ? 'ti-file-type-pdf' : 'ti-photo' }}"></i>
+                                                                                        Ver comprobante
+                                                                                    </a>
+                                                                                @elseif ($gasto->Evidencia)
+                                                                                    <span class="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-300">
+                                                                                        <i class="ti ti-file-off"></i>
+                                                                                        No disponible
+                                                                                    </span>
+                                                                                @else
+                                                                                    <span class="text-xs text-gray-400">Sin comprobante</span>
+                                                                                @endif
+                                                                            </td>
+                                                                            <td class="px-4 py-2 text-center">
+                                                                                <a href="{{ route('gastos.detalle', $gasto->id) }}"
+                                                                                    class="inline-flex items-center justify-center w-8 h-8 text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
+                                                                                    title="Ver detalle del gasto">
+                                                                                    <i class="ti ti-eye"></i>
+                                                                                </a>
+                                                                            </td>
+                                                                        </tr>
+                                                                    @empty
+                                                                        <tr>
+                                                                            <td colspan="5" class="px-4 py-5 text-sm text-center text-gray-500 dark:text-gray-400">
+                                                                                Este agente no tiene gastos registrados en el periodo seleccionado.
+                                                                            </td>
+                                                                        </tr>
+                                                                    @endforelse
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </article>
+                                                @empty
+                                                    <div class="px-4 py-6 text-sm text-center text-gray-500 bg-white border border-gray-200 rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">
+                                                        La misión no tiene agentes asignados.
+                                                    </div>
+                                                @endforelse
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="8" class="px-4 py-12 text-center">
+                                        <div class="flex flex-col items-center gap-3 text-gray-500 dark:text-gray-400">
+                                            <span class="inline-flex items-center justify-center w-14 h-14 bg-gray-100 rounded-full dark:bg-gray-700">
+                                                <i class="text-3xl ti ti-clipboard-off"></i>
+                                            </span>
+                                            <div>
+                                                <p class="font-semibold text-gray-700 dark:text-gray-200">No se encontraron misiones</p>
+                                                <p class="text-sm">Ajusta los filtros para consultar otro periodo.</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
+
+                @if ($misiones->hasPages())
+                    <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+                        {{ $misiones->links('vendor.pagination.tailwind') }}
+                    </div>
                 @endif
-              </td>
-              <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200">
-                @php
-                $existeEvidencia = Storage::disk('public')->exists($gasto->Evidencia);
-                $rutaEvidencia = $existeEvidencia ? asset('storage/' . $gasto->Evidencia) : null;
-                @endphp
-
-                @if($gasto->evidencia and $existeEvidencia)
-                <a href="{{ $rutaEvidencia }}" target="_blank" class="text-blue-500 hover:underline"
-                  title="Ver evidencia">
-                  <i class="ti ti-photo"></i> Ver
-                </a>
-                @elseif(!$existeEvidencia)
-                <span
-                  class="inline-flex items-center ml-2 px-2 py-1 text-xs font-semibold text-red-700 bg-red-100 rounded-full">
-                  <i class="ti ti-photo-off mr-1"></i> No disponible
-                </span>
-                @else
-                <span class="text-xs text-gray-400">Sin evidencia</span>
-                @endif
-              </td>
-              <td class="px-4 py-2 text-center">
-                <a href="{{ route('gastos.detalle', $gasto->id) }}"
-                  class="inline-flex items-center justify-center w-8 h-8 text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
-                  title="Ver detalle">
-                  <i class="ti ti-eye"></i>
-                </a>
-              </td>
-            </tr>
-            @empty
-            <tr>
-              <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                <div class="flex flex-col items-center justify-center gap-4 py-8">
-                  <span
-                    class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full dark:bg-gray-700">
-                    <i class="text-4xl text-gray-400 ti ti-receipt-off"></i>
-                  </span>
-                  <span class="text-lg font-semibold text-gray-700 dark:text-gray-200">No se encontraron gastos</span>
-                  <span class="text-sm text-gray-500 dark:text-gray-400">Intenta ajustar los filtros de búsqueda.</span>
-                </div>
-              </td>
-            </tr>
-            @endforelse
-          </tbody>
-        </table>
-      </div>
-
-      {{-- Paginación --}}
-      <div class="mt-4">
-        {{ $gastos->links('vendor.pagination.tailwind') }}
-      </div>
-
-    </div>
-  </x-livewire.monitoreo-layout>
+            </section>
+        </div>
+    </x-livewire.monitoreo-layout>
 </div>
