@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
 
+        $middleware->alias([
+            'custodios.role' => \App\Http\Middleware\EnsureCustodiosRole::class,
+        ]);
+
         // Configura grupos de middleware predeterminados
         $middleware->web(prepend: [], append: []);
         $middleware->api(prepend: [], append: [

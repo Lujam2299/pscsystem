@@ -108,7 +108,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/tablero_contabilidad', [AdminController::class, 'tableroAuxCont'])->name('admin.contDashboard');
     Route::get('tablero_monitoreo', [AdminController::class, 'tableroMonitoreo'])->name('admin.monitoreoDashboard');
     Route::get('tablero_juridico', [AdminController::class, 'tableroJuridico'])->name('admin.juridicoDashboard');
-    Route::get('/tablero_custodios', [AdminController::class, 'tableroCustodios'])->name('admin.custodiosDashboard');
+    Route::get('/tablero_custodios', [AdminController::class, 'tableroCustodios'])
+        ->middleware('custodios.role')
+        ->name('admin.custodiosDashboard');
     Route::get('/admin_vacaciones', [AdminController::class, 'solicitudesVacaciones'])->name('admin.solicitudesVacaciones');
     Route::get('/registrar_nominas', [AdminController::class, 'registrarNominas'])->name('registrarNominas');
     Route::post('/registrar_finiquitos', [AdminController::class, 'registrarFiniquitos'])->name('registrarFiniquitos');
@@ -310,10 +312,15 @@ Route::middleware('auth')->group(function () {
     // Detalle de Compra (Livewire)
     Route::get('/compras/{id}', \App\Livewire\CompraDetalle::class)->name('compras.detalle');
 
-    Route::get('/mapa-geocercas', [CustodiosController::class, 'mostrarMapaGeocercas'])->name('admin.mapaGeocercas');
+    Route::get('/mapa-geocercas', [CustodiosController::class, 'mostrarMapaGeocercas'])
+        ->middleware('custodios.role')
+        ->name('admin.mapaGeocercas');
     Route::get('/api/custodios/geocercas-activas', [CustodiosController::class, 'geocercasActivasRealtime'])
+        ->middleware('custodios.role')
         ->name('admin.geocercasActivasRealtime');
-    Route::get('/detalle-mision/{mision}', [CustodiosController::class, 'verDetalleMision'])->name('admin.detalleMision');
+    Route::get('/detalle-mision/{mision}', [CustodiosController::class, 'verDetalleMision'])
+        ->middleware('custodios.role')
+        ->name('admin.detalleMision');
 
     // Usuario Aux Admin
     Route::get('/nuevas_altas_elementos', [AuxadminController::class, 'nuevasAltas'])->name('aux.nuevasAltas');
@@ -401,22 +408,25 @@ Route::middleware('auth')->group(function () {
     })->name('notificaciones.leer');
 
     // Custodios
-    Route::get('/nueva_mision', [CustodiosController::class, 'nuevaMisionForm'])->name('custodios.nuevaMisionForm');
-    Route::post('/agentes-disponibles', [CustodiosController::class, 'obtenerAgentesDisponibles']);
-    Route::post('/guardarMision', [CustodiosController::class, 'guardarMision'])->name('misiones.store');
-    Route::get('/misiones', [CustodiosController::class, 'misionesIndex'])->name('custodios.misiones');
-    Route::get('/custodios', [CustodiosController::class, 'custodiosIndex'])->name('custodios.elementos');
-    Route::get('/historial_misiones', [CustodiosController::class, 'historialMisiones'])->name('custodios.historialMisiones');
-    Route::get('/misiones_terminadas', [CustodiosController::class, 'misionesTerminadas'])->name('custodios.misionesTerminadas');
-    Route::get('/misiones/{mision}/editar', [CustodiosController::class, 'edit'])->name('misiones.edit');
-    Route::put('/misiones/{mision}', [CustodiosController::class, 'update'])->name('misiones.update');
-    Route::prefix('misiones/{mision}/itinerarios')->name('misiones.itinerarios.')->group(function () {
-        Route::get('/', [CustodiosController::class, 'mostrarItinerarios'])->name('show');
-        Route::get('/pdf', [CustodiosController::class, 'downloadItinerarios'])->name('pdf');
-    });
-    Route::prefix('misiones/{mision}/gastos')->name('misiones.gastos.')->group(function () {
-        Route::get('/', [CustodiosController::class, 'mostrarGastos'])->name('show');
-        Route::get('/pdf', [CustodiosController::class, 'downloadGastos'])->name('pdf');
+    Route::middleware('custodios.role')->group(function () {
+        Route::get('/nueva_mision', [CustodiosController::class, 'nuevaMisionForm'])->name('custodios.nuevaMisionForm');
+        Route::post('/agentes-disponibles', [CustodiosController::class, 'obtenerAgentesDisponibles'])
+            ->name('custodios.agentesDisponibles');
+        Route::post('/guardarMision', [CustodiosController::class, 'guardarMision'])->name('misiones.store');
+        Route::get('/misiones', [CustodiosController::class, 'misionesIndex'])->name('custodios.misiones');
+        Route::get('/custodios', [CustodiosController::class, 'custodiosIndex'])->name('custodios.elementos');
+        Route::get('/historial_misiones', [CustodiosController::class, 'historialMisiones'])->name('custodios.historialMisiones');
+        Route::get('/misiones_terminadas', [CustodiosController::class, 'misionesTerminadas'])->name('custodios.misionesTerminadas');
+        Route::get('/misiones/{mision}/editar', [CustodiosController::class, 'edit'])->name('misiones.edit');
+        Route::put('/misiones/{mision}', [CustodiosController::class, 'update'])->name('misiones.update');
+        Route::prefix('misiones/{mision}/itinerarios')->name('misiones.itinerarios.')->group(function () {
+            Route::get('/', [CustodiosController::class, 'mostrarItinerarios'])->name('show');
+            Route::get('/pdf', [CustodiosController::class, 'downloadItinerarios'])->name('pdf');
+        });
+        Route::prefix('misiones/{mision}/gastos')->name('misiones.gastos.')->group(function () {
+            Route::get('/', [CustodiosController::class, 'mostrarGastos'])->name('show');
+            Route::get('/pdf', [CustodiosController::class, 'downloadGastos'])->name('pdf');
+        });
     });
     // Route::get('mensajes', [CustodiosController::class,'mensajesIndex'])->name('custodios.mensajes');
 
