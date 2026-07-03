@@ -43,21 +43,7 @@
                         <label for="agentes" class="block text-sm font-medium text-gray-700 mb-2">
                             Agentes Asignados
                         </label>
-                        <select id="agentes" name="agentes_id[]"
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                multiple required>
-                            @php
-                                $selectedAgentes = old('agentes_id', $mision->agentes_id ?? []);
-                            @endphp
-                            @foreach($agentesDisponibles as $agente)
-                                <option value="{{ $agente->id }}" {{ in_array($agente->id, $selectedAgentes) ? 'selected' : '' }} {{ $agente->ocupado ? 'disabled' : '' }}>
-                                    {{ $agente->name }} {{ $agente->ocupado ? '(Ocupado)' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <p class="mt-2 text-sm text-gray-500">
-                            Usa Ctrl + Clic para seleccionar varios agentes
-                        </p>
+                        <x-custodios-agent-selector :selected="old('agentes_id', $mision->agentes_id ?? [])" />
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -617,30 +603,35 @@
             const inicio = document.getElementById('fecha_inicio').value;
             const fin = document.getElementById('fecha_fin').value;
             const select = document.getElementById('agentes');
-            if (!inicio || !fin) return;
-            fetch('/agentes-disponibles', {
+            if (!inicio || !fin) {
+                window.renderCustodiosAgentSelector([], [], 'Selecciona las fechas para consultar disponibilidad.');
+                return;
+            }
+            const selectedOptions = Array.from(select.selectedOptions).map(opt => opt.value);
+            fetch('{{ route('custodios.agentesDisponibles') }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify({ fecha_inicio: inicio, fecha_fin: fin })
+                body: JSON.stringify({
+                    fecha_inicio: inicio,
+                    fecha_fin: fin,
+                    mision_id: {{ $mision->id }}
+                })
             })
-            .then(res => res.json())
-            .then(agentes => {
-                const selectedOptions = Array.from(select.selectedOptions).map(opt => opt.value);
-                select.innerHTML = '';
-                agentes.forEach(agente => {
-                    const opt = document.createElement('option');
-                    opt.value = agente.id;
-                    opt.textContent = agente.name + (agente.ocupado ? ' (Ocupado)' : '');
-                    if (agente.ocupado) opt.disabled = true;
-                    if (selectedOptions.includes(agente.id.toString())) {
-                        opt.selected = true;
-                    }
-                    select.appendChild(opt);
-                });
-            });
+            .then(async res => {
+                if (!res.ok) throw new Error((await res.json()).message || 'No fue posible consultar disponibilidad.');
+                return res.json();
+            })
+            .then(agentes => window.renderCustodiosAgentSelector(
+                agentes,
+                selectedOptions.length ? selectedOptions : null
+            ))
+            .catch(error => window.renderCustodiosAgentSelector([], [], error.message));
         }
+
+        document.addEventListener('DOMContentLoaded', actualizarAgentes);
     </script>
 </x-app-layout>

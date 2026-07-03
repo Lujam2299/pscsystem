@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Geocoder\Laravel\Facades\Geocoder;
 use App\Models\Geofence;
 use App\Models\RealtimePosition;
+use App\Services\CustodiosAvailabilityService;
 
 class CustodiosController extends Controller
 {
@@ -55,36 +56,37 @@ class CustodiosController extends Controller
         return view('custodios.nuevaMisionForm');
     }
 
-    public function obtenerAgentesDisponibles(Request $request)
+    public function obtenerAgentesDisponibles(
+        Request $request,
+        CustodiosAvailabilityService $availability,
+    )
     {
-        $fechaInicio = $request->input('fecha_inicio');
-        $fechaFin = $request->input('fecha_fin');
+        $validated = $request->validate([
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            'mision_id' => 'nullable|integer|exists:misiones,id',
+        ]);
 
-        $misiones = Misiones::whereBetween('fecha_fin', [$fechaInicio, $fechaFin])->get();
+        $agents = $availability->forPeriod(
+            Carbon::parse($validated['fecha_inicio'])->startOfDay(),
+            Carbon::parse($validated['fecha_fin'])->endOfDay(),
+            isset($validated['mision_id']) ? (int) $validated['mision_id'] : null,
+        )->map(function (array $agent): array {
+            $agent['foto_url'] = filled($agent['photo_path'])
+                ? asset($agent['photo_path'])
+                : null;
+            unset($agent['photo_path']);
 
-        $ocupados = collect();
-        foreach ($misiones as $mision) {
-            $ids = json_decode($mision->agentes_id, true) ?? [];
-            $ocupados = $ocupados->merge($ids);
-        }
-
-        $ocupados = $ocupados->unique();
-        $agentes = User::where('estatus', 'Activo')
-            ->whereRaw("LOWER(rol) LIKE ?", ['%escolta%'])
-            ->get();
-
-        $agentesDisponibles = $agentes->map(function ($agente) use ($ocupados) {
-            return [
-                'id' => $agente->id,
-                'name' => $agente->name,
-                'ocupado' => $ocupados->contains($agente->id)
-            ];
+            return $agent;
         });
 
-        return response()->json($agentesDisponibles);
+        return response()->json($agents);
     }
 
-    public function guardarMision(Request $request)
+    public function guardarMision(
+        Request $request,
+        CustodiosAvailabilityService $availability,
+    )
 {
     $request->validate([
         'agentes_id' => 'required|array|min:1',
@@ -123,6 +125,12 @@ class CustodiosController extends Controller
         'vuelo_salida.flight' => 'nullable|string|max:50',
         'vuelo_salida.hora' => 'nullable|date_format:H:i',
     ]);
+
+    $availability->assertAvailable(
+        $request->input('agentes_id', []),
+        Carbon::parse($request->fecha_inicio)->startOfDay(),
+        Carbon::parse($request->fecha_fin ?? $request->fecha_inicio)->endOfDay(),
+    );
 
     // === Procesamiento de ubicaciones (sin cambios) ===
     $ubicacionesProcesadas = [];
@@ -408,13 +416,8 @@ class CustodiosController extends Controller
         $mision->datos_vuelo_salida = [];
     }
 
-    $agentesDisponibles = User::whereRaw('LOWER(rol) LIKE ?', ['%escolta%'])
-                        ->where('estatus', 'Activo')
-                        ->get();
-
     return view('custodios.editar-mision', [ // Asegúrate de que la ruta sea correcta
         'mision' => $mision,
-        'agentesDisponibles' => $agentesDisponibles,
     ]);
 }
 
@@ -423,7 +426,11 @@ class CustodiosController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
-public function update(Request $request, $id)
+public function update(
+    Request $request,
+    $id,
+    CustodiosAvailabilityService $availability,
+)
 {
     $request->validate([
         'agentes_id' => 'required|array|min:1',
@@ -466,6 +473,13 @@ public function update(Request $request, $id)
         'vuelo_salida.flight' => 'nullable|string|max:50',
         'vuelo_salida.hora' => 'nullable|date_format:H:i',
     ]);
+
+    $availability->assertAvailable(
+        $request->input('agentes_id', []),
+        Carbon::parse($request->fecha_inicio)->startOfDay(),
+        Carbon::parse($request->fecha_fin)->endOfDay(),
+        (int) $id,
+    );
 
     $mision = Misiones::findOrFail($id);
 

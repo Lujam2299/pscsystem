@@ -104,13 +104,9 @@
                         <div class="md:col-span-2">
                             <label for="agentes" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Agentes Asignados
-                                <span class="text-xs font-normal text-gray-500 ml-2 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">Ctrl + Clic para múltiple</span>
+                                <span class="text-xs font-normal text-gray-500 ml-2 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">Selecciona una o varias tarjetas</span>
                             </label>
-                            <select id="agentes" name="agentes_id[]"
-                                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-50 dark:text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-3 px-4 text-base h-40 transition-all"
-                                    multiple required>
-                                <option disabled>Selecciona las fechas primero para ver disponibilidad</option>
-                            </select>
+                            <x-custodios-agent-selector :selected="old('agentes_id', [])" />
                         </div>
                     </div>
                 </section>
@@ -580,33 +576,31 @@
             const inicio = document.getElementById('fecha_inicio').value;
             const fin = document.getElementById('fecha_fin').value;
             const select = document.getElementById('agentes');
-            if (!inicio || !fin) return;
-            fetch('/agentes-disponibles', {
+            if (!inicio || !fin) {
+                window.renderCustodiosAgentSelector([], [], 'Selecciona las fechas para consultar disponibilidad.');
+                return;
+            }
+            const selectedOptions = Array.from(select.selectedOptions).map(opt => opt.value);
+            fetch('{{ route('custodios.agentesDisponibles') }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
                 body: JSON.stringify({ fecha_inicio: inicio, fecha_fin: fin })
             })
-            .then(res => res.json())
-            .then(agentes => {
-                select.innerHTML = '';
-                if(agentes.length === 0) {
-                     const opt = document.createElement('option');
-                     opt.textContent = 'No hay agentes disponibles en estas fechas';
-                     opt.disabled = true;
-                     select.appendChild(opt);
-                     return;
-                }
-                agentes.forEach(agente => {
-                    const opt = document.createElement('option');
-                    opt.value = agente.id;
-                    opt.textContent = agente.name + (agente.ocupado ? ' (Ocupado)' : '');
-                    if (agente.ocupado) opt.disabled = true;
-                    select.appendChild(opt);
-                });
-            });
+            .then(async res => {
+                if (!res.ok) throw new Error((await res.json()).message || 'No fue posible consultar disponibilidad.');
+                return res.json();
+            })
+            .then(agentes => window.renderCustodiosAgentSelector(
+                agentes,
+                selectedOptions.length ? selectedOptions : null
+            ))
+            .catch(error => window.renderCustodiosAgentSelector([], [], error.message));
         }
+
+        document.addEventListener('DOMContentLoaded', actualizarAgentes);
     </script>
 </x-app-layout>
