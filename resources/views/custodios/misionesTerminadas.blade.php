@@ -209,6 +209,15 @@
                                                             </span>
                                                         </div>
                                                     @endif
+
+                                                    {{-- BotÃ³n 4: Reporte Operativo Consolidado --}}
+                                                    <a href="{{ route('misiones.reporte-operativo.show', $mision->id) }}"
+                                                        class="inline-flex items-center justify-center p-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition duration-200 shadow-sm cursor-pointer"
+                                                        title="Ver reporte operativo consolidado">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6h6v6m2 4H7a2 2 0 01-2-2V5a2 2 0 012-2h6l6 6v10a2 2 0 01-2 2z" />
+                                                        </svg>
+                                                    </a>
                                                 </div>
                                             </td>
                                         </tr>

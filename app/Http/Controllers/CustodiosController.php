@@ -830,6 +830,24 @@ public function update(
         return view('custodios.cierres-operativos', compact('mision', 'cierres'));
     }
 
+    public function mostrarReporteOperativo(Misiones $mision)
+    {
+        return view('custodios.reporte-operativo', $this->buildReporteOperativoData($mision));
+    }
+
+    public function downloadReporteOperativo(Misiones $mision)
+    {
+        $pdf = Pdf::loadView('pdf.reporteOperativoMision', $this->buildReporteOperativoData($mision))
+            ->setPaper('letter', 'portrait')
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => false,
+                'defaultFont' => 'DejaVu Sans',
+            ]);
+
+        return $pdf->download('reporte-operativo-mision-'.$mision->id.'.pdf');
+    }
+
     /**
      * Generar PDF de gastos
      */
@@ -885,5 +903,71 @@ public function update(
         ]);
 
         return $pdf->download('gastos-mision-'.$mision->id.'.pdf');
+    }
+
+    private function buildReporteOperativoData(Misiones $mision): array
+    {
+        $agentesIds = $mision->agentesIdsNormalizados();
+        $agentes = User::query()
+            ->whereIn('id', $agentesIds)
+            ->orderBy('name')
+            ->get();
+
+        $agentesNombres = $agentes->pluck('name', 'id')->toArray();
+
+        $itinerarios = is_string($mision->itinerarios)
+            ? json_decode($mision->itinerarios, true)
+            : ($mision->itinerarios ?? []);
+
+        $eventosPlanos = [];
+        if (is_array($itinerarios)) {
+            foreach ($itinerarios as $usuarioData) {
+                $userId = (int) ($usuarioData['user_id'] ?? 0);
+                $userName = $agentesNombres[$userId] ?? ('Agente #' . $userId);
+
+                foreach ($usuarioData['eventos'] ?? [] as $evento) {
+                    $eventosPlanos[] = [
+                        'user_id' => $userId,
+                        'user_name' => $userName,
+                        'fecha' => $evento['fecha'] ?? null,
+                        'hora' => $evento['hora'] ?? null,
+                        'descripcion' => $evento['descripcion'] ?? null,
+                        'ubicacion' => $evento['ubicacion'] ?? null,
+                        'created_at' => $evento['created_at'] ?? null,
+                    ];
+                }
+            }
+        }
+
+        usort($eventosPlanos, function ($a, $b) {
+            return (($a['fecha'] ?? '') . ' ' . ($a['hora'] ?? ''))
+                <=> (($b['fecha'] ?? '') . ' ' . ($b['hora'] ?? ''));
+        });
+
+        $gastos = Gastos::query()
+            ->forMission($mision)
+            ->with('user:id,name')
+            ->orderBy('Fecha', 'asc')
+            ->orderBy('Hora', 'asc')
+            ->get();
+
+        $cierres = MisionCierreOperativo::query()
+            ->with('user:id,name')
+            ->where('mision_id', $mision->id)
+            ->orderBy('fecha', 'asc')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return [
+            'mision' => $mision,
+            'agentes' => $agentes,
+            'agentesNombres' => $agentesNombres,
+            'eventosPlanos' => $eventosPlanos,
+            'gastos' => $gastos,
+            'cierres' => $cierres,
+            'totalGastos' => (float) $gastos->sum('Monto'),
+            'totalViaticos' => (float) $gastos->where('Tipo', 'Viaticos')->sum('Monto'),
+            'totalGasolina' => (float) $gastos->where('Tipo', 'Gasolina')->sum('Monto'),
+        ];
     }
 }

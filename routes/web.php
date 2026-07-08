@@ -431,6 +431,10 @@ Route::middleware('auth')->group(function () {
         });
         Route::get('/misiones/{mision}/cierres-operativos', [CustodiosController::class, 'mostrarCierresOperativos'])
             ->name('misiones.cierres-operativos.show');
+        Route::prefix('misiones/{mision}/reporte-operativo')->name('misiones.reporte-operativo.')->group(function () {
+            Route::get('/', [CustodiosController::class, 'mostrarReporteOperativo'])->name('show');
+            Route::get('/pdf', [CustodiosController::class, 'downloadReporteOperativo'])->name('pdf');
+        });
     });
     // Route::get('mensajes', [CustodiosController::class,'mensajesIndex'])->name('custodios.mensajes');
 
