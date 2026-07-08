@@ -219,9 +219,16 @@ class GastosCrud extends Component
         $gastosCandidatos = collect();
 
         if ($todosLosAgentesIds->isNotEmpty() && $fechaMinima && $fechaMaxima) {
+            $missionIds = $misiones->pluck('id');
             $gastosCandidatos = Gastos::query()
-                ->whereIn('user_id', $todosLosAgentesIds)
-                ->whereBetween('Fecha', [$fechaMinima, $fechaMaxima])
+                ->where(function (Builder $query) use ($missionIds, $todosLosAgentesIds, $fechaMinima, $fechaMaxima): void {
+                    $query->whereIn('mision_id', $missionIds)
+                        ->orWhere(function (Builder $legacyQuery) use ($todosLosAgentesIds, $fechaMinima, $fechaMaxima): void {
+                            $legacyQuery->whereNull('mision_id')
+                                ->whereIn('user_id', $todosLosAgentesIds)
+                                ->whereBetween('Fecha', [$fechaMinima, $fechaMaxima]);
+                        });
+                })
                 ->orderBy('Fecha')
                 ->orderBy('Hora')
                 ->get();
@@ -249,7 +256,11 @@ class GastosCrud extends Component
 
             $gastosMision = $inicio->greaterThan($fin)
                 ? collect()
-                : $gastosCandidatos->filter(function (Gastos $gasto) use ($agentesIds, $inicio, $fin): bool {
+                : $gastosCandidatos->filter(function (Gastos $gasto) use ($mision, $agentesIds, $inicio, $fin): bool {
+                    if ($gasto->mision_id !== null) {
+                        return (int) $gasto->mision_id === (int) $mision->id;
+                    }
+
                     if (! in_array((int) $gasto->user_id, $agentesIds, true) || ! $gasto->Fecha) {
                         return false;
                     }

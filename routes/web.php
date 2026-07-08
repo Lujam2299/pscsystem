@@ -429,6 +429,8 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [CustodiosController::class, 'mostrarGastos'])->name('show');
             Route::get('/pdf', [CustodiosController::class, 'downloadGastos'])->name('pdf');
         });
+        Route::get('/misiones/{mision}/cierres-operativos', [CustodiosController::class, 'mostrarCierresOperativos'])
+            ->name('misiones.cierres-operativos.show');
     });
     // Route::get('mensajes', [CustodiosController::class,'mensajesIndex'])->name('custodios.mensajes');
 

@@ -162,16 +162,7 @@
 
                                                     {{-- Botón 2: Gastos --}}
                                                     @php
-                                                        $hasGastos = false;
-                                                        $agentesIds = is_string($mision->agentes_id)
-                                                            ? json_decode($mision->agentes_id, true)
-                                                            : $mision->agentes_id;
-
-                                                        if (is_array($agentesIds) && !empty($agentesIds)) {
-                                                            $hasGastos = \App\Models\Gastos::whereIn('user_id', $agentesIds)
-                                                                ->whereBetween('Fecha', [$mision->fecha_inicio, $mision->fecha_fin])
-                                                                ->exists();
-                                                        }
+                                                        $hasGastos = $mision->has_gastos;
                                                     @endphp
 
                                                     @if($hasGastos)
@@ -192,6 +183,29 @@
                                                             </button>
                                                             <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 text-xs font-medium text-white bg-gray-900 dark:bg-gray-700 rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
                                                                 Sin gastos registrados
+                                                            </span>
+                                                        </div>
+                                                    @endif
+
+                                                    {{-- BotÃ³n 3: Cierres Operativos --}}
+                                                    @if($mision->has_cierres_operativos)
+                                                        <a href="{{ route('misiones.cierres-operativos.show', $mision->id) }}"
+                                                            class="inline-flex items-center justify-center p-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white transition duration-200 shadow-sm cursor-pointer"
+                                                            title="Ver cierres operativos de la misiÃ³n">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5h6M9 3h6a2 2 0 012 2v1h1a2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h1V5a2 2 0 012-2z" />
+                                                            </svg>
+                                                        </a>
+                                                    @else
+                                                        <div class="relative inline-flex group">
+                                                            <button type="button" disabled
+                                                                class="inline-flex items-center justify-center p-2 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed transition duration-200 shadow-sm">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5h6M9 3h6a2 2 0 012 2v1h1a2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h1V5a2 2 0 012-2z" />
+                                                                </svg>
+                                                            </button>
+                                                            <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 text-xs font-medium text-white bg-gray-900 dark:bg-gray-700 rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                                Sin cierres operativos
                                                             </span>
                                                         </div>
                                                     @endif

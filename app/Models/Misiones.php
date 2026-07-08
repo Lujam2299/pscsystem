@@ -48,6 +48,16 @@ class Misiones extends Model
         return $this->hasMany(Geofence::class, 'mision_id');
     }
 
+    public function gastos()
+    {
+        return $this->hasMany(Gastos::class, 'mision_id');
+    }
+
+    public function cierresOperativos()
+    {
+        return $this->hasMany(MisionCierreOperativo::class, 'mision_id');
+    }
+
     public function getEstadoNormalizadoAttribute(): string
     {
         return MissionStatus::normalize($this->estatus);
@@ -116,9 +126,12 @@ class Misiones extends Model
         }
 
         // Verificar existencia de gastos en el rango de fechas
-        return Gastos::whereIn('user_id', $agentesIds)
-            ->whereBetween('Fecha', [$this->fecha_inicio, $this->fecha_fin])
-            ->exists();
+        return Gastos::query()->forMission($this)->exists();
+    }
+
+    public function getHasCierresOperativosAttribute(): bool
+    {
+        return $this->cierresOperativos()->exists();
     }
 
     /**
@@ -133,8 +146,7 @@ class Misiones extends Model
             return collect([]);
         }
 
-        return Gastos::whereIn('user_id', $agentesIds)
-            ->whereBetween('Fecha', [$this->fecha_inicio, $this->fecha_fin])
+        return Gastos::query()->forMission($this)
             ->orderBy('Fecha', 'asc')
             ->orderBy('Hora', 'asc')
             ->get();

@@ -194,6 +194,48 @@
                                     </div>
                                 </div>
                             @endif
+
+                            {{-- Cierres Operativos --}}
+                            <div class="pt-4 border-t border-gray-100 dark:border-gray-700">
+                                <div class="flex items-center justify-between gap-3 mb-3">
+                                    <h3 class="text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wide flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5h6M9 3h6a2 2 0 012 2v1h1a2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h1V5a2 2 0 012-2z" />
+                                        </svg>
+                                        Cierres operativos
+                                    </h3>
+                                    @if(($cierresOperativosRecientes ?? collect())->isNotEmpty())
+                                        <a href="{{ route('misiones.cierres-operativos.show', $mision->id) }}"
+                                           class="text-xs font-semibold text-cyan-700 dark:text-cyan-300 hover:underline">
+                                            Ver todos
+                                        </a>
+                                    @endif
+                                </div>
+
+                                @if(($cierresOperativosRecientes ?? collect())->isEmpty())
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/40 rounded-lg p-3">
+                                        Aún no hay cierres operativos registrados desde la app móvil.
+                                    </p>
+                                @else
+                                    <div class="space-y-2">
+                                        @foreach($cierresOperativosRecientes as $cierre)
+                                            <div class="rounded-lg border border-cyan-100 dark:border-cyan-900/40 bg-cyan-50/60 dark:bg-cyan-900/10 p-3">
+                                                <div class="flex items-center justify-between gap-2 mb-1">
+                                                    <p class="text-sm font-bold text-gray-900 dark:text-white">
+                                                        {{ $cierre->fecha ? $cierre->fecha->format('d/m/Y') : 'Sin fecha' }}
+                                                    </p>
+                                                    <span class="text-[11px] font-semibold text-cyan-700 dark:text-cyan-300">
+                                                        {{ $cierre->user?->name ?? 'Escolta #' . $cierre->user_id }}
+                                                    </span>
+                                                </div>
+                                                <p class="text-xs leading-5 text-gray-700 dark:text-gray-300 line-clamp-3">
+                                                    {{ $cierre->resumen }}
+                                                </p>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>

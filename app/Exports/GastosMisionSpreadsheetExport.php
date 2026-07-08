@@ -61,8 +61,7 @@ class GastosMisionSpreadsheetExport
             ->keyBy('id');
 
         $gastos = Gastos::query()
-            ->whereIn('user_id', $agentesIds)
-            ->whereBetween('Fecha', [$mision->fecha_inicio, $mision->fecha_fin])
+            ->forMission($mision)
             ->orderBy('Fecha')
             ->orderBy('Hora')
             ->get();

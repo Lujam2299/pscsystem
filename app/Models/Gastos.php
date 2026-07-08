@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Modelo Gastos
@@ -76,6 +77,7 @@ class Gastos extends Model
      */
     protected $fillable = [
         'user_id',
+        'mision_id',
         'user_name',
         'Monto',
         'Fecha',
@@ -108,6 +110,29 @@ class Gastos extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function mision()
+    {
+        return $this->belongsTo(Misiones::class, 'mision_id');
+    }
+
+    /**
+     * Obtiene gastos vinculados explícitamente y conserva el criterio anterior
+     * solo para registros históricos cuyo mision_id permanece nulo.
+     */
+    public function scopeForMission(Builder $query, Misiones $mision): Builder
+    {
+        $agentIds = $mision->agentesIdsNormalizados();
+
+        return $query->where(function (Builder $missionQuery) use ($mision, $agentIds): void {
+            $missionQuery->where('mision_id', $mision->id)
+                ->orWhere(function (Builder $legacyQuery) use ($mision, $agentIds): void {
+                    $legacyQuery->whereNull('mision_id')
+                        ->whereIn('user_id', $agentIds)
+                        ->whereBetween('Fecha', [$mision->fecha_inicio, $mision->fecha_fin]);
+                });
+        });
     }
 
     // --- Accessors (getters) ---

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Gastos;
 use App\Models\User;
 use App\Models\Misiones;
+use App\Models\MisionCierreOperativo;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -364,6 +365,14 @@ class CustodiosController extends Controller
             $misionActiva = (!$inicioMision || $ahora->greaterThanOrEqualTo($inicioMision))
                 && (!$finMision || $ahora->lessThanOrEqualTo($finMision));
 
+            $cierresOperativosRecientes = MisionCierreOperativo::query()
+                ->with('user:id,name')
+                ->where('mision_id', $mision->id)
+                ->latest('fecha')
+                ->latest('created_at')
+                ->limit(3)
+                ->get();
+
             // Retornar la vista con los datos
             return view('custodios.detalle-mision', [
                 'mision' => $mision,
@@ -371,6 +380,7 @@ class CustodiosController extends Controller
                 'agentes' => $agentes ?? null, // Pasa agentes si los usas
                 'posicionesAgentes' => $posicionesAgentes,
                 'misionActiva' => $misionActiva,
+                'cierresOperativosRecientes' => $cierresOperativosRecientes,
             ]);
 
         } catch (\Exception $e) {
@@ -768,8 +778,8 @@ public function update(
         }
 
         // Obtener gastos dentro del rango de fechas y de los agentes
-        $gastos = Gastos::whereIn('user_id', $agentesIds)
-            ->whereBetween('Fecha', [$mision->fecha_inicio, $mision->fecha_fin])
+        $gastos = Gastos::query()
+            ->forMission($mision)
             ->orderBy('Fecha', 'asc')
             ->orderBy('Hora', 'asc')
             ->get();
@@ -803,6 +813,23 @@ public function update(
         ));
     }
 
+    public function mostrarCierresOperativos(Misiones $mision)
+    {
+        $cierres = MisionCierreOperativo::query()
+            ->with('user:id,name')
+            ->where('mision_id', $mision->id)
+            ->orderByDesc('fecha')
+            ->orderByDesc('created_at')
+            ->get();
+
+        if ($cierres->isEmpty()) {
+            return redirect()->route('custodios.misionesTerminadas')
+                ->with('info', 'No hay cierres operativos registrados para esta misiÃ³n.');
+        }
+
+        return view('custodios.cierres-operativos', compact('mision', 'cierres'));
+    }
+
     /**
      * Generar PDF de gastos
      */
@@ -818,8 +845,8 @@ public function update(
         }
 
         // Obtener gastos
-        $gastos = Gastos::whereIn('user_id', $agentesIds)
-            ->whereBetween('Fecha', [$mision->fecha_inicio, $mision->fecha_fin])
+        $gastos = Gastos::query()
+            ->forMission($mision)
             ->orderBy('Fecha', 'asc')
             ->orderBy('Hora', 'asc')
             ->get();
