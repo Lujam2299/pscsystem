@@ -53,6 +53,8 @@
                         $solicitudRol = strtolower($solicitud->rol ?? '');
                         $solicitudDepartamento = strtolower($solicitud->departamento ?? '');
                         $navbar = null;
+                        $erpSupervisorDisabled = config('modules.disabled.erp_supervisores', false);
+                        $erpCustodiosDisabled = config('modules.disabled.erp_custodios', false);
 
                         // NORMALIZACIÓN DE ROLES
                         // Algunos roles pueden tener prefijos como "auxiliar" o "aux", que para motivos del panel
@@ -71,7 +73,7 @@
                         // Considerando que los roles pueden ser muy variables, buscaremos cadenas básicas
                         // Roles como: supervisor, supervisora, supervisión, supervision deben ser
                         // considerados como iguales.
-                        if (strpos($rol, 'supervis') !== false) {
+                        if (!$erpSupervisorDisabled && strpos($rol, 'supervis') !== false) {
                         $navbar = 'supervisor-navbar';
                         }
 
@@ -100,9 +102,11 @@
                         // Los roles sin variaciones tienen su propia navbar.
                         $roles = [
                         'juridico' => 'juridico-navbar',
-                        'custodios' => 'custodios-navbar',
-                        'custodio' => 'custodios-navbar',
                         ];
+                        if (!$erpCustodiosDisabled) {
+                        $roles['custodios'] = 'custodios-navbar';
+                        $roles['custodio'] = 'custodios-navbar';
+                        }
                         // Si el rol del usuario está en la lista de roles, asignamos la navbar correspondiente.
                         if (array_key_exists($rol, $roles)) {
                         $navbar = $roles[$rol];
@@ -120,9 +124,20 @@
                         $navbar = $departamentos[$solicitudDepartamento];
                         }
                         }
+
+                        $moduloOperativoDeshabilitado =
+                        ($erpSupervisorDisabled && strpos($rol, 'supervis') !== false)
+                        || ($erpCustodiosDisabled && in_array($rol, ['custodios', 'custodio'], true));
                         @endphp
 
-                        @if ($navbar)
+                        @if ($moduloOperativoDeshabilitado)
+                        <div class="p-5 border border-amber-200 rounded-lg bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-100">
+                            <p class="font-semibold">Módulo deshabilitado</p>
+                            <p class="mt-1 text-sm">
+                                Este módulo fue deshabilitado por indicación operativa. La información histórica se conserva, pero el acceso desde el ERP ya no está disponible.
+                            </p>
+                        </div>
+                        @elseif ($navbar)
                         @component('components.' . $navbar)
                         @endcomponent
                         @else

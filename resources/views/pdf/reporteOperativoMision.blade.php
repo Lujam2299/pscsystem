@@ -44,6 +44,28 @@
         </tr>
     </table>
 
+    <h2>Revisión administrativa</h2>
+    <table class="data">
+        <tr>
+            <th>Estado de revisión</th>
+            <th>Revisado por</th>
+            <th>Fecha de revisión</th>
+        </tr>
+        <tr>
+            <td>{{ $mision->revision_estado_normalizado }}</td>
+            <td>{{ $mision->revisionUser?->name ?? '-' }}</td>
+            <td>{{ $mision->revision_at ? $mision->revision_at->format('d/m/Y H:i') : '-' }}</td>
+        </tr>
+        @if(filled($mision->revision_observaciones))
+            <tr>
+                <th colspan="3">Observaciones internas</th>
+            </tr>
+            <tr>
+                <td colspan="3" class="pre">{{ $mision->revision_observaciones }}</td>
+            </tr>
+        @endif
+    </table>
+
     <h2>Datos generales</h2>
     <table class="data">
         <tr>

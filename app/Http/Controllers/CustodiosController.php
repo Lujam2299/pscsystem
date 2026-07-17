@@ -320,6 +320,7 @@ class CustodiosController extends Controller
         try {
             // Buscar la misión por ID
             $mision = Misiones::findOrFail($misionId);
+            $mision->load('revisionUser:id,name');
 
             // Cargar las geocercas asociadas a esta misión
             $geocercas = Geofence::where('mision_id', $misionId)->get();
@@ -650,6 +651,41 @@ public function update(
         return back()->with('success', "Estado actualizado a {$nextStatus}.");
     }
 
+    public function updateRevision(Request $request, Misiones $mision)
+    {
+        $validated = $request->validate([
+            'revision_estado' => ['required', 'string', Rule::in([
+                'Pendiente de revisión',
+                'En revisión',
+                'Lista para facturar',
+                'Observada / requiere corrección',
+            ])],
+            'revision_observaciones' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        if ($validated['revision_estado'] === 'Lista para facturar') {
+            $this->assertMissionReadyForBilling($mision);
+        }
+
+        if (
+            $validated['revision_estado'] === 'Observada / requiere corrección'
+            && blank($validated['revision_observaciones'] ?? null)
+        ) {
+            throw ValidationException::withMessages([
+                'revision_observaciones' => 'Indica la observación o corrección requerida.',
+            ]);
+        }
+
+        $mision->update([
+            'revision_estado' => $validated['revision_estado'],
+            'revision_observaciones' => $validated['revision_observaciones'] ?? null,
+            'revision_user_id' => $request->user()?->id,
+            'revision_at' => now(),
+        ]);
+
+        return back()->with('success', "Revisión administrativa actualizada: {$validated['revision_estado']}.");
+    }
+
     public function mostrarItinerarios(Misiones $mision)
     {
         if (!$mision->itinerarios || empty($mision->itinerarios)) {
@@ -907,6 +943,7 @@ public function update(
 
     private function buildReporteOperativoData(Misiones $mision): array
     {
+        $mision->loadMissing('revisionUser:id,name');
         $agentesIds = $mision->agentesIdsNormalizados();
         $agentes = User::query()
             ->whereIn('id', $agentesIds)
@@ -969,5 +1006,28 @@ public function update(
             'totalViaticos' => (float) $gastos->where('Tipo', 'Viaticos')->sum('Monto'),
             'totalGasolina' => (float) $gastos->where('Tipo', 'Gasolina')->sum('Monto'),
         ];
+    }
+
+    private function assertMissionReadyForBilling(Misiones $mision): void
+    {
+        $estado = MissionStatus::normalize($mision->estatus);
+
+        if (! in_array($estado, [MissionStatus::REPORTED, MissionStatus::FINISHED], true)) {
+            throw ValidationException::withMessages([
+                'revision_estado' => 'La misión debe estar Reportada o Finalizada para marcarse lista para facturar.',
+            ]);
+        }
+
+        if (empty($mision->agentesIdsNormalizados())) {
+            throw ValidationException::withMessages([
+                'revision_estado' => 'La misión debe tener agentes asignados.',
+            ]);
+        }
+
+        if (! $mision->cierresOperativos()->exists()) {
+            throw ValidationException::withMessages([
+                'revision_estado' => 'La misión debe tener al menos un cierre operativo registrado.',
+            ]);
+        }
     }
 }

@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'custodios.role' => \App\Http\Middleware\EnsureCustodiosRole::class,
+            'module.enabled' => \App\Http\Middleware\EnsureModuleEnabled::class,
         ]);
 
         // Configura grupos de middleware predeterminados

@@ -72,6 +72,88 @@
                     </section>
 
                     <section class="rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div class="px-5 py-4 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-100 dark:border-emerald-800 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-900 dark:text-white">Revisión administrativa</h2>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Candado previo a pre-facturación.</p>
+                            </div>
+                            <span class="inline-flex items-center self-start rounded-full px-3 py-1 text-xs font-semibold {{ $mision->revision_tone }}">
+                                {{ $mision->revision_estado_normalizado }}
+                            </span>
+                        </div>
+
+                        <div class="p-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
+                            <div class="space-y-3">
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-3">
+                                        <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Agentes</p>
+                                        <p class="text-xl font-bold text-gray-900 dark:text-white">{{ $agentes->count() }}</p>
+                                    </div>
+                                    <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-3">
+                                        <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Gastos</p>
+                                        <p class="text-xl font-bold text-gray-900 dark:text-white">{{ $gastos->count() }}</p>
+                                    </div>
+                                    <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-3">
+                                        <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Cierres</p>
+                                        <p class="text-xl font-bold text-gray-900 dark:text-white">{{ $cierres->count() }}</p>
+                                    </div>
+                                </div>
+
+                                @if($mision->revisionUser)
+                                    <p class="text-sm text-gray-600 dark:text-gray-300">
+                                        Última revisión por <span class="font-semibold">{{ $mision->revisionUser->name }}</span>
+                                        @if($mision->revision_at)
+                                            el {{ $mision->revision_at->format('d/m/Y H:i') }}
+                                        @endif
+                                    </p>
+                                @endif
+
+                                @if(filled($mision->revision_observaciones))
+                                    <div class="rounded-xl bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-3">
+                                        <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-1">Observaciones actuales</p>
+                                        <p class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line">{{ $mision->revision_observaciones }}</p>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <form method="POST" action="{{ route('misiones.revision.update', $mision) }}" class="space-y-4">
+                                @csrf
+                                @method('PATCH')
+
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Estado de revisión</label>
+                                    <select name="revision_estado" required
+                                            class="w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                                        @foreach(['Pendiente de revisión', 'En revisión', 'Lista para facturar', 'Observada / requiere corrección'] as $estadoRevision)
+                                            <option value="{{ $estadoRevision }}" @selected(old('revision_estado', $mision->revision_estado_normalizado) === $estadoRevision)>
+                                                {{ $estadoRevision }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('revision_estado')
+                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Observaciones internas</label>
+                                    <textarea name="revision_observaciones" rows="4"
+                                              class="w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                              placeholder="Ej. Falta validar una evidencia, todo correcto, corregir gasto duplicado...">{{ old('revision_observaciones', $mision->revision_observaciones) }}</textarea>
+                                    @error('revision_observaciones')
+                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <button type="submit"
+                                        class="inline-flex w-full justify-center items-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
+                                    Guardar revisión
+                                </button>
+                            </form>
+                        </div>
+                    </section>
+
+                    <section class="rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
                         <div class="px-5 py-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800">
                             <h2 class="text-lg font-bold text-gray-900 dark:text-white">Itinerario cronológico</h2>
                         </div>

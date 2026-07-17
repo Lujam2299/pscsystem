@@ -82,6 +82,19 @@
                             {{-- Datos Principales --}}
                             <div class="space-y-4">
                                 <div>
+                                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Revisión administrativa</label>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ $mision->revision_tone }}">
+                                            {{ $mision->revision_estado_normalizado }}
+                                        </span>
+                                        <a href="{{ route('misiones.reporte-operativo.show', $mision->id) }}"
+                                           class="text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:underline">
+                                            Gestionar revisión
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div>
                                     <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Cliente</label>
                                     <p class="text-base font-medium text-gray-900 dark:text-white">{{ $mision->cliente ?? 'No definido' }}</p>
                                 </div>

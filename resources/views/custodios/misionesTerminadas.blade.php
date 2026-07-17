@@ -122,6 +122,11 @@
                                                 <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold {{ \App\Support\Custodios\MissionStatus::tone($mision->estatus) }}">
                                                     {{ $mision->estado_normalizado }}
                                                 </span>
+                                                <div class="mt-1">
+                                                    <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $mision->revision_tone }}">
+                                                        {{ $mision->revision_estado_normalizado }}
+                                                    </span>
+                                                </div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                                 <div class="flex items-center justify-center gap-2">

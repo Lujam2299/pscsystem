@@ -92,7 +92,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/guardarUsuario', [UserController::class, 'registrarUsuario'])->name('registrarUsuario');
     Route::get('/editar_usuario/{id}', [AdminController::class, 'editarUsuario'])->name('admin.editarUsuarioForm');
     Route::get('/ver_usuarios', [AdminController::class, 'verUsuarios'])->name('admin.verUsuarios');
-    Route::get('/tablero_supervisores', [AdminController::class, 'tableroSupervisores'])->name('admin.verTableroSupervisores');
+    Route::get('/tablero_supervisores', [AdminController::class, 'tableroSupervisores'])
+        ->middleware('module.enabled:erp_supervisores')
+        ->name('admin.verTableroSupervisores');
     Route::get('/admin_solicitudes_altas', [AdminController::class, 'verSolicitudesAltas'])->name('admi.verSolicitudesAltas');
     Route::get('/admin/baja_usuario/{id}', [AdminController::class, 'bajaUsuario'])->name('admin.darDeBajaUsuario');
     Route::get('/editar_usuario/{id}', [AdminController::class, 'editarUsuario'])->name('admin.editarUsuarioForm');
@@ -109,50 +111,52 @@ Route::middleware('auth')->group(function () {
     Route::get('tablero_monitoreo', [AdminController::class, 'tableroMonitoreo'])->name('admin.monitoreoDashboard');
     Route::get('tablero_juridico', [AdminController::class, 'tableroJuridico'])->name('admin.juridicoDashboard');
     Route::get('/tablero_custodios', [AdminController::class, 'tableroCustodios'])
-        ->middleware('custodios.role')
+        ->middleware(['custodios.role', 'module.enabled:erp_custodios'])
         ->name('admin.custodiosDashboard');
     Route::get('/admin_vacaciones', [AdminController::class, 'solicitudesVacaciones'])->name('admin.solicitudesVacaciones');
     Route::get('/registrar_nominas', [AdminController::class, 'registrarNominas'])->name('registrarNominas');
     Route::post('/registrar_finiquitos', [AdminController::class, 'registrarFiniquitos'])->name('registrarFiniquitos');
     Route::post('/admin/import/unify-duplicates', [ImportController::class, 'unifyDuplicates'])->name('admin.import.unify-duplicates');
 
-    // Usuario Supervisor
-    Route::get('/nuevoUsuario', [SupervisorController::class, 'nuevoUsuarioForm'])->name('sup.nuevoUsuarioForm');
-    Route::post('/infoUsuario', [SupervisorController::class, 'guardarInfo'])->name('sup.guardarInfo');
-    Route::get('/subir-archivos/{id}', [SupervisorController::class, 'subirArchivosForm'])->name('sup.subirArchivosForm');
-    Route::post('/subir-archivos/{id}', [SupervisorController::class, 'guardarArchivos'])->name('sup.guardarArchivos');
-    Route::get('/historial_solicitudes', [SupervisorController::class, 'historialSolicitudes'])->name('sup.historial');
-    Route::get('/historial_solicitudes/{id}', [SupervisorController::class, 'detalleSolicitud'])->name('sup.solicitud.detalle');
-    Route::get('/editar_solicitud/{id}', [SupervisorController::class, 'editarSolicitudForm'])->name('sup.editarSolicitudForm');
-    Route::post('/editar_informacion_solicitud/{id}', [SupervisorController::class, 'editarInformacionSolicitud'])->name('sup.editarInformacionSolicitud');
-    Route::post('/subir_archivos_editados/{id}', [SupervisorController::class, 'subirArchivosEditados'])->name('sup.guardarArchivosEditados');
-    Route::get('/sup_solicitar_baja', [SupervisorController::class, 'solicitarBajaForm'])->name('sup.solicitarBajaForm');
-    Route::get('/sup_solicitar_baja/{id}', [SupervisorController::class, 'solicitarBajaVista'])->name('sup.validarSolicitudBaja');
-    Route::post('/nueva_guardar_baja/{id}', [SupervisorController::class, 'guardarBajaNueva'])->name('sup.guardarBajaNueva');
-    Route::get('/historial_bajas', [SupervisorController::class, 'historialBajas'])->name('sup.historialBajas');
-    Route::get('/lista_asistencia', [SupervisorController::class, 'listaAsistencia'])->name('sup.listaAsistencia');
-    Route::post('/guardar_asistencias', [SupervisorController::class, 'guardarAsistencias'])->name('sup.guardarAsistencias');
-    Route::get('/ver_asistencias/{id}', [SupervisorController::class, 'verAsistencias'])->name('sup.verAsistencias');
-    Route::get('/supervisor/ver_fecha_sistencias', [SupervisorController::class, 'verFechaAsistencias'])->name('sup.verFechaAsistencias');
-    Route::get('/detalle_asistencia/{id}', [SupervisorController::class, 'detalleAsistencia'])->name('sup.detalleAsistencia');
-    Route::get('/solicitudes_vacaciones', [SupervisorController::class, 'solicitudesVacaciones'])->name('sup.solicitudesVacaciones');
-    Route::get('/aceptar_solicitud_vacaciones/{id}', [SupervisorController::class, 'aceptarSolicitudVacaciones'])->name('sup.aceptarSolicitudVacaciones');
-    Route::get('/rechazar_solicitud_vacaciones/{id}', [SupervisorController::class, 'rechazarSolicitudVacaciones'])->name('sup.rechazarSolicitudVacaciones');
-    Route::get('/ver_solicitud_baja/{id}', [SupervisorController::class, 'verSolicitudBaja'])->name('sup.verSolicitudBaja');
-    Route::get('/tiempos_extras', [SupervisorController::class, 'tiemposExtras'])->name('sup.tiemposExtras');
-    Route::get('/tiempos_extras/{id}', [SupervisorController::class, 'tiemposExtrasForm'])->name('sup.tiemposExtrasForm');
-    Route::post('/guardar_tiempo_extra/{id}', [SupervisorController::class, 'guardarTiempoExtra'])->name('sup.guardarTiempoExtra');
-    Route::get('/cobertura_turno_form/{id}', [SupervisorController::class, 'coberturaTurnoForm'])->name('sup.coberturaTurnoForm');
-    Route::post('/guardar_cobertura_turno/{id}', [SupervisorController::class, 'guardarCoberturaTurno'])->name('sup.guardarCoberturaTurno');
-    Route::get('/historial_tiempos_extras', [SupervisorController::class, 'historialTiemposExtras'])->name('sup.historialTiemposExtras');
-    Route::get('/gestion_usuarios', [SupervisorController::class, 'gestionUsuarios'])->name('sup.gestionUsuarios');
-    Route::get('/descargar_formato_vacaciones/{id}', [SupervisorController::class, 'descargarSolicitudVacaciones'])->name('sup.descargarSolicitudVacaciones');
-    Route::post('/solicitud-vacaciones/{id}/subir-archivo', [SupervisorController::class, 'subirArchivo'])->name('solicitud-vacaciones.subir-archivo');
-    Route::get('/vacaciones_elemento', [SupervisorController::class, 'solicitarVacacionesElemento'])->name('sup.solicitarVacacionesElemento');
-    Route::get('/vacaciones_elemento/{id}', [SupervisorController::class, 'vacacionesElementoForm'])->name('sup.solicitarVacacionesElementoForm');
-    Route::get('/asistencias/confirmar-faltas', [SupervisorController::class, 'confirmarFaltas'])->name('asistencias.confirmarFaltas');
-    Route::post('/asistencias/finalizar', [SupervisorController::class, 'finalizarAsistencia'])->name('asistencias.finalizar');
-    Route::get('/sup-alta-usuario', [SupervisorController::class, 'formAlta'])->name('sup.formAlta');
+    // Usuario Supervisor - módulo ERP deshabilitado, conservando datos históricos.
+    Route::middleware('module.enabled:erp_supervisores')->group(function () {
+        Route::get('/nuevoUsuario', [SupervisorController::class, 'nuevoUsuarioForm'])->name('sup.nuevoUsuarioForm');
+        Route::post('/infoUsuario', [SupervisorController::class, 'guardarInfo'])->name('sup.guardarInfo');
+        Route::get('/subir-archivos/{id}', [SupervisorController::class, 'subirArchivosForm'])->name('sup.subirArchivosForm');
+        Route::post('/subir-archivos/{id}', [SupervisorController::class, 'guardarArchivos'])->name('sup.guardarArchivos');
+        Route::get('/historial_solicitudes', [SupervisorController::class, 'historialSolicitudes'])->name('sup.historial');
+        Route::get('/historial_solicitudes/{id}', [SupervisorController::class, 'detalleSolicitud'])->name('sup.solicitud.detalle');
+        Route::get('/editar_solicitud/{id}', [SupervisorController::class, 'editarSolicitudForm'])->name('sup.editarSolicitudForm');
+        Route::post('/editar_informacion_solicitud/{id}', [SupervisorController::class, 'editarInformacionSolicitud'])->name('sup.editarInformacionSolicitud');
+        Route::post('/subir_archivos_editados/{id}', [SupervisorController::class, 'subirArchivosEditados'])->name('sup.guardarArchivosEditados');
+        Route::get('/sup_solicitar_baja', [SupervisorController::class, 'solicitarBajaForm'])->name('sup.solicitarBajaForm');
+        Route::get('/sup_solicitar_baja/{id}', [SupervisorController::class, 'solicitarBajaVista'])->name('sup.validarSolicitudBaja');
+        Route::post('/nueva_guardar_baja/{id}', [SupervisorController::class, 'guardarBajaNueva'])->name('sup.guardarBajaNueva');
+        Route::get('/historial_bajas', [SupervisorController::class, 'historialBajas'])->name('sup.historialBajas');
+        Route::get('/lista_asistencia', [SupervisorController::class, 'listaAsistencia'])->name('sup.listaAsistencia');
+        Route::post('/guardar_asistencias', [SupervisorController::class, 'guardarAsistencias'])->name('sup.guardarAsistencias');
+        Route::get('/ver_asistencias/{id}', [SupervisorController::class, 'verAsistencias'])->name('sup.verAsistencias');
+        Route::get('/supervisor/ver_fecha_sistencias', [SupervisorController::class, 'verFechaAsistencias'])->name('sup.verFechaAsistencias');
+        Route::get('/detalle_asistencia/{id}', [SupervisorController::class, 'detalleAsistencia'])->name('sup.detalleAsistencia');
+        Route::get('/solicitudes_vacaciones', [SupervisorController::class, 'solicitudesVacaciones'])->name('sup.solicitudesVacaciones');
+        Route::get('/aceptar_solicitud_vacaciones/{id}', [SupervisorController::class, 'aceptarSolicitudVacaciones'])->name('sup.aceptarSolicitudVacaciones');
+        Route::get('/rechazar_solicitud_vacaciones/{id}', [SupervisorController::class, 'rechazarSolicitudVacaciones'])->name('sup.rechazarSolicitudVacaciones');
+        Route::get('/ver_solicitud_baja/{id}', [SupervisorController::class, 'verSolicitudBaja'])->name('sup.verSolicitudBaja');
+        Route::get('/tiempos_extras', [SupervisorController::class, 'tiemposExtras'])->name('sup.tiemposExtras');
+        Route::get('/tiempos_extras/{id}', [SupervisorController::class, 'tiemposExtrasForm'])->name('sup.tiemposExtrasForm');
+        Route::post('/guardar_tiempo_extra/{id}', [SupervisorController::class, 'guardarTiempoExtra'])->name('sup.guardarTiempoExtra');
+        Route::get('/cobertura_turno_form/{id}', [SupervisorController::class, 'coberturaTurnoForm'])->name('sup.coberturaTurnoForm');
+        Route::post('/guardar_cobertura_turno/{id}', [SupervisorController::class, 'guardarCoberturaTurno'])->name('sup.guardarCoberturaTurno');
+        Route::get('/historial_tiempos_extras', [SupervisorController::class, 'historialTiemposExtras'])->name('sup.historialTiemposExtras');
+        Route::get('/gestion_usuarios', [SupervisorController::class, 'gestionUsuarios'])->name('sup.gestionUsuarios');
+        Route::get('/descargar_formato_vacaciones/{id}', [SupervisorController::class, 'descargarSolicitudVacaciones'])->name('sup.descargarSolicitudVacaciones');
+        Route::post('/solicitud-vacaciones/{id}/subir-archivo', [SupervisorController::class, 'subirArchivo'])->name('solicitud-vacaciones.subir-archivo');
+        Route::get('/vacaciones_elemento', [SupervisorController::class, 'solicitarVacacionesElemento'])->name('sup.solicitarVacacionesElemento');
+        Route::get('/vacaciones_elemento/{id}', [SupervisorController::class, 'vacacionesElementoForm'])->name('sup.solicitarVacacionesElementoForm');
+        Route::get('/asistencias/confirmar-faltas', [SupervisorController::class, 'confirmarFaltas'])->name('asistencias.confirmarFaltas');
+        Route::post('/asistencias/finalizar', [SupervisorController::class, 'finalizarAsistencia'])->name('asistencias.finalizar');
+        Route::get('/sup-alta-usuario', [SupervisorController::class, 'formAlta'])->name('sup.formAlta');
+    });
 
     // usuario Recursos Humanos
     Route::get('/solicitudes_altas', [RhController::class, 'solicitudesAltas'])->name('rh.solicitudesAltas');
@@ -313,13 +317,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/compras/{id}', \App\Livewire\CompraDetalle::class)->name('compras.detalle');
 
     Route::get('/mapa-geocercas', [CustodiosController::class, 'mostrarMapaGeocercas'])
-        ->middleware('custodios.role')
+        ->middleware(['custodios.role', 'module.enabled:erp_custodios'])
         ->name('admin.mapaGeocercas');
     Route::get('/api/custodios/geocercas-activas', [CustodiosController::class, 'geocercasActivasRealtime'])
-        ->middleware('custodios.role')
+        ->middleware(['custodios.role', 'module.enabled:erp_custodios'])
         ->name('admin.geocercasActivasRealtime');
     Route::get('/detalle-mision/{mision}', [CustodiosController::class, 'verDetalleMision'])
-        ->middleware('custodios.role')
+        ->middleware(['custodios.role', 'module.enabled:erp_custodios'])
         ->name('admin.detalleMision');
 
     // Usuario Aux Admin
@@ -408,7 +412,7 @@ Route::middleware('auth')->group(function () {
     })->name('notificaciones.leer');
 
     // Custodios
-    Route::middleware('custodios.role')->group(function () {
+    Route::middleware(['custodios.role', 'module.enabled:erp_custodios'])->group(function () {
         Route::get('/nueva_mision', [CustodiosController::class, 'nuevaMisionForm'])->name('custodios.nuevaMisionForm');
         Route::post('/agentes-disponibles', [CustodiosController::class, 'obtenerAgentesDisponibles'])
             ->name('custodios.agentesDisponibles');
@@ -421,6 +425,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/misiones/{mision}', [CustodiosController::class, 'update'])->name('misiones.update');
         Route::patch('/misiones/{mision}/estado', [CustodiosController::class, 'updateStatus'])
             ->name('misiones.estado.update');
+        Route::patch('/misiones/{mision}/revision', [CustodiosController::class, 'updateRevision'])
+            ->name('misiones.revision.update');
         Route::prefix('misiones/{mision}/itinerarios')->name('misiones.itinerarios.')->group(function () {
             Route::get('/', [CustodiosController::class, 'mostrarItinerarios'])->name('show');
             Route::get('/pdf', [CustodiosController::class, 'downloadItinerarios'])->name('pdf');

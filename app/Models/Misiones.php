@@ -30,6 +30,10 @@ class Misiones extends Model
         'lat',
         'lng',
         'estatus',
+        'revision_estado',
+        'revision_observaciones',
+        'revision_user_id',
+        'revision_at',
     ];
 
     protected $casts = [
@@ -41,6 +45,7 @@ class Misiones extends Model
         'datos_vuelo' => 'array',
         'datos_hospital' => 'array',
         'datos_embajada' => 'array',
+        'revision_at' => 'datetime',
     ];
 
     public function geofences()
@@ -56,6 +61,31 @@ class Misiones extends Model
     public function cierresOperativos()
     {
         return $this->hasMany(MisionCierreOperativo::class, 'mision_id');
+    }
+
+    public function revisionUser()
+    {
+        return $this->belongsTo(User::class, 'revision_user_id');
+    }
+
+    public function getRevisionEstadoNormalizadoAttribute(): string
+    {
+        $estado = trim((string) ($this->revision_estado ?: 'Pendiente de revisión'));
+
+        return match ($estado) {
+            'En revisión', 'Lista para facturar', 'Observada / requiere corrección' => $estado,
+            default => 'Pendiente de revisión',
+        };
+    }
+
+    public function getRevisionToneAttribute(): string
+    {
+        return match ($this->revision_estado_normalizado) {
+            'Lista para facturar' => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+            'En revisión' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
+            'Observada / requiere corrección' => 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+            default => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+        };
     }
 
     public function getEstadoNormalizadoAttribute(): string

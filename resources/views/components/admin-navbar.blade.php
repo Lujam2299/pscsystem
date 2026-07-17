@@ -154,12 +154,14 @@
             'color' => 'bg-red-300 dark:bg-red-700',
             'notificacions' => $conteoBajasJuridico,
         ],*/
-        [
-            'titulo' => 'Custodios',
-            'ruta' => route('admin.custodiosDashboard'),
-            'icono' => 'user-shield',
-            'color' => 'bg-blue-300 dark:bg-blue-700',
-        ],
+        !config('modules.disabled.erp_custodios', false)
+            ? [
+                'titulo' => 'Custodios',
+                'ruta' => route('admin.custodiosDashboard'),
+                'icono' => 'user-shield',
+                'color' => 'bg-blue-300 dark:bg-blue-700',
+            ]
+            : null,
         [
             'titulo' => 'RRHH',
             'ruta' => route('admin.rhDashboard'),
