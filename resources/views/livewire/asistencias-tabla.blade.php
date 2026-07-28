@@ -22,9 +22,37 @@
             background-color: #1f2937;
             box-shadow: inset -2px 0 0 #374151;
         }
+        .payroll-scroll {
+            scrollbar-color: #94a3b8 #e2e8f0;
+            scrollbar-width: thin;
+        }
+        .payroll-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+        .payroll-table tbody tr:nth-child(even) td:not(.sticky-first-col):not(.sticky-second-col) {
+            background-color: rgba(248, 250, 252, .72);
+        }
+        .dark .payroll-table tbody tr:nth-child(even) td:not(.sticky-first-col):not(.sticky-second-col) {
+            background-color: rgba(31, 41, 55, .45);
+        }
     </style>
 
-    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 mb-8">
+    <div wire:loading.flex class="fixed inset-0 z-[70] items-center justify-center bg-slate-950/20 backdrop-blur-[1px]">
+        <div class="flex items-center gap-3 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-xl dark:bg-gray-800 dark:text-gray-100">
+            <svg class="h-5 w-5 animate-spin text-emerald-600" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+            Actualizando concentrado…
+        </div>
+    </div>
+
+    <section class="mb-6 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/60 sm:p-5">
+        <div class="mb-4 flex items-center justify-between">
+            <div>
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-gray-200">Filtros del periodo</h2>
+                <p class="mt-1 text-xs text-slate-500 dark:text-gray-400">Los resultados se actualizan automáticamente.</p>
+            </div>
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
             <div>
                 <label for="punto" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -77,18 +105,51 @@
                     <option value="descansos">Descansos</option>
                 </select>
             </div>
-            <form method="GET" action="{{ route('exportar.asistencias') }}" class="mb-4 mt-7">
+            <form method="GET" action="{{ route('exportar.asistencias') }}" class="mt-7">
                 <input type="hidden" name="punto" value="{{ $punto }}">
                 <input type="hidden" name="fecha_inicio" value="{{ $fecha_inicio }}">
                 <input type="hidden" name="fecha_fin" value="{{ $fecha_fin }}">
-                <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                    Generar Reporte (Excel)
+                <button type="submit" @disabled(!$fecha_inicio || !$fecha_fin) class="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">
+                    <svg class="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z"/></svg>
+                    Exportar concentrado
                 </button>
             </form>
         </div>
-    </div>
+    </section>
 
-    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+    @php
+        $resumenEmpleados = $usuarios->count();
+        $resumenPendientes = 0;
+        $resumenFaltas = 0;
+        $resumenHorasExtra = 0;
+        $resumenBruto = 0;
+        foreach ($usuarios as $resumenUsuario) {
+            $resumenNomina = $nominaPorUsuario[$resumenUsuario->id] ?? [];
+            $resumenPendientes += $resumenNomina['dias_pagados']['desglose']['pendientes_captura'] ?? 0;
+            $resumenFaltas += $resumenNomina['dias_pagados']['desglose']['faltas_injustificadas'] ?? 0;
+            $resumenHorasExtra += $resumenNomina['horas_extra']['total_horas'] ?? 0;
+            $resumenBruto += $resumenNomina['subtotal_percepciones'] ?? 0;
+        }
+    @endphp
+
+    @if($fecha_inicio && $fecha_fin)
+        <section class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Empleados</div><div class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ $resumenEmpleados }}</div><div class="mt-1 text-xs text-slate-500">En el filtro actual</div></div>
+            <div class="rounded-xl border {{ $resumenPendientes > 0 ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20' : 'border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20' }} p-4 shadow-sm"><div class="text-xs font-semibold uppercase tracking-wide {{ $resumenPendientes > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300' }}">Pendientes</div><div class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ $resumenPendientes }}</div><div class="mt-1 text-xs text-slate-500">Días por validar</div></div>
+            <div class="rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm dark:border-rose-800 dark:bg-rose-900/20"><div class="text-xs font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">Faltas</div><div class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ $resumenFaltas }}</div><div class="mt-1 text-xs text-slate-500">Sin justificar</div></div>
+            <div class="rounded-xl border border-sky-200 bg-sky-50 p-4 shadow-sm dark:border-sky-800 dark:bg-sky-900/20"><div class="text-xs font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300">Tiempo extra</div><div class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ number_format($resumenHorasExtra, 1) }} h</div><div class="mt-1 text-xs text-slate-500">Acumulado</div></div>
+            <div class="col-span-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm dark:border-emerald-800 dark:bg-emerald-900/20 lg:col-span-1"><div class="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Bruto estimado</div><div class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">${{ number_format($resumenBruto, 2) }}</div><div class="mt-1 text-xs text-slate-500">Antes de deducciones</div></div>
+        </section>
+
+        @if($resumenPendientes > 0)
+            <div class="mb-5 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
+                <svg class="mt-0.5 h-5 w-5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.667 1.73-3L13.73 4c-.77-1.333-2.69-1.333-3.46 0L3.34 16c-.77 1.333.19 3 1.73 3z"/></svg>
+                <div><strong>Concentrado incompleto.</strong> Hay {{ $resumenPendientes }} días sin captura. Se incluyen provisionalmente para evitar descuentos automáticos; deben validarse antes de usar el archivo.</div>
+            </div>
+        @endif
+    @endif
+
+    <div class="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <h3 class="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">Simbología</h3>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 text-xs">
             <div class="flex items-center">
@@ -148,8 +209,8 @@
             No hay datos para mostrar con los filtros actuales.
         </div>
     @else
-        <div class="overflow-x-auto">
-            <table class="min-w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600">
+        <div class="payroll-scroll max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <table class="payroll-table min-w-full bg-white dark:bg-gray-800">
                 <thead>
                     <tr class="bg-gray-100 dark:bg-gray-700">
                         <th class="sticky-first-col px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-300 dark:border-gray-600">No.</th>
@@ -216,6 +277,7 @@
                             $permisosConGoce = 0;
                             $permisosSinGoce = 0;
                             $totalHorasExtra = 0;
+                            $pendientesCaptura = 0;
                             $incidencias = [];
 
                             // 🔴 Nueva lógica: cargar incapacidades del usuario
@@ -226,7 +288,7 @@
                                 $falto = false;
                                 $descanso = false;
                                 $incapacidad = in_array($f, $incapacidadesDelUsuario); // 👈 Nuevo
-                                $asistencia = $asistenciasIndexadas->get($f);
+                                $asistencia = $this->asistenciaUsuarioFecha($asistenciasIndexadas, $f, $user->id);
 
                                 if ($asistencia) {
                                     $enlistados = json_decode($asistencia->elementos_enlistados, true) ?? [];
@@ -288,12 +350,14 @@
                                     if ($minutosRetardo > 0) {
                                         $dia = 'R' . $minutosRetardo;
                                     }
+                                } else {
+                                    $dia = 'P';
+                                    $pendientesCaptura++;
                                 }
 
                                 $incidencias[$f] = [$dia, $tarde, $noche];
                             }
 
-                            $sueldoBase = $this->normalize($user->rol) === 'guardia' ? 5500 : 5500;
                             $totalHorasExtra = array_sum($horasExtrasPorUsuario[$user->id] ?? []);
                             $pagoHorasExtra = $totalHorasExtra > 0 ? (940 / 24) * $totalHorasExtra : 0;
 
@@ -320,8 +384,11 @@
                                         ⚠️
                                     </span>
                                 @endif
+                                @if($pendientesCaptura > 0)
+                                    <span class="ml-1 text-orange-700 dark:text-orange-300" title="Días sin captura">P: {{ $pendientesCaptura }}</span>
+                                @endif
                             </td>
-                            <td class="px-3 py-2 text-sm bg-yellow-100 dark:bg-yellow-900/30 border-r border-gray-300 dark:border-gray-600">${{ number_format($sueldoBase, 2) }}</td>
+                            <td class="px-3 py-2 text-sm bg-yellow-100 dark:bg-yellow-900/30 border-r border-gray-300 dark:border-gray-600">${{ number_format($nomina['sueldo_quincenal'] ?? 0, 2) }}</td>
                             <td class="px-3 py-2 text-sm bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium rounded border-r border-gray-300 dark:border-gray-600">{{ $totalHorasExtra }}</td>
                             <td class="px-3 py-2 text-sm bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium rounded border-r border-gray-300 dark:border-gray-600">
                                 {{ $asistenciasCount }}
@@ -355,7 +422,7 @@
                                 $puntoAsignado = null;
 
                                 foreach($fechas as $f) {
-                                    $asistencia = $asistenciasIndexadas->get($f);
+                                    $asistencia = $this->asistenciaUsuarioFecha($asistenciasIndexadas, $f, $user->id);
                                     if ($asistencia && isset($puntosAsignadosMap[$f][$user->id])) {
                                         $puntoAsignado = $puntosAsignadosMap[$f][$user->id];
                                         break;
@@ -414,6 +481,7 @@
                                     @elseif($dia === 'PE-CG') bg-purple-200 dark:bg-purple-900/40
                                     @elseif($dia === 'PE-SG') bg-gray-200 dark:bg-gray-700
                                     @elseif($dia === 'I') bg-red-200 dark:bg-red-900/40  <!-- 👈 Nuevo: I = rojo como F -->
+                                    @elseif($dia === 'P') bg-orange-200 dark:bg-orange-900/50
                                     @else bg-orange-100 dark:bg-orange-900/30 @endif">
                                     {{ $dia }}
                                 </td>
@@ -444,21 +512,28 @@
 
     <!-- Modal de detalle de nómina -->
     @if($showModal && $detalleNomina)
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
+            <div class="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
+                <div class="sticky top-0 z-10 flex items-center justify-between border-b border-emerald-500/30 bg-gradient-to-r from-emerald-700 to-teal-600 p-6 text-white">
+                    <h3 class="text-xl font-bold text-white">
                         Detalle de Nómina - {{ $detalleNomina['user_id'] }}: {{ $usuarios->firstWhere('id', $userIdModal)?->name ?? 'Usuario' }}
                     </h3>
                     <button
                         wire:click="cerrarModal"
-                        class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                        class="rounded-lg bg-white/10 p-2 text-white transition hover:bg-white/20"
                         aria-label="Cerrar"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 bg-slate-50 p-5 dark:bg-gray-900/40 md:grid-cols-4">
+                    <div class="rounded-xl border border-slate-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800"><div class="text-xs text-slate-500">Días pagados</div><div class="mt-1 text-xl font-bold text-slate-900 dark:text-white">{{ $detalleNomina['dias_pagados']['total'] ?? 0 }}</div></div>
+                    <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-900/20"><div class="text-xs text-emerald-700 dark:text-emerald-300">Bruto</div><div class="mt-1 text-xl font-bold text-slate-900 dark:text-white">${{ number_format($detalleNomina['subtotal_percepciones'] ?? 0, 2) }}</div></div>
+                    <div class="rounded-xl border border-rose-200 bg-rose-50 p-3 dark:border-rose-800 dark:bg-rose-900/20"><div class="text-xs text-rose-700 dark:text-rose-300">Deducciones + ISR</div><div class="mt-1 text-xl font-bold text-slate-900 dark:text-white">${{ number_format(($detalleNomina['deducciones_especiales'] ?? 0) + ($detalleNomina['isr'] ?? 0), 2) }}</div></div>
+                    <div class="rounded-xl border border-sky-200 bg-sky-50 p-3 dark:border-sky-800 dark:bg-sky-900/20"><div class="text-xs text-sky-700 dark:text-sky-300">Neto estimado</div><div class="mt-1 text-xl font-bold text-slate-900 dark:text-white">${{ number_format($detalleNomina['total_neto'] ?? 0, 2) }}</div></div>
                 </div>
 
                 <!-- Contenedor principal: 2 columnas -->

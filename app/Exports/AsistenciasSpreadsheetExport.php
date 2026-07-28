@@ -161,7 +161,7 @@ class AsistenciasSpreadsheetExport
 
             $sheet->setCellValue("A{$row}", $user->id);
             $sheet->setCellValue("B{$row}", $user->name);
-            $sheet->setCellValue("C{$row}", ($this->normalize($user->rol) === 'guardia') ? '$5000.00' : '$5500.00');
+            $sheet->setCellValue("C{$row}", $nomina['sueldo_quincenal'] ?? 0);
             $sheet->getStyle("C{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FFFF00');
 
             // H.Extra
@@ -188,7 +188,7 @@ class AsistenciasSpreadsheetExport
             $vacaciones = 0;
 
             foreach ($datos['fechas'] as $fecha) {
-                $asistencia = $datos['asistenciasIndexadas']->get($fecha);
+                $asistencia = $this->asistenciaUsuarioFecha($datos['asistenciasIndexadas'], $fecha, $user->id);
                 $enlistados = json_decode($asistencia?->elementos_enlistados, true) ?? [];
                 $faltantes = json_decode($asistencia?->faltas, true) ?? [];
                 $descansantes = json_decode($asistencia?->descansos, true) ?? [];
@@ -272,7 +272,7 @@ class AsistenciasSpreadsheetExport
             $current = clone $start;
             for ($i = 0; $i < $interval; $i++) {
                 $fechaStr = $current->format('Y-m-d');
-                $asistencia = $datos['asistenciasIndexadas']->get($fechaStr);
+                $asistencia = $this->asistenciaUsuarioFecha($datos['asistenciasIndexadas'], $fechaStr, $user->id);
 
                 $asistio = false;
                 $falto = false;
@@ -359,6 +359,41 @@ class AsistenciasSpreadsheetExport
             ],
         ]);
 
+        $plano = $spreadsheet->createSheet();
+        $plano->setTitle('Captura generica');
+        $encabezadosPlanos = [
+            'NUM_EMPLEADO', 'NOMBRE', 'PUNTO', 'FECHA_INICIO', 'FECHA_FIN',
+            'SUELDO_DIARIO', 'DIAS_PAGADOS', 'DIAS_PENDIENTES', 'SUELDO',
+            'BONO_ASISTENCIA', 'BONO_PUNTUALIDAD', 'HORAS_EXTRA', 'BRUTO',
+            'DEDUCCIONES_INTERNAS', 'ISR_ESTIMADO', 'NETO_ESTIMADO', 'ESTATUS'
+        ];
+        foreach ($encabezadosPlanos as $i => $titulo) {
+            $plano->setCellValue([$i + 1, 1], $titulo);
+        }
+        $filaPlana = 2;
+        foreach ($datos['usuarios'] as $user) {
+            $nomina = $datos['nominaPorUsuario'][$user->id] ?? [];
+            $pendientes = $nomina['dias_pagados']['desglose']['pendientes_captura'] ?? 0;
+            $valores = [
+                $user->num_empleado, $user->name, $user->punto, $this->fechaInicio, $this->fechaFin,
+                $nomina['sueldo_diario'] ?? 0, $nomina['dias_pagados']['total'] ?? 0, $pendientes,
+                $nomina['desglose']['concepto_base'] ?? 0,
+                $nomina['bonos']['asistencia']['monto'] ?? 0,
+                $nomina['bonos']['puntualidad']['monto'] ?? 0,
+                $nomina['horas_extra']['monto'] ?? 0,
+                $nomina['subtotal_percepciones'] ?? 0,
+                $nomina['deducciones_especiales'] ?? 0,
+                $nomina['isr'] ?? 0,
+                $nomina['total_neto'] ?? 0,
+                $pendientes > 0 ? 'INCOMPLETO' : 'LISTO PARA REVISION',
+            ];
+            foreach ($valores as $i => $valor) $plano->setCellValue([$i + 1, $filaPlana], $valor);
+            $filaPlana++;
+        }
+        $plano->freezePane('A2');
+        $plano->setAutoFilter('A1:Q' . max(1, $filaPlana - 1));
+        $plano->getStyle('A1:Q1')->getFont()->setBold(true);
+
         $writer = new Xlsx($spreadsheet);
         $fileName = 'reporte_asistencias_completo.xlsx';
         $tempPath = tempnam(sys_get_temp_dir(), $fileName);
@@ -437,12 +472,17 @@ class AsistenciasSpreadsheetExport
             ->whereIn('punto', $puntosAsistencias)
             ->whereBetween('fecha', [$this->fechaInicio, $this->fechaFin])
             ->get()
-            ->keyBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
+            ->groupBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
 
         $puntosAsignadosMap = [];
-        foreach ($asistenciasIndexadas as $fecha => $asistencia) {
-            if (in_array($asistencia->usuario->punto, ['KANSAS', 'MTY'])) {
-                $puntosAsignadosMap[$fecha] = $asistencia->puntosAsignados->pluck('punto', 'user_id')->toArray();
+        foreach ($asistenciasIndexadas as $fecha => $registros) {
+            foreach ($registros as $asistencia) {
+                if ($asistencia->usuario && in_array($asistencia->usuario->punto, ['KANSAS', 'MTY'])) {
+                    $puntosAsignadosMap[$fecha] = array_replace(
+                        $puntosAsignadosMap[$fecha] ?? [],
+                        $asistencia->puntosAsignados->pluck('punto', 'user_id')->toArray()
+                    );
+                }
             }
         }
 
@@ -739,6 +779,19 @@ class AsistenciasSpreadsheetExport
                 ['nombre' => 'DRONES', 'codigo' => null],
             ],
         ];
+    }
+
+    private function asistenciaUsuarioFecha($indexadas, string $fecha, int $userId)
+    {
+        $registros = $indexadas->get($fecha, collect());
+        if (!($registros instanceof \Illuminate\Support\Collection)) $registros = collect([$registros]);
+
+        return $registros->first(function ($registro) use ($userId) {
+            foreach (['elementos_enlistados', 'faltas', 'descansos'] as $campo) {
+                if (in_array($userId, json_decode($registro->{$campo} ?? '[]', true) ?? [])) return true;
+            }
+            return false;
+        });
     }
 
     protected function normalize($string)

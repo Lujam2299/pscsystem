@@ -1,51 +1,48 @@
 <x-app-layout>
     <x-navbar></x-navbar>
-    <div class="py-4 px-2 sm:py-6 sm:px-4">
-        <div class="container mx-auto max-w-7xl">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-                <div class="border-b border-gray-200 dark:border-gray-700 pb-6 mb-6">
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+    <div class="min-h-screen bg-slate-50 px-2 py-5 dark:bg-gray-950 sm:px-5 lg:px-8">
+        <div class="mx-auto max-w-[1800px]">
+            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <header class="relative overflow-hidden bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 px-6 py-7 sm:px-8">
+                    <div class="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10"></div>
+                    <div class="absolute bottom-0 right-40 h-24 w-24 rounded-full bg-teal-300/10"></div>
+                    <div class="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                         <div>
-                            <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 mr-3 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div class="mb-2 inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-50">
+                                Nóminas · Control quincenal
+                            </div>
+                            <h1 class="flex items-center text-2xl font-bold text-white sm:text-3xl">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="mr-3 h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
-                                Asistencias Totales
+                                Preparación de nómina
                             </h1>
-                            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                                Genere reportes de asistencias filtrando por punto y rango de fechas
+                            <p class="mt-2 max-w-2xl text-sm text-emerald-50/90">
+                                Revisa incidencias, valida pendientes y prepara el concentrado que utilizará el personal de Nóminas.
                             </p>
                         </div>
-                    </div>
-                </div>
-                <div class="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 rounded-r p-4 mb-8">
-                    <div class="flex items-start">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                            <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200">Instrucciones</h4>
-                            <p class="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                                Seleccione punto y fechas para ver el reporte en tiempo real.
-                                Use el botón "Generar Reporte (Excel)" para descargarlo.
-                            </p>
+                        <div class="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white backdrop-blur-sm">
+                            <div class="font-semibold">Flujo recomendado</div>
+                            <div class="mt-1 text-emerald-50/90">Filtrar → corregir pendientes → revisar importes → exportar Excel</div>
                         </div>
                     </div>
-                </div>
+                </header>
 
-                <livewire:asistencias-tabla />
+                <main class="p-4 sm:p-6">
+                    <livewire:asistencias-tabla />
+                </main>
 
-                <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <footer class="border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-gray-700 dark:bg-gray-800/60">
                     <div class="flex justify-center">
-                        <a href="{{ route('dashboard') }}"
-                           class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <a href="{{ route('dashboard') }}" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
-                            Regresar
+                            Regresar al panel
                         </a>
                     </div>
-                </div>
+                </footer>
             </div>
         </div>
     </div>

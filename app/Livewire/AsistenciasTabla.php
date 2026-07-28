@@ -203,6 +203,7 @@ class AsistenciasTabla extends Component
             'faltasJustificadas' => $datos['faltasJustificadas'],
             'retardosPorUsuario' => $datos['retardosPorUsuario'],
             'incapacidadesPorUsuario' => $datos['incapacidadesPorUsuario'],
+            'puntosAsignadosMap' => $this->puntosAsignadosMap,
             'subpuntosMap' => $subpuntosMap,
             'nominaPorUsuario' => $datos['nominaPorUsuario'],
             'showModal' => $this->showModal,
@@ -288,12 +289,17 @@ class AsistenciasTabla extends Component
             ->whereIn('punto', $puntosAsistencias)
             ->whereBetween('fecha', [$this->fecha_inicio, $this->fecha_fin])
             ->get()
-            ->keyBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
+            ->groupBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
 
         $puntosAsignadosMap = [];
-        foreach ($asistenciasIndexadas as $fecha => $asistencia) {
-            if (in_array($asistencia->usuario->punto, ['KANSAS', 'MTY'])) {
-                $puntosAsignadosMap[$fecha] = $asistencia->puntosAsignados->pluck('punto', 'user_id')->toArray();
+        foreach ($asistenciasIndexadas as $fecha => $registros) {
+            foreach ($registros as $asistencia) {
+                if ($asistencia->usuario && in_array($asistencia->usuario->punto, ['KANSAS', 'MTY'])) {
+                    $puntosAsignadosMap[$fecha] = array_replace(
+                        $puntosAsignadosMap[$fecha] ?? [],
+                        $asistencia->puntosAsignados->pluck('punto', 'user_id')->toArray()
+                    );
+                }
             }
         }
 
@@ -341,30 +347,30 @@ class AsistenciasTabla extends Component
         // Filtrar usuarios según el tipo seleccionado
         if ($this->tipoFiltro === 'asistencias') {
             $usuarios = $usuarios->filter(function ($user) use ($asistenciasIndexadas) {
-                foreach ($asistenciasIndexadas as $asistencia) {
-                    $enlistados = json_decode($asistencia->elementos_enlistados, true) ?? [];
-                    if (in_array($user->id, $enlistados)) {
-                        return true;
+                foreach ($asistenciasIndexadas as $registros) {
+                    foreach ($registros as $asistencia) {
+                        $enlistados = json_decode($asistencia->elementos_enlistados, true) ?? [];
+                        if (in_array($user->id, $enlistados)) return true;
                     }
                 }
                 return false;
             });
         } elseif ($this->tipoFiltro === 'faltas') {
             $usuarios = $usuarios->filter(function ($user) use ($asistenciasIndexadas) {
-                foreach ($asistenciasIndexadas as $asistencia) {
-                    $faltantes = json_decode($asistencia->faltas, true) ?? [];
-                    if (in_array($user->id, $faltantes)) {
-                        return true;
+                foreach ($asistenciasIndexadas as $registros) {
+                    foreach ($registros as $asistencia) {
+                        $faltantes = json_decode($asistencia->faltas, true) ?? [];
+                        if (in_array($user->id, $faltantes)) return true;
                     }
                 }
                 return false;
             });
         } elseif ($this->tipoFiltro === 'descansos') {
             $usuarios = $usuarios->filter(function ($user) use ($asistenciasIndexadas) {
-                foreach ($asistenciasIndexadas as $asistencia) {
-                    $descansantes = json_decode($asistencia->descansos, true) ?? [];
-                    if (in_array($user->id, $descansantes)) {
-                        return true;
+                foreach ($asistenciasIndexadas as $registros) {
+                    foreach ($registros as $asistencia) {
+                        $descansantes = json_decode($asistencia->descansos, true) ?? [];
+                        if (in_array($user->id, $descansantes)) return true;
                     }
                 }
                 return false;
@@ -544,6 +550,19 @@ class AsistenciasTabla extends Component
             'incapacidadesPorUsuario' => $incapacidadesPorUsuario,
             'nominaPorUsuario' => $nominaPorUsuario,
         ];
+    }
+
+    public function asistenciaUsuarioFecha($indexadas, string $fecha, int $userId)
+    {
+        $registros = $indexadas->get($fecha, collect());
+        if (!($registros instanceof \Illuminate\Support\Collection)) $registros = collect([$registros]);
+
+        return $registros->first(function ($registro) use ($userId) {
+            foreach (['elementos_enlistados', 'faltas', 'descansos'] as $campo) {
+                if (in_array($userId, json_decode($registro->{$campo} ?? '[]', true) ?? [])) return true;
+            }
+            return false;
+        });
     }
 
     protected function getSubpuntosPorPunto()

@@ -17,5 +17,12 @@ class Sueldo extends Model
         'nomina_quincenal',
         'sueldo_quincenal',
         'sueldo_mensual',
+        'vigente_desde',
+        'vigente_hasta',
+    ];
+
+    protected $casts = [
+        'vigente_desde' => 'date',
+        'vigente_hasta' => 'date',
     ];
 }

@@ -23,7 +23,7 @@ class CalculoNominaService
         string $fechaFin,
         array $datosAsistencias
     ): array {
-        $sueldo = $this->obtenerSueldoUsuario($user);
+        $sueldo = $this->obtenerSueldoUsuario($user, $fechaInicio);
 
         if (!$sueldo) {
             return $this->respuestaError('No se encontró registro de sueldo para el usuario');
@@ -101,6 +101,11 @@ class CalculoNominaService
                 'fin' => $fechaFin,
             ],
             'sueldo_diario' => $sueldoDiario,
+            'sueldo_quincenal' => floatval($sueldo->sueldo_quincenal ?? 0),
+            'salario_vigencia' => [
+                'desde' => $sueldo->vigente_desde?->format('Y-m-d'),
+                'hasta' => $sueldo->vigente_hasta?->format('Y-m-d'),
+            ],
             'dias_pagados' => $diasPagados,
             'bonos' => $bonos,
             'horas_extra' => $horasExtra,
@@ -351,12 +356,19 @@ private function calcularQuincenasTranscurridas($deduccion, $fechaReferencia)
     /**
      * Obtiene el registro de sueldo del usuario
      */
-    protected function obtenerSueldoUsuario(User $user): ?object
+    protected function obtenerSueldoUsuario(User $user, string $fechaReferencia): ?object
     {
+        $aplicarVigencia = function ($query) use ($fechaReferencia) {
+            return $query->where(function ($q) use ($fechaReferencia) {
+                $q->whereNull('vigente_desde')->orWhereDate('vigente_desde', '<=', $fechaReferencia);
+            })->where(function ($q) use ($fechaReferencia) {
+                $q->whereNull('vigente_hasta')->orWhereDate('vigente_hasta', '>=', $fechaReferencia);
+            })->orderByRaw('vigente_desde IS NULL ASC')->orderByDesc('vigente_desde');
+        };
+
         // Primero intenta con rol + punto tal cual
-        $sueldo = Sueldo::where('puesto', $user->rol)
-            ->where('punto', $user->punto)
-            ->first();
+        $sueldo = $aplicarVigencia(Sueldo::where('puesto', $user->rol)
+            ->where('punto', $user->punto))->first();
 
         if ($sueldo) {
             return $sueldo;
@@ -366,9 +378,8 @@ private function calcularQuincenasTranscurridas($deduccion, $fechaReferencia)
         $puntoNombre = $this->resolverPuntoNombre($user->punto);
 
         if ($puntoNombre) {
-            $sueldo = Sueldo::where('puesto', $user->rol)
-                ->where('punto', $puntoNombre)
-                ->first();
+            $sueldo = $aplicarVigencia(Sueldo::where('puesto', $user->rol)
+                ->where('punto', $puntoNombre))->first();
 
             if ($sueldo) {
                 return $sueldo;
@@ -378,14 +389,14 @@ private function calcularQuincenasTranscurridas($deduccion, $fechaReferencia)
         // CASO ESPECIAL: si rol es null o vacío, intentar buscar solo por punto (resuelto o no)
         if (empty($user->rol)) {
             // Buscar solo por punto original
-            $sueldo = Sueldo::where('punto', $user->punto)->first();
+            $sueldo = $aplicarVigencia(Sueldo::where('punto', $user->punto))->first();
             if ($sueldo) {
                 return $sueldo;
             }
 
             // Buscar por punto resuelto
             if ($puntoNombre) {
-                $sueldo = Sueldo::where('punto', $puntoNombre)->first();
+                $sueldo = $aplicarVigencia(Sueldo::where('punto', $puntoNombre))->first();
                 if ($sueldo) {
                     return $sueldo;
                 }
@@ -442,6 +453,7 @@ private function calcularQuincenasTranscurridas($deduccion, $fechaReferencia)
         $permisosConGoce = 0;
         $permisosSinGoce = 0;
         $faltasInjustificadas = 0;
+        $pendientesCaptura = 0;
 
         $vacacionesPorUsuario = $datosAsistencias['vacacionesPorUsuario'][$userId] ?? [];
         $permisosPorUsuario = $datosAsistencias['permisosPorUsuario'][$userId] ?? [];
@@ -455,11 +467,11 @@ private function calcularQuincenasTranscurridas($deduccion, $fechaReferencia)
                 continue;
             }
 
-            $asistencia = $asistenciasIndexadas->get($fecha);
+            $asistencia = $this->buscarAsistenciaUsuario($asistenciasIndexadas, $fecha, $userId);
 
-            $enlistados = json_decode($asistencia?->elementos_enlistados, true) ?? [];
-            $faltantes = json_decode($asistencia?->faltas, true) ?? [];
-            $descansantes = json_decode($asistencia?->descansos, true) ?? [];
+            $enlistados = json_decode($asistencia?->elementos_enlistados ?? '[]', true) ?? [];
+            $faltantes = json_decode($asistencia?->faltas ?? '[]', true) ?? [];
+            $descansantes = json_decode($asistencia?->descansos ?? '[]', true) ?? [];
 
             $esAsistencia = in_array($userId, $enlistados);
             $esFalta = in_array($userId, $faltantes);
@@ -501,11 +513,16 @@ private function calcularQuincenasTranscurridas($deduccion, $fechaReferencia)
             // Asistencia
             if ($esAsistencia) {
                 $asistencias++;
+            } else {
+                $pendientesCaptura++;
             }
         }
 
         // Total días pagados (excluye permisos sin goce y faltas injustificadas)
-        $totalPagados = $asistencias + $descansos + $vacaciones + $faltasJustificadas + $permisosConGoce;
+        // Un día sin captura no se convierte en descuento automático. Se incluye
+        // provisionalmente y el resultado queda marcado como incompleto.
+        $totalPagados = $asistencias + $descansos + $vacaciones + $faltasJustificadas
+            + $permisosConGoce + $pendientesCaptura;
 
         return [
             'total' => $totalPagados,
@@ -517,6 +534,7 @@ private function calcularQuincenasTranscurridas($deduccion, $fechaReferencia)
                 'permisos_con_goce' => $permisosConGoce,
                 'permisos_sin_goce' => $permisosSinGoce,
                 'faltas_injustificadas' => $faltasInjustificadas,
+                'pendientes_captura' => $pendientesCaptura,
             ]
         ];
     }
@@ -547,11 +565,11 @@ private function calcularQuincenasTranscurridas($deduccion, $fechaReferencia)
         $tieneIncapacidad = count($incapacidadesDelUsuario) > 0;
 
         foreach ($fechas as $fecha) {
-            $asistencia = $asistenciasIndexadas->get($fecha);
+            $asistencia = $this->buscarAsistenciaUsuario($asistenciasIndexadas, $fecha, $userId);
 
-            $enlistados = json_decode($asistencia?->elementos_enlistados, true) ?? [];
-            $faltantes = json_decode($asistencia?->faltas, true) ?? [];
-            $descansantes = json_decode($asistencia?->descansos, true) ?? [];
+            $enlistados = json_decode($asistencia?->elementos_enlistados ?? '[]', true) ?? [];
+            $faltantes = json_decode($asistencia?->faltas ?? '[]', true) ?? [];
+            $descansantes = json_decode($asistencia?->descansos ?? '[]', true) ?? [];
 
             $esAsistencia = in_array($userId, $enlistados);
             $esFalta = in_array($userId, $faltantes);
@@ -721,6 +739,24 @@ private function calcularQuincenasTranscurridas($deduccion, $fechaReferencia)
         }
 
         return $fechas;
+    }
+
+    /** Localiza el registro diario que realmente contiene al empleado. */
+    protected function buscarAsistenciaUsuario(Collection $indexadas, string $fecha, int $userId): ?object
+    {
+        $registros = $indexadas->get($fecha, collect());
+        if (!($registros instanceof Collection)) {
+            $registros = collect([$registros]);
+        }
+
+        return $registros->first(function ($registro) use ($userId) {
+            foreach (['elementos_enlistados', 'faltas', 'descansos'] as $campo) {
+                if (in_array($userId, json_decode($registro->{$campo} ?? '[]', true) ?? [])) {
+                    return true;
+                }
+            }
+            return false;
+        });
     }
 
     /**
