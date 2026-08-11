@@ -43,6 +43,11 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
 
+    env:
+      APP_ENV: testing
+      BROADCAST_CONNECTION: log
+      BROADCAST_DRIVER: log
+
     name: Laravel tests
 
     steps:
@@ -56,11 +61,11 @@ jobs:
           extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
           coverage: none
 
-      - name: Install Composer dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
-
       - name: Copy environment file
         run: cp .env.example .env
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Generate app key
         run: php artisan key:generate
