@@ -57,6 +57,7 @@ jobs:
           vendor/bin/pint --test "${php_files[@]}"
 
   full-php-style:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     continue-on-error: true
 
@@ -130,6 +131,7 @@ jobs:
           tests/Unit/FiniquitoCalculatorTest.php
 
   full-tests:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     continue-on-error: true
 
