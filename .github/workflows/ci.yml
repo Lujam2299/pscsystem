@@ -1,0 +1,199 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changed-php-style:
+    runs-on: ubuntu-latest
+
+    name: PHP changed files style
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress --no-scripts
+
+      - name: Check changed PHP files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            BASE_SHA="$(git rev-parse HEAD^)"
+          fi
+
+          mapfile -d '' php_files < <(git diff --name-only --diff-filter=ACMR -z "$BASE_SHA" "$GITHUB_SHA" -- '*.php')
+
+          if [ "${#php_files[@]}" -eq 0 ]; then
+            echo "No changed PHP files to check."
+            exit 0
+          fi
+
+          printf 'Checking PHP style for:\n'
+          printf ' - %s\n' "${php_files[@]}"
+          vendor/bin/pint --test "${php_files[@]}"
+
+  full-php-style:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    name: Full PHP style
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress --no-scripts
+
+      - name: Check PHP code style
+        run: vendor/bin/pint --test
+
+  active-tests:
+    runs-on: ubuntu-latest
+
+    env:
+      APP_ENV: testing
+      BROADCAST_CONNECTION: log
+      BROADCAST_DRIVER: log
+
+    name: ERP active tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
+          coverage: none
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Copy environment file
+        run: cp .env.example .env
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Generate app key
+        run: php artisan key:generate
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Execute active ERP tests
+        run: >-
+          php artisan test
+          tests/Feature/AsistenciaDiariaUnificadaTest.php
+          tests/Feature/MessagingAuthorizationTest.php
+          tests/Feature/TraccarMonitoringControllerTest.php
+          tests/Unit/CalculoNominaServiceTest.php
+          tests/Unit/FiniquitoCalculatorTest.php
+
+  full-tests:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    env:
+      APP_ENV: testing
+      BROADCAST_CONNECTION: log
+      BROADCAST_DRIVER: log
+
+    name: Full test suite
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
+          coverage: none
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Copy environment file
+        run: cp .env.example .env
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Generate app key
+        run: php artisan key:generate
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Execute tests
+        run: php artisan test
+
+  frontend-build:
+    runs-on: ubuntu-latest
+
+    name: Vite build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
