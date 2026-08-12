@@ -17,11 +17,50 @@ permissions:
   contents: read
 
 jobs:
-  php-style:
+  changed-php-style:
+    runs-on: ubuntu-latest
+
+    name: PHP changed files style
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress --no-scripts
+
+      - name: Check changed PHP files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            BASE_SHA="$(git rev-parse HEAD^)"
+          fi
+
+          mapfile -d '' php_files < <(git diff --name-only --diff-filter=ACMR -z "$BASE_SHA" "$GITHUB_SHA" -- '*.php')
+
+          if [ "${#php_files[@]}" -eq 0 ]; then
+            echo "No changed PHP files to check."
+            exit 0
+          fi
+
+          printf 'Checking PHP style for:\n'
+          printf ' - %s\n' "${php_files[@]}"
+          vendor/bin/pint --test "${php_files[@]}"
+
+  full-php-style:
     runs-on: ubuntu-latest
     continue-on-error: true
 
-    name: PHP style
+    name: Full PHP style
 
     steps:
       - name: Checkout code
