@@ -63,7 +63,14 @@ class TraccarMonitoringControllerTest extends TestCase
             ->get(route('monitoreo.unidades-gps.index'))
             ->assertOk()
             ->assertSee('Unidades GPS')
-            ->assertSee('traccar-map', false);
+            ->assertSee('traccar-map', false)
+            ->assertSee('En movimiento')
+            ->assertSee('Detenida con ignición')
+            ->assertSee('Estacionada')
+            ->assertSee('Seguir unidad')
+            ->assertSee('gps-marker__vehicle', false)
+            ->assertSee('Noreste')
+            ->assertSee('gps-detail', false);
     }
 
     public function test_monitoring_role_can_fetch_devices_and_positions(): void
@@ -73,7 +80,15 @@ class TraccarMonitoringControllerTest extends TestCase
                 ['id' => 10, 'name' => 'Unidad 10', 'status' => 'online'],
             ]),
             'https://traccar.example.test/api/positions' => Http::response([
-                ['id' => 20, 'deviceId' => 10, 'latitude' => 25.68, 'longitude' => -100.31],
+                [
+                    'id' => 20,
+                    'deviceId' => 10,
+                    'latitude' => 25.68,
+                    'longitude' => -100.31,
+                    'speed' => 20,
+                    'course' => 180,
+                    'attributes' => ['ignition' => true, 'motion' => true],
+                ],
             ]),
         ]);
 
@@ -82,6 +97,8 @@ class TraccarMonitoringControllerTest extends TestCase
             ->assertOk()
             ->assertJsonPath('devices.0.id', 10)
             ->assertJsonPath('positions.0.deviceId', 10)
+            ->assertJsonPath('positions.0.attributes.ignition', true)
+            ->assertJsonPath('positions.0.course', 180)
             ->assertJsonMissing(['token' => 'permanent-secret']);
 
         Http::assertSentCount(2);
