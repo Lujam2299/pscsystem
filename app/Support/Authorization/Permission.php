@@ -8,6 +8,8 @@ final class Permission
 
     public const TOKENS_MANAGE = 'tokens.manage';
 
+    public const AUDIT_VIEW = 'audit.view';
+
     public const SUPERVISORS_ACCESS = 'supervisors.access';
 
     public const CUSTODIANS_ACCESS = 'custodians.access';

@@ -536,20 +536,20 @@
                                 ($solicitud->estatus == 'En Proceso' &&
                                     $solicitud->por == 'Separación Voluntaria' &&
                                     Auth::user()->rol == 'admin'))
-                            <a href="{{ route('rh.aceptarBaja', $solicitud->id) }}"
-                               class="action-button btn-success">
+                            <form method="POST" action="{{ route('rh.aceptarBaja', $solicitud->id) }}" onsubmit="return confirm('¿Aceptar esta solicitud de baja?')">@csrf
+                            <button class="action-button btn-success">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                 </svg>
                                 Aceptar
-                            </a>
-                            <a href="{{ route('rh.rechazarBaja', $solicitud->id) }}"
-                               class="action-button btn-danger">
+                            </button></form>
+                            <form method="POST" action="{{ route('rh.rechazarBaja', $solicitud->id) }}" onsubmit="return confirm('¿Rechazar esta solicitud de baja?')">@csrf
+                            <button class="action-button btn-danger">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                                 Rechazar
-                            </a>
+                            </button></form>
                         @endif
                         @if (Auth::user()->rol == 'JURIDICO')
                             <button type="button" onclick="mostrarModalCambiarMotivo({{ $solicitud->id }})"

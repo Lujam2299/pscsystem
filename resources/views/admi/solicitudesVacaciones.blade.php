@@ -79,12 +79,12 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     <a href="#"
                                         class="text-blue-600 hover:text-blue-900"
-                                        onclick="confirmarAccion('{{ route('sup.aceptarSolicitudVacaciones', $solicitud->id) }}', 'Aceptar')">
+                                        onclick="confirmarAccion('{{ route('admin.vacaciones.aceptar', $solicitud->id) }}', 'Aceptar')">
                                             Aceptar
                                     </a>
                                     <a href="#"
                                         class="text-red-600 hover:text-red-900 ml-4"
-                                        onclick="confirmarAccion('{{ route('sup.rechazarSolicitudVacaciones', $solicitud->id) }}', 'Rechazar')">
+                                        onclick="confirmarAccion('{{ route('admin.vacaciones.rechazar', $solicitud->id) }}', 'Rechazar')">
                                             Rechazar
                                     </a>
                                 </td>
@@ -119,7 +119,16 @@
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                window.location.href = url;
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = url;
+                const csrf = document.createElement('input');
+                csrf.type = 'hidden';
+                csrf.name = '_token';
+                csrf.value = '{{ csrf_token() }}';
+                form.appendChild(csrf);
+                document.body.appendChild(form);
+                form.submit();
             }
         });
     }

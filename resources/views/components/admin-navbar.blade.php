@@ -201,6 +201,12 @@
             'icono' => 'message',
             'color' => 'bg-purple-300 dark:bg-purple-700',
         ],
+        [
+            'titulo' => 'Auditoría',
+            'ruta' => route('admin.audit.index'),
+            'icono' => 'history',
+            'color' => 'bg-slate-300 dark:bg-slate-700',
+        ],
     ]);
 @endphp
 

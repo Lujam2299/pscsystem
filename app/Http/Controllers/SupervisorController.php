@@ -2,38 +2,46 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SolicitudAlta;
+use App\Enums\RequestStatus;
+use App\Models\Asistencia;
+use App\Models\CubrirTurno;
 use App\Models\DocumentacionAltas;
+use App\Models\Punto;
+use App\Models\SolicitudAlta;
 use App\Models\SolicitudBajas;
 use App\Models\SolicitudVacaciones;
-use App\Models\User;
-use App\Models\Punto;
 use App\Models\Subpunto;
-use App\Models\Asistencia;
 use App\Models\TiemposExtra;
-use App\Models\CubrirTurno;
+use App\Models\User;
+use App\Services\AuditLogger;
+use App\Support\Authorization\RoleNormalizer;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class SupervisorController extends Controller
 {
-    public function nuevoUsuarioForm(){
+    public function nuevoUsuarioForm()
+    {
         $puntos = Punto::with('subpuntos')->get();
+
         return view('supervisor.nuevoUsuarioForm', compact('puntos'));
     }
+
     public function formAlta(Request $request)
     {
         $tipo = $request->get('tipo', 'noarmado');
         $puntos = Punto::with('subpuntos')->get();
+
         return view('supervisor.nuevoUsuarioForm', compact('tipo', 'puntos'));
     }
+
     public function guardarInfo(Request $request)
     {
         try {
@@ -71,7 +79,7 @@ class SupervisorController extends Controller
             ]);
 
             $tipoSeleccionado = $request->get('tipo', 'noarmado');
-            $solicitud = new SolicitudAlta();
+            $solicitud = new SolicitudAlta;
             $solicitud->solicitante = auth()->user()->name;
             $solicitud->nombre = $request->name;
             $solicitud->apellido_paterno = $request->apellido_paterno;
@@ -121,251 +129,256 @@ class SupervisorController extends Controller
     {
         $tipo = request('tipo');
         $solicitud = SolicitudAlta::findOrFail($id);
+
         return view('supervisor.subirArchivosForm', compact('solicitud', 'tipo'));
     }
 
     public function guardarArchivos(Request $request, $id)
-{
-    $request->validate([
-        'arch_acta_nacimiento' => 'nullable|file',
-        'arch_solicitud_empleo' => 'nullable|file',
-        'arch_curp' => 'nullable|file',
-        'arch_ine' => 'nullable|file',
-        'arch_comprobante_domicilio' => 'nullable|file',
-        'arch_rfc' => 'nullable|file',
-        'arch_comprobante_estudios' => 'nullable|file',
-        'arch_carta_rec_laboral' => 'nullable|file',
-        'arch_carta_rec_personal' => 'nullable|file',
-        'arch_cartilla_militar' => 'nullable|file',
-        'arch_infonavit' => 'nullable|file',
-        'arch_fonacot' => 'nullable|file',
-        'arch_licencia_conducir' => 'nullable|file',
-        'arch_carta_no_penales' => 'nullable|file',
-        'arch_foto' => 'nullable|file',
-        'visa' => 'nullable|file',
-        'pasaporte' => 'nullable|file',
-    ]);
+    {
+        $request->validate([
+            'arch_acta_nacimiento' => 'nullable|file',
+            'arch_solicitud_empleo' => 'nullable|file',
+            'arch_curp' => 'nullable|file',
+            'arch_ine' => 'nullable|file',
+            'arch_comprobante_domicilio' => 'nullable|file',
+            'arch_rfc' => 'nullable|file',
+            'arch_comprobante_estudios' => 'nullable|file',
+            'arch_carta_rec_laboral' => 'nullable|file',
+            'arch_carta_rec_personal' => 'nullable|file',
+            'arch_cartilla_militar' => 'nullable|file',
+            'arch_infonavit' => 'nullable|file',
+            'arch_fonacot' => 'nullable|file',
+            'arch_licencia_conducir' => 'nullable|file',
+            'arch_carta_no_penales' => 'nullable|file',
+            'arch_foto' => 'nullable|file',
+            'visa' => 'nullable|file',
+            'pasaporte' => 'nullable|file',
+        ]);
 
-    $solicitudId = $id;
-    $documentacion = DocumentacionAltas::firstOrNew(['solicitud_id' => $solicitudId]);
-    $carpeta = 'solicitudesAltas/' . $solicitudId;
+        $solicitudId = $id;
+        $documentacion = DocumentacionAltas::firstOrNew(['solicitud_id' => $solicitudId]);
+        $carpeta = 'solicitudesAltas/'.$solicitudId;
 
-    $archivos = [
-        'arch_acta_nacimiento',
-        'arch_curp',
-        'arch_ine',
-        'arch_comprobante_domicilio',
-        'arch_rfc',
-        'arch_comprobante_estudios',
-        'arch_carta_rec_laboral',
-        'arch_carta_rec_personal',
-        'arch_cartilla_militar',
-        'arch_infonavit',
-        'arch_fonacot',
-        'arch_licencia_conducir',
-        'arch_carta_no_penales',
-        'arch_foto',
-        'arch_solicitud_empleo',
-        'visa',
-        'pasaporte',
-    ];
+        $archivos = [
+            'arch_acta_nacimiento',
+            'arch_curp',
+            'arch_ine',
+            'arch_comprobante_domicilio',
+            'arch_rfc',
+            'arch_comprobante_estudios',
+            'arch_carta_rec_laboral',
+            'arch_carta_rec_personal',
+            'arch_cartilla_militar',
+            'arch_infonavit',
+            'arch_fonacot',
+            'arch_licencia_conducir',
+            'arch_carta_no_penales',
+            'arch_foto',
+            'arch_solicitud_empleo',
+            'visa',
+            'pasaporte',
+        ];
 
-    foreach ($archivos as $campo) {
-        if ($request->hasFile($campo)) {
-            $archivo = $request->file($campo);
-            $nombreArchivo = $campo . '.' . $archivo->getClientOriginalExtension();
-            $ruta = $archivo->storeAs($carpeta, $nombreArchivo, 'public');
-            $documentacion->$campo = 'storage/' . $ruta;
+        foreach ($archivos as $campo) {
+            if ($request->hasFile($campo)) {
+                $archivo = $request->file($campo);
+                $nombreArchivo = $campo.'.'.$archivo->getClientOriginalExtension();
+                $ruta = $archivo->storeAs($carpeta, $nombreArchivo, 'public');
+                $documentacion->$campo = 'storage/'.$ruta;
+            }
         }
+
+        $documentacion->solicitud_id = $solicitudId;
+        $documentacion->save();
+
+        $solicitud = SolicitudAlta::find($solicitudId);
+
+        if (Auth::user()->rol == 'admin') {
+            $docs = DocumentacionAltas::where('solicitud_id', $id)->first();
+
+            $user = new User;
+            $user->sol_alta_id = $solicitud->id;
+            $user->sol_docs_id = $docs->id;
+            $user->name = $solicitud->nombre.' '.$solicitud->apellido_paterno.' '.$solicitud->apellido_materno;
+            $user->email = $solicitud->email;
+            $user->password = Hash::make($solicitud->rfc);
+            $user->fecha_ingreso = $solicitud->fecha_ingreso;
+            $user->punto = $solicitud->punto;
+            $user->rol = $solicitud->rol;
+            $user->estatus = 'Activo';
+            $user->empresa = $solicitud->empresa;
+            $user->save();
+
+            $solicitud->status = 'Aceptada';
+            $solicitud->observaciones = 'Solicitud Aceptada.';
+            $solicitud->save();
+        }
+
+        return redirect()->route('sup.nuevoUsuarioForm')->with('success', 'Documentación subida correctamente');
     }
-
-    $documentacion->solicitud_id = $solicitudId;
-    $documentacion->save();
-
-    $solicitud = SolicitudAlta::find($solicitudId);
-
-    if(Auth::user()->rol == 'admin') {
-        $docs = DocumentacionAltas::where('solicitud_id', $id)->first();
-
-        $user = new User();
-        $user->sol_alta_id = $solicitud->id;
-        $user->sol_docs_id = $docs->id;
-        $user->name = $solicitud->nombre . " " . $solicitud->apellido_paterno . " " . $solicitud->apellido_materno;
-        $user->email = $solicitud->email;
-        $user->password = Hash::make($solicitud->rfc);
-        $user->fecha_ingreso = $solicitud->fecha_ingreso;
-        $user->punto = $solicitud->punto;
-        $user->rol = $solicitud->rol;
-        $user->estatus = 'Activo';
-        $user->empresa = $solicitud->empresa;
-        $user->save();
-
-        $solicitud->status = 'Aceptada';
-        $solicitud->observaciones = 'Solicitud Aceptada.';
-        $solicitud->save();
-    }
-
-    return redirect()->route('sup.nuevoUsuarioForm')->with('success', 'Documentación subida correctamente');
-}
-
 
     public function historialSolicitudes()
     {
         $usuario = Auth::user();
-        if($usuario->rol == 'Supervisor')
-        {
+        if ($usuario->rol == 'Supervisor') {
             $solicitudes = SolicitudAlta::where('solicitante', $usuario)
-            ->orderBy('created_at', 'desc')
-            ->get();
-        }else{
+                ->orderBy('created_at', 'desc')
+                ->get();
+        } else {
             $solicitudes = SolicitudAlta::orderBy('created_at', 'desc')
-            ->get();
+                ->get();
         }
+
         return view('supervisor.historialSolicitudes', compact('solicitudes'));
     }
 
-    public function detalleSolicitud($id){
+    public function detalleSolicitud($id)
+    {
         $solicitud = SolicitudAlta::find($id);
         $documentacion = DocumentacionAltas::where('solicitud_id', $id)->first();
+
         return view('supervisor.detalleSolicitud', compact('solicitud', 'documentacion'));
     }
 
-    public function editarSolicitudForm($id){
+    public function editarSolicitudForm($id)
+    {
         $solicitud = SolicitudAlta::find($id);
         $documentacion = DocumentacionAltas::where('solicitud_id', $id)->first();
+
         return view('supervisor.editarSolicitudForm', compact('solicitud', 'documentacion'));
     }
 
-    public function editarInformacionSolicitud(Request $request, $id){
-    try {
-        $validated = $request->validate([
-            'tipo' => 'required|in:oficina,armado,noarmado',
-            'name' => 'nullable|string|max:255',
-            'apellido_paterno' => 'nullable|string|max:255',
-            'apellido_materno' => 'nullable|string|max:255',
-            'fecha_nacimiento' => 'nullable|date',
-            'curp' => 'nullable|string|max:255',
-            'nss' => ['nullable', 'string', 'size:11'],
-            'edo_civil' => 'nullable|string',
-            'rfc' => 'nullable|string|max:255',
-            'telefono' => 'nullable|string|max:255',
-            'calle' => 'nullable|string|max:255',
-            'num_ext' => 'nullable|string|max:255',
-            'colonia' => 'nullable|string|max:255',
-            'ciudad' => 'nullable|string|max:255',
-            'peso' => 'nullable|string|max:255',
-            'estatura' => 'nullable|string|max:255',
-            'cp_fiscal' => 'nullable|string|max:255',
-            'estado' => 'nullable|string|max:255',
-            'liga_rfc' => 'nullable|string|max:255',
-            'infonavit' => 'nullable|string|max:255',
-            'fonacot' => 'nullable|string|max:255',
-            'domicilio_comprobante' => 'nullable|string|max:255',
-            'departamento' => 'nullable|string|max:255',
-            'rol' => 'nullable|string|max:255',
-            'reingreso' => 'nullable|string',
-            'punto' => 'nullable|string|max:255',
-            'empresa' => 'nullable|string',
-            'sueldo_mensual' => 'nullable|string',
-            'fecha_ingreso' => 'nullable|date',
-            'email' => 'nullable|email|unique:solicitud_altas,email,' . $id . ',id',
+    public function editarInformacionSolicitud(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'tipo' => 'required|in:oficina,armado,noarmado',
+                'name' => 'nullable|string|max:255',
+                'apellido_paterno' => 'nullable|string|max:255',
+                'apellido_materno' => 'nullable|string|max:255',
+                'fecha_nacimiento' => 'nullable|date',
+                'curp' => 'nullable|string|max:255',
+                'nss' => ['nullable', 'string', 'size:11'],
+                'edo_civil' => 'nullable|string',
+                'rfc' => 'nullable|string|max:255',
+                'telefono' => 'nullable|string|max:255',
+                'calle' => 'nullable|string|max:255',
+                'num_ext' => 'nullable|string|max:255',
+                'colonia' => 'nullable|string|max:255',
+                'ciudad' => 'nullable|string|max:255',
+                'peso' => 'nullable|string|max:255',
+                'estatura' => 'nullable|string|max:255',
+                'cp_fiscal' => 'nullable|string|max:255',
+                'estado' => 'nullable|string|max:255',
+                'liga_rfc' => 'nullable|string|max:255',
+                'infonavit' => 'nullable|string|max:255',
+                'fonacot' => 'nullable|string|max:255',
+                'domicilio_comprobante' => 'nullable|string|max:255',
+                'departamento' => 'nullable|string|max:255',
+                'rol' => 'nullable|string|max:255',
+                'reingreso' => 'nullable|string',
+                'punto' => 'nullable|string|max:255',
+                'empresa' => 'nullable|string',
+                'sueldo_mensual' => 'nullable|string',
+                'fecha_ingreso' => 'nullable|date',
+                'email' => 'nullable|email|unique:solicitud_altas,email,'.$id.',id',
 
-            // --- NUEVAS VALIDACIONES ---
-            'tipo_periodo' => 'nullable|in:semanal,quincenal',
-            'banco' => 'nullable|string|max:255',
-            'cuenta_bancaria' => 'nullable|string|max:255',
-        ]);
+                // --- NUEVAS VALIDACIONES ---
+                'tipo_periodo' => 'nullable|in:semanal,quincenal',
+                'banco' => 'nullable|string|max:255',
+                'cuenta_bancaria' => 'nullable|string|max:255',
+            ]);
 
-        $solicitud = SolicitudAlta::findOrFail($id);
+            $solicitud = SolicitudAlta::findOrFail($id);
 
-        // Actualizar todos los campos de la solicitud
-        $solicitud->solicitante = auth()->user()->name;
-        $solicitud->nombre = $request->name;
-        $solicitud->apellido_paterno = $request->apellido_paterno;
-        $solicitud->apellido_materno = $request->apellido_materno;
-        $solicitud->fecha_nacimiento = $request->fecha_nacimiento;
-        $solicitud->tipo_empleado = $request->tipo;
-        $solicitud->curp = $request->curp;
-        $solicitud->nss = $request->nss;
-        $solicitud->estado_civil = $request->edo_civil;
-        $solicitud->rfc = $request->rfc;
-        $solicitud->telefono = $request->telefono;
-        $solicitud->domicilio_calle = $request->calle;
-        $solicitud->domicilio_numero = $request->num_ext;
-        $solicitud->domicilio_colonia = $request->colonia;
-        $solicitud->cp_fiscal = $request->cp_fiscal;
-        $solicitud->domicilio_ciudad = $request->ciudad;
-        $solicitud->peso = $request->peso;
-        $solicitud->estatura = $request->estatura;
-        $solicitud->liga_rfc = $request->liga_rfc;
-        $solicitud->domicilio_estado = $request->estado;
-        $solicitud->infonavit = $request->infonavit;
-        $solicitud->fonacot = $request->fonacot;
-        $solicitud->domicilio_comprobante = $request->domicilio_comprobante;
-        $solicitud->rol = $request->rol;
-        $solicitud->punto = $request->punto;
-        $solicitud->reingreso = $request->reingreso;
-        $solicitud->empresa = $request->empresa;
-        $solicitud->fecha_ingreso = $request->fecha_ingreso;
-        $solicitud->sueldo_mensual = $request->sueldo_mensual;
-        $solicitud->email = $request->email;
+            // Actualizar todos los campos de la solicitud
+            $solicitud->solicitante = auth()->user()->name;
+            $solicitud->nombre = $request->name;
+            $solicitud->apellido_paterno = $request->apellido_paterno;
+            $solicitud->apellido_materno = $request->apellido_materno;
+            $solicitud->fecha_nacimiento = $request->fecha_nacimiento;
+            $solicitud->tipo_empleado = $request->tipo;
+            $solicitud->curp = $request->curp;
+            $solicitud->nss = $request->nss;
+            $solicitud->estado_civil = $request->edo_civil;
+            $solicitud->rfc = $request->rfc;
+            $solicitud->telefono = $request->telefono;
+            $solicitud->domicilio_calle = $request->calle;
+            $solicitud->domicilio_numero = $request->num_ext;
+            $solicitud->domicilio_colonia = $request->colonia;
+            $solicitud->cp_fiscal = $request->cp_fiscal;
+            $solicitud->domicilio_ciudad = $request->ciudad;
+            $solicitud->peso = $request->peso;
+            $solicitud->estatura = $request->estatura;
+            $solicitud->liga_rfc = $request->liga_rfc;
+            $solicitud->domicilio_estado = $request->estado;
+            $solicitud->infonavit = $request->infonavit;
+            $solicitud->fonacot = $request->fonacot;
+            $solicitud->domicilio_comprobante = $request->domicilio_comprobante;
+            $solicitud->rol = $request->rol;
+            $solicitud->punto = $request->punto;
+            $solicitud->reingreso = $request->reingreso;
+            $solicitud->empresa = $request->empresa;
+            $solicitud->fecha_ingreso = $request->fecha_ingreso;
+            $solicitud->sueldo_mensual = $request->sueldo_mensual;
+            $solicitud->email = $request->email;
 
-        // --- ASIGNAR NUEVOS CAMPOS ---
-        $solicitud->tipo_periodo = $request->tipo_periodo;
-        $solicitud->banco = $request->banco;
-        $solicitud->cuenta_bancaria = $request->cuenta_bancaria;
+            // --- ASIGNAR NUEVOS CAMPOS ---
+            $solicitud->tipo_periodo = $request->tipo_periodo;
+            $solicitud->banco = $request->banco;
+            $solicitud->cuenta_bancaria = $request->cuenta_bancaria;
 
-        $solicitud->ultima_edicion = Auth::user()->name . " " . Carbon::now('America/Mexico_City');
+            $solicitud->ultima_edicion = Auth::user()->name.' '.Carbon::now('America/Mexico_City');
 
-        // Determinar si el usuario tiene permisos de RH/Admin para aceptar cambios directamente
-        $esRH_O_Admin = false;
-        if(Auth::user()->rol == 'admin' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS'){
-            $esRH_O_Admin = true;
+            // Determinar si el usuario tiene permisos de RH/Admin para aceptar cambios directamente
+            $esRH_O_Admin = false;
+            if (Auth::user()->rol == 'admin' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS') {
+                $esRH_O_Admin = true;
+            }
+            // Verificación adicional basada en la solicitud anterior (si el editor es de RH)
+            // Nota: Asumimos que Auth::user() tiene acceso a su propia solicitud o rol directo.
+            // Si la lógica original dependía de $solicitud->departamento del USUARIO LOGUEADO,
+            // asegúrate de que Auth::user() tenga esa relación o atributo.
+            // Aquí mantengo tu lógica original adaptada:
+            elseif (isset(Auth::user()->solicitudAlta) && (
+                Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' ||
+                in_array(Auth::user()->solicitudAlta->rol, ['AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH', 'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH'])
+            )) {
+                $esRH_O_Admin = true;
+            }
+
+            if ($esRH_O_Admin) {
+                $solicitud->status = 'Aceptada';
+                $solicitud->observaciones = 'Solicitud Aceptada.';
+            } else {
+                $solicitud->status = 'En Proceso';
+                $solicitud->observaciones = 'Cambios realizados, en espera de revisión.';
+            }
+
+            $solicitud->save();
+
+            // Actualizar el usuario asociado si tiene permisos
+            $user = User::where('sol_alta_id', $id)->first();
+
+            if ($user && $esRH_O_Admin) {
+                $user->name = trim($solicitud->nombre.' '.$solicitud->apellido_paterno.' '.$solicitud->apellido_materno);
+                $user->email = $solicitud->email;
+                $user->punto = $solicitud->punto;
+                $user->rol = $solicitud->rol;
+                $user->empresa = $solicitud->empresa;
+
+                $user->save();
+            }
+
+            $documentacion = DocumentacionAltas::where('solicitud_id', $id)->first();
+            $tipo = $solicitud->tipo_empleado;
+
+            return view('supervisor.editarArchivosForm', compact('solicitud', 'id', 'documentacion', 'user', 'tipo'));
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al actualizar la solicitud: '.$e->getMessage());
         }
-        // Verificación adicional basada en la solicitud anterior (si el editor es de RH)
-        // Nota: Asumimos que Auth::user() tiene acceso a su propia solicitud o rol directo.
-        // Si la lógica original dependía de $solicitud->departamento del USUARIO LOGUEADO,
-        // asegúrate de que Auth::user() tenga esa relación o atributo.
-        // Aquí mantengo tu lógica original adaptada:
-        elseif(isset(Auth::user()->solicitudAlta) && (
-            Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' ||
-            in_array(Auth::user()->solicitudAlta->rol, ['AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH', 'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH'])
-        )){
-            $esRH_O_Admin = true;
-        }
-
-        if($esRH_O_Admin){
-            $solicitud->status = 'Aceptada';
-            $solicitud->observaciones = 'Solicitud Aceptada.';
-        } else {
-            $solicitud->status = 'En Proceso';
-            $solicitud->observaciones = 'Cambios realizados, en espera de revisión.';
-        }
-
-        $solicitud->save();
-
-        // Actualizar el usuario asociado si tiene permisos
-        $user = User::where('sol_alta_id', $id)->first();
-
-        if($user && $esRH_O_Admin){
-            $user->name = trim($solicitud->nombre . " " . $solicitud->apellido_paterno . " " . $solicitud->apellido_materno);
-            $user->email = $solicitud->email;
-            $user->punto = $solicitud->punto;
-            $user->rol = $solicitud->rol;
-            $user->empresa = $solicitud->empresa;
-
-            $user->save();
-        }
-
-        $documentacion = DocumentacionAltas::where('solicitud_id', $id)->first();
-        $tipo = $solicitud->tipo_empleado;
-
-        return view('supervisor.editarArchivosForm', compact('solicitud','id' ,'documentacion', 'user', 'tipo'));
-
-    } catch (\Exception $e) {
-        return redirect()->back()->with('error', 'Error al actualizar la solicitud: ' . $e->getMessage());
     }
-}
 
     public function subirArchivosEditados(Request $request, $id)
     {
@@ -373,7 +386,7 @@ class SupervisorController extends Controller
         $sol = SolicitudAlta::find($solicitudId);
         $user = User::where('sol_alta_id', $solicitudId)->first();
         $documentacion = DocumentacionAltas::firstOrNew(['solicitud_id' => $solicitudId]);
-        $carpeta = 'solicitudesAltas/' . $solicitudId;
+        $carpeta = 'solicitudesAltas/'.$solicitudId;
 
         $camposArchivos = [
             'arch_acta_nacimiento',
@@ -401,10 +414,10 @@ class SupervisorController extends Controller
         foreach ($camposArchivos as $campo) {
             if ($request->hasFile($campo)) {
                 $nuevoArchivo = $request->file($campo);
-                $nombreArchivo = $campo . '.' . $nuevoArchivo->getClientOriginalExtension();
-                $rutaCompleta = $carpeta . '/' . $nombreArchivo;
+                $nombreArchivo = $campo.'.'.$nuevoArchivo->getClientOriginalExtension();
+                $rutaCompleta = $carpeta.'/'.$nombreArchivo;
 
-                if (!empty($documentacion->$campo)) {
+                if (! empty($documentacion->$campo)) {
                     $rutaAnterior = str_replace('storage/', '', $documentacion->$campo);
                     if (Storage::disk('public')->exists($rutaAnterior)) {
                         Storage::disk('public')->delete($rutaAnterior);
@@ -412,22 +425,24 @@ class SupervisorController extends Controller
                 }
 
                 $nuevoArchivo->storeAs($carpeta, $nombreArchivo, 'public');
-                $documentacion->$campo = 'storage/' . $rutaCompleta;
+                $documentacion->$campo = 'storage/'.$rutaCompleta;
             }
         }
 
         $documentacion->solicitud_id = $solicitudId;
         $documentacion->save();
-        if(Auth()->user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS')
+        if (Auth()->user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS') {
             $sol->observaciones = 'Solicitud Aceptada.';
-        else
+        } else {
             $sol->observaciones = 'Documentación actualizada, en espera de revisión.';
+        }
         $sol->save();
 
-        if(Auth()->user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH')
+        if (Auth()->user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH') {
             return redirect()->route('user.verFicha', $user->id)->with('success', 'Documentos actualizados correctamente.');
-        else
+        } else {
             return redirect()->route('sup.solicitud.detalle', $solicitudId)->with('success', 'Documentos actualizados correctamente.');
+        }
     }
 
     public function solicitarBajaForm()
@@ -471,11 +486,13 @@ class SupervisorController extends Controller
         return view('supervisor.solicitarBajaForm', compact('elementos'));
     }
 
-    public function solicitarBajaVista($id){
+    public function solicitarBajaVista($id)
+    {
         $user = User::find($id);
         $solicitud = SolicitudAlta::where('id', $user->sol_alta_id)->first();
         $solicitudpendiente = SolicitudBajas::where('user_id', $user->id)->where('estatus', 'En Proceso')->first();
-        return view('supervisor.vistaSolicitarBaja', compact('user','solicitud','solicitudpendiente'));
+
+        return view('supervisor.vistaSolicitarBaja', compact('user', 'solicitud', 'solicitudpendiente'));
     }
 
     public function guardarBajaNueva(Request $request, $id)
@@ -493,7 +510,7 @@ class SupervisorController extends Controller
 
         $user = User::findOrFail($id);
 
-        $solicitud = new SolicitudBajas();
+        $solicitud = new SolicitudBajas;
         $solicitud->user_id = $user->id;
         $solicitud->fecha_solicitud = $request->fecha_hoy;
         $solicitud->motivo = $request->motivo;
@@ -509,7 +526,7 @@ class SupervisorController extends Controller
         try {
             $solicitud->save();
 
-            $carpeta = 'solicitudesBajas/' . $solicitud->id;
+            $carpeta = 'solicitudesBajas/'.$solicitud->id;
 
             Storage::disk('public')->makeDirectory($carpeta);
 
@@ -521,7 +538,7 @@ class SupervisorController extends Controller
             foreach ($archivos as $campo) {
                 if ($request->hasFile($campo)) {
                     $archivo = $request->file($campo);
-                    $nombreArchivo = $campo . '_' . time() . '.' . $archivo->getClientOriginalExtension();
+                    $nombreArchivo = $campo.'_'.time().'.'.$archivo->getClientOriginalExtension();
                     $ruta = $archivo->storeAs($carpeta, $nombreArchivo, 'public');
 
                     $solicitud->$campo = $ruta;
@@ -532,7 +549,7 @@ class SupervisorController extends Controller
 
             return redirect()->route('dashboard')->with('success', 'Solicitud de baja enviada correctamente');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error al enviar la solicitud: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al enviar la solicitud: '.$e->getMessage());
         }
     }
 
@@ -544,9 +561,9 @@ class SupervisorController extends Controller
         $subpuntosZona = collect();
 
         $punto = \App\Models\Punto::where('nombre', $puntoUsuarioRaw)->first();
-        if (!$punto) {
+        if (! $punto) {
             $subpunto = \App\Models\Subpunto::where('nombre', $puntoUsuarioRaw)->first();
-            if (!$subpunto) {
+            if (! $subpunto) {
                 $subpunto = \App\Models\Subpunto::where('codigo', $puntoUsuarioRaw)->first();
             }
 
@@ -573,13 +590,14 @@ class SupervisorController extends Controller
         return view('supervisor.historialBajas', compact('solicitudes'));
     }
 
-    public function listaAsistencia(){
+    public function listaAsistencia()
+    {
         $user = Auth::user();
         $puntos = Punto::all();
         $subpuntos = Subpunto::all();
         $asistenciasHoy = 0;
         $supervisores = User::where('estatus', 'Activo')
-            ->whereRaw("LOWER(rol) LIKE ?", ['%supervisor%'])
+            ->whereRaw('LOWER(rol) LIKE ?', ['%supervisor%'])
             ->get();
 
         $supervisores->map(function ($supervisor) {
@@ -591,16 +609,16 @@ class SupervisorController extends Controller
         });
 
         $asistencia_hoy = Asistencia::where('fecha', Carbon::now()->toDateString())
-                        ->where('user_id', $user->id)
-                        ->get();
+            ->where('user_id', $user->id)
+            ->get();
 
         $puntoUsuarioRaw = $user->punto;
         $subpuntosZona = collect();
 
         $punto = \App\Models\Punto::where('nombre', $puntoUsuarioRaw)->first();
-        if (!$punto) {
+        if (! $punto) {
             $subpunto = \App\Models\Subpunto::where('nombre', $puntoUsuarioRaw)->first();
-            if (!$subpunto) {
+            if (! $subpunto) {
                 $subpunto = \App\Models\Subpunto::where('codigo', $puntoUsuarioRaw)->first();
             }
 
@@ -626,49 +644,49 @@ class SupervisorController extends Controller
             ->with('solicitudAlta.documentacion')
             ->orderBy('punto')
             ->get();
-        return view('supervisor.listaAsistencia', compact('elementos', 'asistencia_hoy', 'supervisores', 'puntos','subpuntos'));
+
+        return view('supervisor.listaAsistencia', compact('elementos', 'asistencia_hoy', 'supervisores', 'puntos', 'subpuntos'));
     }
 
     public function guardarAsistencias(Request $request)
-{
-    $validated = $request->validate([
-        'asistencias' => 'required|array',
-        'asistencias.*' => 'integer',
-        'fecha_registro' => 'required|date|date_format:Y-m-d',
-        'foto_evidencia' => 'nullable|array',
-        'foto_evidencia.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
-        'observaciones' => 'nullable|string|max:255',
-        'coberturas' => 'nullable|array',
-        'coberturas.*' => 'required|string',
-    ]);
+    {
+        $validated = $request->validate([
+            'asistencias' => 'required|array',
+            'asistencias.*' => 'integer',
+            'fecha_registro' => 'required|date|date_format:Y-m-d',
+            'foto_evidencia' => 'nullable|array',
+            'foto_evidencia.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'observaciones' => 'nullable|string|max:255',
+            'coberturas' => 'nullable|array',
+            'coberturas.*' => 'required|string',
+        ]);
 
-    $user = Auth::user();
-    //$now = now('America/Mexico_City');
-    $fechaRegistro = $request->input('fecha_registro');
-    $horaRegistro = now('America/Mexico_City')->toTimeString();
+        $user = Auth::user();
+        // $now = now('America/Mexico_City');
+        $fechaRegistro = $request->input('fecha_registro');
+        $horaRegistro = now('America/Mexico_City')->toTimeString();
 
-    $puntoUsuarioRaw = $user->punto;
-    $subpuntosZona = collect();
+        $puntoUsuarioRaw = $user->punto;
+        $subpuntosZona = collect();
 
-    $punto = \App\Models\Punto::where('nombre', $puntoUsuarioRaw)->first();
-    if (!$punto) {
-        $subpunto = \App\Models\Subpunto::where('nombre', $puntoUsuarioRaw)->first();
-        if (!$subpunto) {
-            $subpunto = \App\Models\Subpunto::where('codigo', $puntoUsuarioRaw)->first();
+        $punto = \App\Models\Punto::where('nombre', $puntoUsuarioRaw)->first();
+        if (! $punto) {
+            $subpunto = \App\Models\Subpunto::where('nombre', $puntoUsuarioRaw)->first();
+            if (! $subpunto) {
+                $subpunto = \App\Models\Subpunto::where('codigo', $puntoUsuarioRaw)->first();
+            }
+
+            if ($subpunto && $subpunto->zona) {
+                $subpuntosZona = \App\Models\Subpunto::where('zona', $subpunto->zona)
+                    ->pluck('nombre')
+                    ->merge(
+                        \App\Models\Subpunto::where('zona', $subpunto->zona)->pluck('codigo')
+                    );
+            }
         }
 
-        if ($subpunto && $subpunto->zona) {
-            $subpuntosZona = \App\Models\Subpunto::where('zona', $subpunto->zona)
-                ->pluck('nombre')
-                ->merge(
-                    \App\Models\Subpunto::where('zona', $subpunto->zona)->pluck('codigo')
-                );
-        }
-    }
-
-
-    $asistencias = $request->input('asistencias', []);
-    $todosUsuarios = User::where('empresa', $user->empresa)
+        $asistencias = $request->input('asistencias', []);
+        $todosUsuarios = User::where('empresa', $user->empresa)
             ->where('estatus', 'Activo')
             ->where('rol', '!=', 'Supervisor')
             ->where(function ($query) use ($user, $subpuntosZona) {
@@ -677,119 +695,119 @@ class SupervisorController extends Controller
                     $query->orWhereIn('punto', $subpuntosZona);
                 }
             })
-        ->pluck('id')
-        ->toArray();
+            ->pluck('id')
+            ->toArray();
 
-    $faltas = array_values(array_diff($todosUsuarios, $asistencias));
+        $faltas = array_values(array_diff($todosUsuarios, $asistencias));
 
-    $coberturasRaw = $request->input('coberturas', []);
-    $coberturas = array_map(function ($item) {
-        return json_decode($item, true);
-    }, $coberturasRaw);
+        $coberturasRaw = $request->input('coberturas', []);
+        $coberturas = array_map(function ($item) {
+            return json_decode($item, true);
+        }, $coberturasRaw);
 
-    session([
-        'asistencias_data' => [
-            'asistencias' => $asistencias,
-            'foto_evidencia' => $request->file('foto_evidencia', []),
-            'observaciones' => $request->input('observaciones'),
-            'coberturas' => $coberturas,
-            'faltas' => $faltas,
-            'fecha' => $fechaRegistro,
-            'hora' => $horaRegistro,
-        ]
-    ]);
+        session([
+            'asistencias_data' => [
+                'asistencias' => $asistencias,
+                'foto_evidencia' => $request->file('foto_evidencia', []),
+                'observaciones' => $request->input('observaciones'),
+                'coberturas' => $coberturas,
+                'faltas' => $faltas,
+                'fecha' => $fechaRegistro,
+                'hora' => $horaRegistro,
+            ],
+        ]);
 
-    return redirect()->route('asistencias.confirmarFaltas');
-}
+        return redirect()->route('asistencias.confirmarFaltas');
+    }
 
     public function confirmarFaltas()
     {
         $data = session('asistencias_data');
 
-        if (!$data) {
+        if (! $data) {
             return redirect()->route('dashboard')->with('error', 'No hay datos de asistencia pendientes.');
         }
 
         $faltantes = User::whereIn('id', $data['faltas'])
-        ->with('solicitudAlta.documentacion')->get();
+            ->with('solicitudAlta.documentacion')->get();
 
         return view('supervisor.confirmar-faltas', compact('faltantes'));
     }
 
-public function finalizarAsistencia(Request $request)
-{
-    $data = session('asistencias_data');
+    public function finalizarAsistencia(Request $request)
+    {
+        $data = session('asistencias_data');
 
-    if (!$data) {
-        return redirect()->route('dashboard')->with('error', 'No hay datos para finalizar.');
-    }
-
-    DB::beginTransaction();
-    try {
-        $user = Auth::user();
-        $descansan = $request->input('descansan', []);
-        Log::info('Descansan recibidos:', $descansan);
-        $faltasOriginales = collect($data['faltas'])
-            ->map(function ($userId) {
-                return \App\Models\User::find($userId);
-            })
-            ->filter(function ($user) {
-                return $user && $user->rol === 'GUARDIA';
-            })
-            ->pluck('id')
-            ->values()
-            ->toArray();
-        $faltasFinales = array_values(array_diff($faltasOriginales, $descansan));
-
-        $rutaBase = "asistencias/" . Str::slug($user->name) . "/" . $data['fecha'];
-        Storage::disk('public')->makeDirectory($rutaBase, 0755, true);
-
-        $fotosAsistentes = [];
-        foreach ($data['foto_evidencia'] ?? [] as $elementoId => $foto) {
-            if ($foto && $foto->isValid()) {
-                $extension = $foto->extension();
-                $nombreArchivo = $elementoId . time() . '.' . $extension;
-                $rutaCompleta = $foto->storeAs($rutaBase, $nombreArchivo, 'public');
-                $fotosAsistentes[$elementoId] = $rutaCompleta;
-            }
+        if (! $data) {
+            return redirect()->route('dashboard')->with('error', 'No hay datos para finalizar.');
         }
-        Log::info('Coberturas a guardar:', $data['coberturas']);
-        Asistencia::create([
-            'user_id' => $user->id,
-            'fecha' => $data['fecha'],
-            'hora_asistencia' => $data['hora'],
-            'elementos_enlistados' => json_encode($data['asistencias']),
-            'faltas' => json_encode($faltasFinales),
-            'descansos' => json_encode($descansan),
-            'coberturas' => json_encode($data['coberturas']),
-            'observaciones' => $data['observaciones'] ?: 'Ninguna',
-            'punto' => $user->punto,
-            'empresa' => $user->empresa,
-            'fotos_asistentes' => json_encode($fotosAsistentes),
-        ]);
 
-        DB::commit();
-        session()->forget('asistencias_data');
+        DB::beginTransaction();
+        try {
+            $user = Auth::user();
+            $descansan = $request->input('descansan', []);
+            Log::info('Descansan recibidos:', $descansan);
+            $faltasOriginales = collect($data['faltas'])
+                ->map(function ($userId) {
+                    return \App\Models\User::find($userId);
+                })
+                ->filter(function ($user) {
+                    return $user && $user->rol === 'GUARDIA';
+                })
+                ->pluck('id')
+                ->values()
+                ->toArray();
+            $faltasFinales = array_values(array_diff($faltasOriginales, $descansan));
 
-        return redirect()->route('dashboard')->with('success', 'Asistencia registrada con faltas y descansos.');
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Error al finalizar asistencia: '.$e->getMessage());
+            $rutaBase = 'asistencias/'.Str::slug($user->name).'/'.$data['fecha'];
+            Storage::disk('public')->makeDirectory($rutaBase, 0755, true);
 
-        return back()->with('error', 'Error al finalizar asistencia: '.$e->getMessage());
+            $fotosAsistentes = [];
+            foreach ($data['foto_evidencia'] ?? [] as $elementoId => $foto) {
+                if ($foto && $foto->isValid()) {
+                    $extension = $foto->extension();
+                    $nombreArchivo = $elementoId.time().'.'.$extension;
+                    $rutaCompleta = $foto->storeAs($rutaBase, $nombreArchivo, 'public');
+                    $fotosAsistentes[$elementoId] = $rutaCompleta;
+                }
+            }
+            Log::info('Coberturas a guardar:', $data['coberturas']);
+            Asistencia::create([
+                'user_id' => $user->id,
+                'fecha' => $data['fecha'],
+                'hora_asistencia' => $data['hora'],
+                'elementos_enlistados' => json_encode($data['asistencias']),
+                'faltas' => json_encode($faltasFinales),
+                'descansos' => json_encode($descansan),
+                'coberturas' => json_encode($data['coberturas']),
+                'observaciones' => $data['observaciones'] ?: 'Ninguna',
+                'punto' => $user->punto,
+                'empresa' => $user->empresa,
+                'fotos_asistentes' => json_encode($fotosAsistentes),
+            ]);
+
+            DB::commit();
+            session()->forget('asistencias_data');
+
+            return redirect()->route('dashboard')->with('success', 'Asistencia registrada con faltas y descansos.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al finalizar asistencia: '.$e->getMessage());
+
+            return back()->with('error', 'Error al finalizar asistencia: '.$e->getMessage());
+        }
     }
-}
 
-    public function verAsistencias($id){
+    public function verAsistencias($id)
+    {
         $user = User::find($id);
 
-        if($user->rol == 'Supervisor')
-        {
+        if ($user->rol == 'Supervisor') {
             $asistencias = Asistencia::where('user_id', $user->id)
                 ->with('usuario')
                 ->orderBy('fecha', 'desc')
                 ->get();
-        }else{
+        } else {
             $asistencias = Asistencia::orderBy('fecha', 'desc')
                 ->with('usuario')
                 ->get();
@@ -799,46 +817,46 @@ public function finalizarAsistencia(Request $request)
     }
 
     public function detalleAsistencia($id)
-{
-    $asistencia = Asistencia::with('puntosAsignados')->find($id); // Cargamos la relación
+    {
+        $asistencia = Asistencia::with('puntosAsignados')->find($id); // Cargamos la relación
 
-    $idsAsistieron = json_decode($asistencia->elementos_enlistados, true) ?? [];
-    $idsFaltaron = json_decode($asistencia->faltas, true) ?? [];
-    $idsDescansaron = json_decode($asistencia->descansos, true) ?? [];
-    $coberturas = json_decode($asistencia->coberturas, true) ?? [];
-    $idsCoberturas = collect($coberturas)->pluck('id')->toArray();
+        $idsAsistieron = json_decode($asistencia->elementos_enlistados, true) ?? [];
+        $idsFaltaron = json_decode($asistencia->faltas, true) ?? [];
+        $idsDescansaron = json_decode($asistencia->descansos, true) ?? [];
+        $coberturas = json_decode($asistencia->coberturas, true) ?? [];
+        $idsCoberturas = collect($coberturas)->pluck('id')->toArray();
 
-    $usuariosAsistieron = User::whereIn('id', $idsAsistieron)->with('solicitudAlta.documentacion')->get();
-    $usuariosFaltaron = User::whereIn('id', $idsFaltaron)->with('solicitudAlta.documentacion')->get();
-    $usuariosDescansaron = User::whereIn('id', $idsDescansaron)->with('solicitudAlta.documentacion')->get();
-    $usuariosCoberturas = User::whereIn('id', $idsCoberturas)
-        ->with('solicitudAlta.documentacion')
-        ->get();
+        $usuariosAsistieron = User::whereIn('id', $idsAsistieron)->with('solicitudAlta.documentacion')->get();
+        $usuariosFaltaron = User::whereIn('id', $idsFaltaron)->with('solicitudAlta.documentacion')->get();
+        $usuariosDescansaron = User::whereIn('id', $idsDescansaron)->with('solicitudAlta.documentacion')->get();
+        $usuariosCoberturas = User::whereIn('id', $idsCoberturas)
+            ->with('solicitudAlta.documentacion')
+            ->get();
 
-    $fotos = json_decode($asistencia->fotos_asistentes, true) ?? [];
-    if (is_array($fotos)) {
-        foreach ($fotos as $id => $path) {
-            $fotos[$id] = asset('storage/' . $path);
+        $fotos = json_decode($asistencia->fotos_asistentes, true) ?? [];
+        if (is_array($fotos)) {
+            foreach ($fotos as $id => $path) {
+                $fotos[$id] = asset('storage/'.$path);
+            }
         }
+
+        // ✅ NUEVO: Agregar el mapa de puntos asignados al objeto $asistencia
+        $puntosAsignadosMap = [];
+        if (in_array($asistencia->usuario->punto, ['KANSAS', 'MTY'])) {
+            $puntosAsignadosMap = $asistencia->puntosAsignados->pluck('punto', 'user_id')->toArray();
+        }
+
+        $asistencia->puntos_asignados_map = $puntosAsignadosMap;
+
+        // Asignar usuarios a $asistencia como antes
+        $asistencia->usuarios_coberturas = $usuariosCoberturas;
+        $asistencia->usuarios_enlistados = $usuariosAsistieron;
+        $asistencia->usuarios_faltantes = $usuariosFaltaron;
+        $asistencia->usuarios_descansos = $usuariosDescansaron;
+        $asistencia->fotos_asistentes = $fotos;
+
+        return view('supervisor.detalleAsistencia', compact('asistencia'));
     }
-
-    // ✅ NUEVO: Agregar el mapa de puntos asignados al objeto $asistencia
-    $puntosAsignadosMap = [];
-    if (in_array($asistencia->usuario->punto, ['KANSAS', 'MTY'])) {
-        $puntosAsignadosMap = $asistencia->puntosAsignados->pluck('punto', 'user_id')->toArray();
-    }
-
-    $asistencia->puntos_asignados_map = $puntosAsignadosMap;
-
-    // Asignar usuarios a $asistencia como antes
-    $asistencia->usuarios_coberturas = $usuariosCoberturas;
-    $asistencia->usuarios_enlistados = $usuariosAsistieron;
-    $asistencia->usuarios_faltantes = $usuariosFaltaron;
-    $asistencia->usuarios_descansos = $usuariosDescansaron;
-    $asistencia->fotos_asistentes = $fotos;
-
-    return view('supervisor.detalleAsistencia', compact('asistencia'));
-}
 
     public function verFechaAsistencias(Request $request)
     {
@@ -857,6 +875,7 @@ public function finalizarAsistencia(Request $request)
             $ids = json_decode($asistencia->elementos_enlistados, true);
             $usuarios = User::whereIn('id', $ids ?: [])->with('solicitudAlta.documentacion')->get();
             $asistencia->usuarios_enlistados = $usuarios;
+
             return $asistencia;
         });
 
@@ -874,10 +893,10 @@ public function finalizarAsistencia(Request $request)
         } else {
             $punto = \App\Models\Punto::where('nombre', $puntoUsuarioRaw)->first();
 
-            if (!$punto) {
+            if (! $punto) {
                 $subpunto = \App\Models\Subpunto::where('nombre', $puntoUsuarioRaw)->first();
 
-                if (!$subpunto) {
+                if (! $subpunto) {
                     $subpunto = \App\Models\Subpunto::where('codigo', $puntoUsuarioRaw)->first();
                 }
 
@@ -908,35 +927,46 @@ public function finalizarAsistencia(Request $request)
         return view('supervisor.solicitudesVacaciones', compact('solicitudes'));
     }
 
-    public function aceptarSolicitudVacaciones($id){
-        $solicitud = SolicitudVacaciones::find($id);
+    public function aceptarSolicitudVacaciones($id, AuditLogger $audit)
+    {
+        $solicitud = SolicitudVacaciones::findOrFail($id);
+        abort_unless($solicitud->estatus === RequestStatus::IN_PROGRESS->value && $solicitud->observaciones === 'Solicitud de vacaciones en proceso', 409, 'La solicitud ya fue atendida o no está disponible.');
+        $before = $solicitud->only(['estatus', 'observaciones', 'autorizado_por']);
         $solicitud->estatus = 'En Proceso';
         $solicitud->observaciones = 'Solicitud aceptada, falta subir archivo de solicitud.';
         $solicitud->autorizado_por = Auth::user()->name;
 
         $solicitud->save();
-        if(Auth::user()->rol == 'admin')
+        $audit->record('Vacaciones', 'Solicitud de vacaciones autorizada para generar formato', $solicitud, $before, $solicitud->only(['estatus', 'observaciones', 'autorizado_por']));
+        if (RoleNormalizer::isAdministrator(Auth::user())) {
             return redirect()->route('admin.solicitudesVacaciones')->with('success', 'Solicitud de vacaciones respondida correctamente, a la espera del archivo de solicitud.');
-        else
+        } else {
             return redirect()->route('sup.solicitudesVacaciones')->with('success', 'Solicitud de vacaciones respondida correctamente, a la espera del archivo de solicitud.');
+        }
     }
 
-    public function rechazarSolicitudVacaciones($id){
-        $solicitud = SolicitudVacaciones::find($id);
-        $solicitud->estatus = 'Rechazada';
+    public function rechazarSolicitudVacaciones($id, AuditLogger $audit)
+    {
+        $solicitud = SolicitudVacaciones::findOrFail($id);
+        $before = $solicitud->only(['estatus', 'observaciones']);
+        $solicitud->estatus = RequestStatus::transition($solicitud->estatus, RequestStatus::REJECTED)->value;
         $solicitud->observaciones = 'Solicitud de vacaciones rechazada';
 
         $solicitud->save();
+        $audit->record('Vacaciones', 'Solicitud de vacaciones rechazada', $solicitud, $before, $solicitud->only(['estatus', 'observaciones']));
 
-        return redirect()->route('sup.solicitudesVacaciones')->with('success', 'Solicitud de vacaciones rechazada correctamente.');
+        $route = RoleNormalizer::isAdministrator(Auth::user()) ? 'admin.solicitudesVacaciones' : 'sup.solicitudesVacaciones';
+
+        return redirect()->route($route)->with('success', 'Solicitud de vacaciones rechazada correctamente.');
     }
 
-    public function verSolicitudBaja($id){
+    public function verSolicitudBaja($id)
+    {
         $solicitudBaja = SolicitudBajas::findOrFail($id);
         $user = User::findOrFail($solicitudBaja->user_id);
         $solicitudAlta = SolicitudAlta::findOrFail($user->sol_alta_id);
 
-        return view('supervisor.detalleBaja', compact('user','solicitudAlta', 'solicitudBaja'));
+        return view('supervisor.detalleBaja', compact('user', 'solicitudAlta', 'solicitudBaja'));
     }
 
     public function tiemposExtras()
@@ -947,10 +977,10 @@ public function finalizarAsistencia(Request $request)
 
         $punto = \App\Models\Punto::where('nombre', $puntoUsuarioRaw)->first();
 
-        if (!$punto) {
+        if (! $punto) {
             $subpunto = \App\Models\Subpunto::where('nombre', $puntoUsuarioRaw)->first();
 
-            if (!$subpunto) {
+            if (! $subpunto) {
                 $subpunto = \App\Models\Subpunto::where('codigo', $puntoUsuarioRaw)->first();
             }
 
@@ -978,11 +1008,12 @@ public function finalizarAsistencia(Request $request)
         return view('supervisor.tiemposExtras', compact('elementos'));
     }
 
-    public function tiemposExtrasForm($id){
+    public function tiemposExtrasForm($id)
+    {
         $supervisor = Auth::user();
         $extraHoy = TiemposExtra::where('user_id', $id)
-                ->whereDate('fecha', Carbon::now()->toDateString())
-                ->first();
+            ->whereDate('fecha', Carbon::now()->toDateString())
+            ->first();
         $elemento = User::where('id', $id)
             ->with('solicitudAlta.documentacion')
             ->firstOrFail();
@@ -991,10 +1022,11 @@ public function finalizarAsistencia(Request $request)
         $foto = $foto ? asset($foto) : null;
         $solicitud = SolicitudAlta::where('id', $elemento->sol_alta_id)->first();
 
-        return view('supervisor.tiemposExtrasForm', compact('supervisor', 'elemento','solicitud', 'foto', 'extraHoy'));
+        return view('supervisor.tiemposExtrasForm', compact('supervisor', 'elemento', 'solicitud', 'foto', 'extraHoy'));
     }
 
-    public function guardarTiempoExtra(Request $request, $id){
+    public function guardarTiempoExtra(Request $request, $id)
+    {
         $request->validate([
             'user_id',
             'fecha' => [
@@ -1005,7 +1037,7 @@ public function finalizarAsistencia(Request $request)
                     } catch (\Exception $e) {
                         $fail('La fecha no es válida.');
                     }
-                }
+                },
             ],
             'hora_inicio',
             'hora_fin',
@@ -1018,16 +1050,16 @@ public function finalizarAsistencia(Request $request)
         $diferenciaSegundos = abs($horaFin->floatDiffInSeconds($horaInicio));
         $totalHoras = gmdate('H:i:s', $diferenciaSegundos);
 
-        $tiempoExtra = new TiemposExtra();
+        $tiempoExtra = new TiemposExtra;
         $tiempoExtra->user_id = $request->user_id;
         $tiempoExtra->fecha = $request->fecha;
         $tiempoExtra->hora_inicio = $horaInicio;
         $tiempoExtra->hora_fin = $horaFin;
         $tiempoExtra->total_horas = $totalHoras;
         $tiempoExtra->autorizado_por = Auth::user()->name;
-        if($request->observaciones){
+        if ($request->observaciones) {
             $tiempoExtra->observaciones = $request->observaciones;
-        }else{
+        } else {
             $tiempoExtra->observaciones = 'Ninguna';
         }
         $tiempoExtra->save();
@@ -1035,77 +1067,79 @@ public function finalizarAsistencia(Request $request)
         return redirect()->route('sup.tiemposExtras')->with('success', 'Tiempo extra registrado correctamente.');
     }
 
-    public function historialTiemposExtras(){
+    public function historialTiemposExtras()
+    {
         $supervisor = Auth::user();
         $tiemposExtras = TiemposExtra::whereHas('user', function ($query) use ($supervisor) {
             $query->where('empresa', $supervisor->empresa)
                 ->where('punto', $supervisor->punto);
         })
-        ->with('user')
-        ->orderBy('fecha', 'desc')
-        ->get();
+            ->with('user')
+            ->orderBy('fecha', 'desc')
+            ->get();
 
         return view('supervisor.historialTiemposExtras', compact('tiemposExtras'));
     }
 
-public function gestionUsuarios()
-{
-    $user = Auth::user();
-    $puntoUsuarioRaw = $user->punto;
-    $subpuntosZona = collect();
+    public function gestionUsuarios()
+    {
+        $user = Auth::user();
+        $puntoUsuarioRaw = $user->punto;
+        $subpuntosZona = collect();
 
-    Log::info("Punto del usuario: " . $puntoUsuarioRaw);
+        Log::info('Punto del usuario: '.$puntoUsuarioRaw);
 
-    $punto = Punto::where('nombre', $puntoUsuarioRaw)->first();
+        $punto = Punto::where('nombre', $puntoUsuarioRaw)->first();
 
-    if ($punto) {
-        Log::info("Es punto principal: " . $punto->nombre);
-    } else {
-        $subpunto = Subpunto::where('nombre', $puntoUsuarioRaw)->first()
-                  ?? Subpunto::where('codigo', $puntoUsuarioRaw)->first();
-
-        if ($subpunto) {
-            Log::info("Subpunto encontrado: " . $subpunto->nombre . " | Zona: " . $subpunto->zona);
-
-            if ($subpunto->zona) {
-                $subpuntosZona = Subpunto::where('zona', $subpunto->zona)->pluck('nombre');
-                Log::info("Subpuntos de la zona: ", $subpuntosZona->toArray());
-            }
+        if ($punto) {
+            Log::info('Es punto principal: '.$punto->nombre);
         } else {
-            Log::warning("No se encontró subpunto ni por nombre ni por código.");
+            $subpunto = Subpunto::where('nombre', $puntoUsuarioRaw)->first()
+                      ?? Subpunto::where('codigo', $puntoUsuarioRaw)->first();
+
+            if ($subpunto) {
+                Log::info('Subpunto encontrado: '.$subpunto->nombre.' | Zona: '.$subpunto->zona);
+
+                if ($subpunto->zona) {
+                    $subpuntosZona = Subpunto::where('zona', $subpunto->zona)->pluck('nombre');
+                    Log::info('Subpuntos de la zona: ', $subpuntosZona->toArray());
+                }
+            } else {
+                Log::warning('No se encontró subpunto ni por nombre ni por código.');
+            }
         }
+
+        $usuarios = User::where('empresa', $user->empresa)
+            ->where('estatus', 'Activo')
+            ->where('rol', '!=', 'Supervisor')
+            ->where(function ($query) use ($user, $subpuntosZona) {
+                $query->where('punto', $user->punto);
+                if ($subpuntosZona->isNotEmpty()) {
+                    $query->orWhereIn('punto', $subpuntosZona);
+                }
+            })
+            ->get();
+
+        Log::info('Usuarios encontrados: '.$usuarios->count());
+
+        return view('supervisor.gestionUsuarios', compact('usuarios'));
     }
 
-    $usuarios = User::where('empresa', $user->empresa)
-        ->where('estatus', 'Activo')
-        ->where('rol', '!=', 'Supervisor')
-        ->where(function ($query) use ($user, $subpuntosZona) {
-            $query->where('punto', $user->punto);
-            if ($subpuntosZona->isNotEmpty()) {
-                $query->orWhereIn('punto', $subpuntosZona);
-            }
-        })
-        ->get();
-
-    Log::info("Usuarios encontrados: " . $usuarios->count());
-
-    return view('supervisor.gestionUsuarios', compact('usuarios'));
-}
-
-
-    public function coberturaTurnoForm($id){
+    public function coberturaTurnoForm($id)
+    {
         $elemento = User::find($id);
         $hoy = Carbon::now('America/Mexico_City')->toDateString();
         $solicitud = SolicitudAlta::where('id', $elemento->sol_alta_id)->first();
         $coberturaHoy = CubrirTurno::where('user_id', $id)
-            ->where('fecha',$hoy)->first();
+            ->where('fecha', $hoy)->first();
         $cobertura = 0;
         $coberturaHoy ? $cobertura = 1 : $cobertura = 0;
 
-        return view('supervisor.coberturaTurnoForm', compact('elemento','solicitud', 'cobertura'));
+        return view('supervisor.coberturaTurnoForm', compact('elemento', 'solicitud', 'cobertura'));
     }
 
-    public function guardarCoberturaTurno(Request $request, $id){
+    public function guardarCoberturaTurno(Request $request, $id)
+    {
         $request->validate([
             'user_id',
             'fecha',
@@ -1121,7 +1155,7 @@ public function gestionUsuarios()
         $horaInicio = Carbon::createFromFormat('H:i', $request->hora_inicio);
         $horaFin = Carbon::createFromFormat('H:i', $request->hora_fin);
 
-        $turno = new CubrirTurno();
+        $turno = new CubrirTurno;
         $turno->user_id = $user_cubre->id;
         $turno->fecha = $fecha;
         $turno->hora_inicio = $horaInicio;
@@ -1136,85 +1170,85 @@ public function gestionUsuarios()
     }
 
     public function descargarSolicitudVacaciones($id)
-{
-    $solicitud = SolicitudVacaciones::with('user')->findOrFail($id);
-    $user = $solicitud->user;
+    {
+        $solicitud = SolicitudVacaciones::with('user')->findOrFail($id);
+        $user = $solicitud->user;
 
-    $fechaIngreso = Carbon::parse($user->fecha_ingreso);
-    $fechaActual = Carbon::now('America/Mexico_City');
-    $mesesLaborados = 0;
-    $inicioPeriodo = $fechaIngreso;
-    $finPeriodo = $fechaIngreso->copy()->addYear();
-    $aniversario = Carbon::createFromDate($fechaActual->year, $fechaIngreso->month, $fechaIngreso->day);
+        $fechaIngreso = Carbon::parse($user->fecha_ingreso);
+        $fechaActual = Carbon::now('America/Mexico_City');
+        $mesesLaborados = 0;
+        $inicioPeriodo = $fechaIngreso;
+        $finPeriodo = $fechaIngreso->copy()->addYear();
+        $aniversario = Carbon::createFromDate($fechaActual->year, $fechaIngreso->month, $fechaIngreso->day);
 
-    if ($aniversario->isFuture()) {
-        $inicioPeriodo = $aniversario->copy()->subYear();
-        $finPeriodo = $aniversario;
-    } else {
-        $inicioPeriodo = $aniversario;
-        $finPeriodo = $aniversario->copy()->addYear();
+        if ($aniversario->isFuture()) {
+            $inicioPeriodo = $aniversario->copy()->subYear();
+            $finPeriodo = $aniversario;
+        } else {
+            $inicioPeriodo = $aniversario;
+            $finPeriodo = $aniversario->copy()->addYear();
+        }
+
+        $antiguedadAnios = floor($fechaIngreso->floatDiffInYears($fechaActual));
+
+        if ($antiguedadAnios >= 1) {
+            $anioTexto = ($antiguedadAnios == 1) ? 'AÑO' : 'AÑOS';
+            $antiguedad = $antiguedadAnios.' '.$anioTexto;
+            $periodo = $antiguedadAnios;
+        } else {
+            $mesesLaborados = (int) $fechaIngreso->diffInMonths($fechaActual);
+            $antiguedad = $mesesLaborados.' '.($mesesLaborados === 1 ? 'MES' : 'MESES');
+            $periodo = 1;
+        }
+
+        $pdf = Pdf::loadView('pdf.formatoVacaciones', compact(
+            'user', 'solicitud', 'inicioPeriodo', 'finPeriodo', 'antiguedad', 'periodo', 'mesesLaborados', 'antiguedadAnios'
+        ));
+
+        return $pdf->download('SOLICITUD DE VACACIONES.pdf');
     }
-
-    $antiguedadAnios = floor($fechaIngreso->floatDiffInYears($fechaActual));
-
-    if ($antiguedadAnios >= 1) {
-        $anioTexto = ($antiguedadAnios == 1) ? 'AÑO' : 'AÑOS';
-        $antiguedad = $antiguedadAnios . ' ' . $anioTexto;
-        $periodo = $antiguedadAnios;
-    } else {
-        $mesesLaborados = (int) $fechaIngreso->diffInMonths($fechaActual);
-        $antiguedad = $mesesLaborados . ' ' . ($mesesLaborados === 1 ? 'MES' : 'MESES');
-        $periodo = 1;
-    }
-
-    $pdf = Pdf::loadView('pdf.formatoVacaciones', compact(
-        'user', 'solicitud', 'inicioPeriodo', 'finPeriodo', 'antiguedad', 'periodo', 'mesesLaborados', 'antiguedadAnios'
-    ));
-
-    return $pdf->download('SOLICITUD DE VACACIONES.pdf');
-}
 
     public function subirArchivo(Request $request, $id)
-{
-    $request->validate([
-        'archivo' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120',
-    ]);
-
-    try {
-        $solicitud = SolicitudVacaciones::findOrFail($id);
-
-        if ($solicitud->archivo_solicitud && Storage::exists($solicitud->archivo_solicitud)) {
-            Storage::delete($solicitud->archivo_solicitud);
-        }
-
-        if ($request->hasFile('archivo')) {
-            $archivo = $request->file('archivo');
-            $ruta = 'solicitudesVacaciones/' . $solicitud->id;
-            $extension = $archivo->getClientOriginalExtension();
-
-            $nombreArchivo = 'arch_vacaciones.' . $extension;
-
-            $rutaArchivo = $archivo->storeAs($ruta, $nombreArchivo, 'public');
-
-            $solicitud->archivo_solicitud = $rutaArchivo;
-            $solicitud->estatus = 'Aceptada';
-            $solicitud->observaciones = 'Solicitud de vacaciones aceptada';
-            $solicitud->save();
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Archivo subido correctamente',
-            'file_path' => Storage::url($rutaArchivo)
+    {
+        $request->validate([
+            'archivo' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120',
         ]);
 
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Error al subir archivo: ' . $e->getMessage()
-        ], 500);
+        try {
+            $solicitud = SolicitudVacaciones::findOrFail($id);
+
+            if ($solicitud->archivo_solicitud && Storage::exists($solicitud->archivo_solicitud)) {
+                Storage::delete($solicitud->archivo_solicitud);
+            }
+
+            if ($request->hasFile('archivo')) {
+                $archivo = $request->file('archivo');
+                $ruta = 'solicitudesVacaciones/'.$solicitud->id;
+                $extension = $archivo->getClientOriginalExtension();
+
+                $nombreArchivo = 'arch_vacaciones.'.$extension;
+
+                $rutaArchivo = $archivo->storeAs($ruta, $nombreArchivo, 'public');
+
+                $solicitud->archivo_solicitud = $rutaArchivo;
+                $solicitud->estatus = 'Aceptada';
+                $solicitud->observaciones = 'Solicitud de vacaciones aceptada';
+                $solicitud->save();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Archivo subido correctamente',
+                'file_path' => Storage::url($rutaArchivo),
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al subir archivo: '.$e->getMessage(),
+            ], 500);
+        }
     }
-}
 
     public function solicitarVacacionesElemento()
     {
@@ -1223,9 +1257,9 @@ public function gestionUsuarios()
         $subpuntosZona = collect();
 
         $punto = \App\Models\Punto::where('nombre', $puntoUsuarioRaw)->first();
-        if (!$punto) {
+        if (! $punto) {
             $subpunto = \App\Models\Subpunto::where('nombre', $puntoUsuarioRaw)->first();
-            if (!$subpunto) {
+            if (! $subpunto) {
                 $subpunto = \App\Models\Subpunto::where('codigo', $puntoUsuarioRaw)->first();
             }
 
@@ -1249,10 +1283,12 @@ public function gestionUsuarios()
             })
             ->with('solicitudAlta.documentacion')
             ->get();
+
         return view('supervisor.solicitarVacacionesElemento', compact('elementos'));
     }
 
-    public function vacacionesElementoForm($id){
+    public function vacacionesElementoForm($id)
+    {
         $user = User::find($id);
         $fechaIngreso = Carbon::parse($user->fecha_ingreso);
         $fechaActual = now('America/Mexico_City');
@@ -1264,28 +1300,28 @@ public function gestionUsuarios()
             $mesesLaborados = 0;
         }
 
-        if($antiguedad <2){
-            $dias=12;
-        }elseif($antiguedad ==2){
-            $dias=14;
-        }elseif($antiguedad ==3){
-            $dias=16;
-        }elseif($antiguedad ==4){
-            $dias=18;
-        }elseif($antiguedad ==5){
-            $dias=20;
-        }elseif($antiguedad>5 && $antiguedad<=10){
-            $dias=22;
-        }elseif($antiguedad>10 && $antiguedad<=15){
-            $dias=24;
-        }elseif($antiguedad>15 && $antiguedad<=20){
-            $dias=26;
-        }elseif($antiguedad>20 && $antiguedad<=25){
-            $dias=28;
-        }elseif($antiguedad>25 && $antiguedad<=30){
-            $dias=30;
-        }else{
-            $dias=32;
+        if ($antiguedad < 2) {
+            $dias = 12;
+        } elseif ($antiguedad == 2) {
+            $dias = 14;
+        } elseif ($antiguedad == 3) {
+            $dias = 16;
+        } elseif ($antiguedad == 4) {
+            $dias = 18;
+        } elseif ($antiguedad == 5) {
+            $dias = 20;
+        } elseif ($antiguedad > 5 && $antiguedad <= 10) {
+            $dias = 22;
+        } elseif ($antiguedad > 10 && $antiguedad <= 15) {
+            $dias = 24;
+        } elseif ($antiguedad > 15 && $antiguedad <= 20) {
+            $dias = 26;
+        } elseif ($antiguedad > 20 && $antiguedad <= 25) {
+            $dias = 28;
+        } elseif ($antiguedad > 25 && $antiguedad <= 30) {
+            $dias = 30;
+        } else {
+            $dias = 32;
         }
 
         $diasDisponibles = $dias;
@@ -1314,7 +1350,6 @@ public function gestionUsuarios()
         $solicitud = SolicitudAlta::where('id', $user->sol_alta_id)->first();
         $documentacion = DocumentacionAltas::where('solicitud_id', $user->sol_alta_id)->first();
 
-        return view('users.solicitarVacacionesForm', compact('user','solicitud', 'documentacion', 'antiguedad','dias', 'diasDisponibles', 'diasUtilizados', 'mesesLaborados'));
+        return view('users.solicitarVacacionesForm', compact('user', 'solicitud', 'documentacion', 'antiguedad', 'dias', 'diasDisponibles', 'diasUtilizados', 'mesesLaborados'));
     }
-
 }

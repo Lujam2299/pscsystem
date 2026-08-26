@@ -118,15 +118,13 @@
             <div class="flex flex-wrap justify-center gap-4 mt-4">
                 @if($solicitud->status == 'En Proceso')
                     @if((Auth::user()->rol == 'admin' && $solicitud->observaciones == 'Solicitud enviada a Administrador.')||((Auth::user()->rol == 'Recursos Humanos' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos') && $solicitud->observaciones != 'Solicitud enviada a Administrador.'))
-                        <a href="{{ route('rh.aceptarSolicitud', $solicitud->id) }}"
-                            class="inline-block bg-green-300 text-gray-800 py-2 px-4 rounded-md hover:bg-green-400 transition">
-                            Aceptar
-                        </a>
+                        <form method="POST" action="{{ route('rh.aceptarSolicitud', $solicitud->id) }}" onsubmit="return confirm('¿Aceptar esta solicitud de alta?')">@csrf
+                            <button class="inline-block bg-green-300 text-gray-800 py-2 px-4 rounded-md hover:bg-green-400 transition">Aceptar</button>
+                        </form>
 
-                        <a href="{{route('rh.rechazarSolicitud', $solicitud->id)}}"
-                            class="inline-block bg-red-300 text-gray-800 py-2 px-4 rounded-md hover:bg-red-400 transition">
-                            Rechazar
-                        </a>
+                        <form method="POST" action="{{ route('rh.rechazarSolicitud', $solicitud->id) }}" onsubmit="return confirm('¿Rechazar esta solicitud de alta?')">@csrf
+                            <button class="inline-block bg-red-300 text-gray-800 py-2 px-4 rounded-md hover:bg-red-400 transition">Rechazar</button>
+                        </form>
 
                         <div x-data="{ open: false }" class="relative">
                             <a href="#" role="button" @click.prevent="open = true"
@@ -170,4 +168,3 @@
         </div>
     </div>
 </x-app-layout>
-

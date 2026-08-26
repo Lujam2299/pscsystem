@@ -56,7 +56,7 @@ class OptionalModuleAuthorizationTest extends TestCase
     {
         $this->assertControllerRoutesHaveMiddleware('SupervisorController', [
             'permission:supervisors.access', 'module.enabled:erp_supervisores',
-        ]);
+        ], ['admin.vacaciones.aceptar', 'admin.vacaciones.rechazar']);
         $this->assertControllerRoutesHaveMiddleware('CustodiosController', [
             'permission:custodians.access', 'custodios.role', 'module.enabled:erp_custodios',
         ]);
@@ -94,10 +94,11 @@ class OptionalModuleAuthorizationTest extends TestCase
     }
 
     /** @param list<string> $middleware */
-    private function assertControllerRoutesHaveMiddleware(string $controller, array $middleware): void
+    private function assertControllerRoutesHaveMiddleware(string $controller, array $middleware, array $excludedRoutes = []): void
     {
         $routes = collect(Route::getRoutes()->getRoutes())
-            ->filter(fn ($route) => str_contains($route->getActionName(), $controller));
+            ->filter(fn ($route) => str_contains($route->getActionName(), $controller))
+            ->reject(fn ($route) => in_array($route->getName(), $excludedRoutes, true));
 
         $this->assertNotEmpty($routes, "No se encontraron rutas para $controller.");
 

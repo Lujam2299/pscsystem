@@ -114,13 +114,16 @@ Route::middleware('auth')->group(function () {
         ->middleware(['permission:supervisors.access', 'module.enabled:erp_supervisores'])
         ->name('admin.verTableroSupervisores');
     Route::get('/admin_solicitudes_altas', [AdminController::class, 'verSolicitudesAltas'])->name('admi.verSolicitudesAltas');
-    Route::get('/admin/baja_usuario/{id}', [AdminController::class, 'bajaUsuario'])->name('admin.darDeBajaUsuario');
+    Route::post('/admin/baja_usuario/{id}', [AdminController::class, 'bajaUsuario'])->name('admin.darDeBajaUsuario');
     Route::get('/editar_usuario/{id}', [AdminController::class, 'editarUsuario'])->name('admin.editarUsuarioForm');
     Route::get('/ver_buzon', [AdminController::class, 'verBuzon'])->name('admin.verBuzon');
     Route::post('/importar-excel', [ImportController::class, 'updateDestajos'])->name('updateDestajos');
     Route::post('/importar-excel2', [ImportController::class, 'importarVacaciones'])->name('importar.excel');
     Route::post('/importar-personal-activo', [ImportController::class, 'importarPersonalActivo'])->name('importar.personal.activo');
-    Route::get('/reingreso/{id}', [AdminController::class, 'darReingreso'])->name('admin.reingreso');
+    Route::post('/reingreso/{id}', [AdminController::class, 'darReingreso'])->name('admin.reingreso');
+    Route::get('/auditoria', \App\Livewire\AuditLogIndex::class)
+        ->middleware('permission:audit.view')
+        ->name('admin.audit.index');
     Route::get('/tablero_nominas', [AdminController::class, 'tableroNominas'])->name('admin.nominasDashboard');
     Route::get('/tablero_operaciones', [AdminController::class, 'tableroOperaciones'])->name('admin.operacionesDashboard');
     Route::get('/tablero_imss', [AdminController::class, 'tableroImss'])->name('admin.imssDashboard');
@@ -132,6 +135,10 @@ Route::middleware('auth')->group(function () {
         ->middleware(['permission:custodians.access', 'custodios.role', 'module.enabled:erp_custodios'])
         ->name('admin.custodiosDashboard');
     Route::get('/admin_vacaciones', [AdminController::class, 'solicitudesVacaciones'])->name('admin.solicitudesVacaciones');
+    Route::post('/admin/vacaciones/{id}/aceptar', [SupervisorController::class, 'aceptarSolicitudVacaciones'])
+        ->middleware('permission:vacations.review')->name('admin.vacaciones.aceptar');
+    Route::post('/admin/vacaciones/{id}/rechazar', [SupervisorController::class, 'rechazarSolicitudVacaciones'])
+        ->middleware('permission:vacations.review')->name('admin.vacaciones.rechazar');
     Route::get('/registrar_nominas', [AdminController::class, 'registrarNominas'])->name('registrarNominas');
     Route::post('/registrar_finiquitos', [AdminController::class, 'registrarFiniquitos'])->name('registrarFiniquitos');
     Route::post('/admin/import/unify-duplicates', [ImportController::class, 'unifyDuplicates'])->name('admin.import.unify-duplicates');
@@ -157,8 +164,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/supervisor/ver_fecha_sistencias', [SupervisorController::class, 'verFechaAsistencias'])->name('sup.verFechaAsistencias');
         Route::get('/detalle_asistencia/{id}', [SupervisorController::class, 'detalleAsistencia'])->name('sup.detalleAsistencia');
         Route::get('/solicitudes_vacaciones', [SupervisorController::class, 'solicitudesVacaciones'])->name('sup.solicitudesVacaciones');
-        Route::get('/aceptar_solicitud_vacaciones/{id}', [SupervisorController::class, 'aceptarSolicitudVacaciones'])->name('sup.aceptarSolicitudVacaciones');
-        Route::get('/rechazar_solicitud_vacaciones/{id}', [SupervisorController::class, 'rechazarSolicitudVacaciones'])->name('sup.rechazarSolicitudVacaciones');
+        Route::post('/aceptar_solicitud_vacaciones/{id}', [SupervisorController::class, 'aceptarSolicitudVacaciones'])->name('sup.aceptarSolicitudVacaciones');
+        Route::post('/rechazar_solicitud_vacaciones/{id}', [SupervisorController::class, 'rechazarSolicitudVacaciones'])->name('sup.rechazarSolicitudVacaciones');
         Route::get('/ver_solicitud_baja/{id}', [SupervisorController::class, 'verSolicitudBaja'])->name('sup.verSolicitudBaja');
         Route::get('/tiempos_extras', [SupervisorController::class, 'tiemposExtras'])->name('sup.tiemposExtras');
         Route::get('/tiempos_extras/{id}', [SupervisorController::class, 'tiemposExtrasForm'])->name('sup.tiemposExtrasForm');
@@ -179,15 +186,15 @@ Route::middleware('auth')->group(function () {
     // usuario Recursos Humanos
     Route::get('/solicitudes_altas', [RhController::class, 'solicitudesAltas'])->name('rh.solicitudesAltas');
     Route::get('/solicitudes_altas/{id}', [RhController::class, 'detalleSolicitud'])->name('rh.detalleSolicitud');
-    Route::get('/aceptar_solicitud/{id}', [RhController::class, 'aceptarSolicitud'])->name('rh.aceptarSolicitud');
+    Route::post('/aceptar_solicitud/{id}', [RhController::class, 'aceptarSolicitud'])->name('rh.aceptarSolicitud');
     Route::post('/enviar_observacion/{id}', [RhController::class, 'enviarObservacion'])->name('rh.observacion_solicitud');
-    Route::get('/rechazar_solicitud/{id}', [RhController::class, 'rechazarSolicitud'])->name('rh.rechazarSolicitud');
+    Route::post('/rechazar_solicitud/{id}', [RhController::class, 'rechazarSolicitud'])->name('rh.rechazarSolicitud');
     Route::get('/historial_solicitudes_altas', [RhController::class, 'historialSolicitudesAltas'])->name('rh.historialSolicitudesAltas');
     Route::get('/solicitudes_bajas', [RhController::class, 'solicitudesBajas'])->name('rh.solicitudesBajas');
     Route::get('/historial_solicitudes_bajas', [RhController::class, 'historialSolicitudesBajas'])->name('rh.historialSolicitudesBajas');
     Route::get('/detalle_solicitud_baja/{id}', [RhController::class, 'detalleSolicitudBaja'])->name('rh.detalleSolicitudBaja');
-    Route::get('/rechzar_baja/{id}', [RhController::class, 'rechazarBaja'])->name('rh.rechazarBaja');
-    Route::get('/aceptar_baja/{id}', [RhController::class, 'aceptarBaja'])->name('rh.aceptarBaja');
+    Route::post('/rechzar_baja/{id}', [RhController::class, 'rechazarBaja'])->name('rh.rechazarBaja');
+    Route::post('/aceptar_baja/{id}', [RhController::class, 'aceptarBaja'])->name('rh.aceptarBaja');
     Route::get('/generar_nueva_alta', [RhController::class, 'generarNuevaAltaForm'])->name('rh.generarNuevaAltaForm');
     Route::post('/guardar_alta', [RhController::class, 'guardarAlta'])->name('rh.guardarAlta');
     Route::get('/subir_archivos_alta/{id}', [RhController::class, 'subirArchivosAltaForm'])->name('rh.subirArchivosAltaForm');

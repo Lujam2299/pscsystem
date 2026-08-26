@@ -472,7 +472,7 @@
         }).then((result) => {
             if (result.isConfirmed && result.value) {
                 const { fecha, motivo } = result.value;
-                window.location.href = `/admin/baja_usuario/${userId}?fecha=${fecha}&motivo=${encodeURIComponent(motivo)}`;
+                enviarAccionPost(`/admin/baja_usuario/${userId}`, { fecha, motivo });
             }
         });
     }
@@ -501,9 +501,25 @@
         }).then((result) => {
             if (result.isConfirmed && result.value) {
                 const fecha = result.value;
-                window.location.href = `/reingreso/${userId}?fecha=${fecha}`;
+                enviarAccionPost(`/reingreso/${userId}`, { fecha });
             }
         });
+    }
+
+    function enviarAccionPost(url, data) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+        const values = { _token: '{{ csrf_token() }}', ...data };
+        Object.entries(values).forEach(([name, value]) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
     }
 
     function enviarNotificacion(userId) {

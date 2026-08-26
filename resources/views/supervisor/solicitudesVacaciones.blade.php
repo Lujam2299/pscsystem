@@ -202,20 +202,20 @@
                                                             Subir
                                                         </button>
                                                     @elseif ($solicitud->estatus === 'En Proceso' && $solicitud->observaciones === 'Solicitud de vacaciones en proceso')
-                                                        <a href="{{ route('sup.aceptarSolicitudVacaciones', $solicitud->id) }}"
-                                                           class="inline-flex items-center px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg transition duration-200 shadow-sm">
+                                                        <form method="POST" action="{{ route('sup.aceptarSolicitudVacaciones', $solicitud->id) }}" onsubmit="return confirm('¿Aceptar esta solicitud de vacaciones?')">@csrf
+                                                        <button class="inline-flex items-center px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg transition duration-200 shadow-sm">
                                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                                             </svg>
                                                             Aceptar
-                                                        </a>
-                                                        <a href="{{ route('sup.rechazarSolicitudVacaciones', $solicitud->id) }}"
-                                                           class="inline-flex items-center px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition duration-200 shadow-sm">
+                                                        </button></form>
+                                                        <form method="POST" action="{{ route('sup.rechazarSolicitudVacaciones', $solicitud->id) }}" onsubmit="return confirm('¿Rechazar esta solicitud de vacaciones?')">@csrf
+                                                        <button class="inline-flex items-center px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition duration-200 shadow-sm">
                                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                                             </svg>
                                                             Rechazar
-                                                        </a>
+                                                        </button></form>
                                                     @endif
                                                 </div>
                                             </td>

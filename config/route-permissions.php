@@ -5,6 +5,7 @@ use App\Support\Authorization\Permission;
 return [
     // Administración de usuarios y panel general.
     'admin.crearUsuarioForm' => Permission::USERS_CREATE,
+    'admin.audit.index' => Permission::AUDIT_VIEW,
     'registrarUsuario' => Permission::USERS_CREATE,
     'admin.editarUsuarioForm' => Permission::USERS_UPDATE,
     'admin.darDeBajaUsuario' => Permission::USERS_DISABLE,
@@ -14,6 +15,8 @@ return [
     'admin.verBuzon' => Permission::COMPLAINTS_VIEW,
     'admi.verSolicitudesAltas' => Permission::HIRES_REVIEW,
     'admin.solicitudesVacaciones' => Permission::VACATIONS_VIEW_ALL,
+    'admin.vacaciones.aceptar' => Permission::VACATIONS_REVIEW,
+    'admin.vacaciones.rechazar' => Permission::VACATIONS_REVIEW,
     'admin.verTableroSupervisores' => Permission::SUPERVISORS_ACCESS,
     'admin.custodiosDashboard' => Permission::CUSTODIANS_ACCESS,
     'admin.mapaGeocercas' => Permission::CUSTODIANS_ACCESS,
