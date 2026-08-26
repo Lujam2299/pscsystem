@@ -288,6 +288,12 @@ Route::middleware('auth')->group(function () {
             Route::post('/socket-token', [TraccarMonitoringController::class, 'socketToken'])
                 ->middleware('throttle:10,1')
                 ->name('socket-token');
+            Route::get('/history', [TraccarMonitoringController::class, 'history'])
+                ->middleware('throttle:20,1')
+                ->name('history');
+            Route::get('/address', [TraccarMonitoringController::class, 'address'])
+                ->middleware('throttle:30,1')
+                ->name('address');
         });
     Route::get('/vehiculos', function () {
         return view('vehiculos.crud');

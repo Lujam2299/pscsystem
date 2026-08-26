@@ -31,6 +31,71 @@ class TraccarClient
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function routeReport(int $deviceId, string $from, string $to): array
+    {
+        return $this->request()
+            ->timeout(max(15, (int) config('services.traccar.timeout', 5)))
+            ->get($this->endpoint('reports/route'), [
+                'deviceId' => $deviceId,
+                'from' => $from,
+                'to' => $to,
+            ])
+            ->throw()
+            ->json();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function eventReport(int $deviceId, string $from, string $to): array
+    {
+        return $this->request()
+            ->timeout(max(10, (int) config('services.traccar.timeout', 5)))
+            ->get($this->endpoint('reports/events'), [
+                'deviceId' => $deviceId,
+                'from' => $from,
+                'to' => $to,
+            ])
+            ->throw()
+            ->json();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function stopReport(int $deviceId, string $from, string $to): array
+    {
+        return $this->request()
+            ->timeout(max(10, (int) config('services.traccar.timeout', 5)))
+            ->get($this->endpoint('reports/stops'), [
+                'deviceId' => $deviceId,
+                'from' => $from,
+                'to' => $to,
+            ])
+            ->throw()
+            ->json();
+    }
+
+    public function reverseGeocode(float $latitude, float $longitude): string
+    {
+        $address = trim($this->request()
+            ->get($this->endpoint('server/geocode'), [
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+            ])
+            ->throw()
+            ->body());
+
+        if ($address === '') {
+            throw new RuntimeException('Traccar returned an empty address.');
+        }
+
+        return $address;
+    }
+
+    /**
      * Generate a short-lived token for the browser WebSocket connection.
      */
     public function generateSocketToken(): string

@@ -2,6 +2,8 @@
     <x-navbar />
 
     @push('styles')
+        <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css">
         <style>
             #traccar-map {
                 min-height: 34rem;
@@ -87,23 +89,31 @@
             help-text="Seguimiento en tiempo real de las unidades registradas en Traccar"
         >
             <div class="space-y-5">
-                <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
-                    <div class="p-4 border border-gray-200 rounded-xl bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40">
+                <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
+                    <button type="button" data-quick-status="all" class="p-4 text-left border border-gray-200 rounded-xl bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40">
                         <p class="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">Unidades visibles</p>
                         <p id="gps-visible-count" class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">0</p>
-                    </div>
-                    <div class="p-4 border border-emerald-200 rounded-xl bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-900/20">
+                    </button>
+                    <button type="button" data-quick-status="moving" class="p-4 text-left border border-emerald-200 rounded-xl bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-900/20">
                         <p class="text-xs font-semibold tracking-wide uppercase text-emerald-700 dark:text-emerald-300">En movimiento</p>
                         <p id="gps-moving-count" class="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-300">0</p>
-                    </div>
-                    <div class="p-4 border border-amber-200 rounded-xl bg-amber-50 dark:border-amber-900 dark:bg-amber-900/20">
+                    </button>
+                    <button type="button" data-quick-status="idle" class="p-4 text-left border border-amber-200 rounded-xl bg-amber-50 dark:border-amber-900 dark:bg-amber-900/20">
                         <p class="text-xs font-semibold tracking-wide text-amber-700 uppercase dark:text-amber-300">Detenidas</p>
                         <p id="gps-idle-count" class="mt-1 text-2xl font-bold text-amber-700 dark:text-amber-300">0</p>
-                    </div>
-                    <div class="p-4 border border-blue-200 rounded-xl bg-blue-50 dark:border-blue-900 dark:bg-blue-900/20">
+                    </button>
+                    <button type="button" data-quick-status="parked" class="p-4 text-left border border-blue-200 rounded-xl bg-blue-50 dark:border-blue-900 dark:bg-blue-900/20">
                         <p class="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">Estacionadas</p>
                         <p id="gps-parked-count" class="mt-1 text-2xl font-bold text-blue-700 dark:text-blue-300">0</p>
-                    </div>
+                    </button>
+                    <button type="button" data-quick-status="offline" class="p-4 text-left bg-gray-100 border border-gray-300 rounded-xl dark:border-gray-600 dark:bg-gray-700">
+                        <p class="text-xs font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-300">Desconectadas</p>
+                        <p id="gps-offline-count" class="mt-1 text-2xl font-bold text-gray-700 dark:text-gray-200">0</p>
+                    </button>
+                    <button type="button" data-quick-status="unknown" class="p-4 text-left border border-red-200 rounded-xl bg-red-50 dark:border-red-900 dark:bg-red-900/20">
+                        <p class="text-xs font-semibold tracking-wide text-red-700 uppercase dark:text-red-300">Desconocidas</p>
+                        <p id="gps-unknown-count" class="mt-1 text-2xl font-bold text-red-700 dark:text-red-300">0</p>
+                    </button>
                     <div class="p-4 border border-gray-200 rounded-xl bg-white dark:border-gray-700 dark:bg-gray-800">
                         <p class="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">Conexión</p>
                         <div class="flex items-center gap-2 mt-2">
@@ -133,6 +143,27 @@
                             <option value="offline">Fuera de línea</option>
                             <option value="unknown">Desconocido</option>
                         </select>
+                    </label>
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-200 lg:w-44">
+                        Ignición
+                        <select id="gps-ignition-filter" class="w-full mt-1 border-gray-300 rounded-lg shadow-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-blue-500 focus:ring-blue-500">
+                            <option value="all">Todas</option>
+                            <option value="on">Encendida</option>
+                            <option value="off">Apagada</option>
+                            <option value="unknown">Sin información</option>
+                        </select>
+                    </label>
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-200 lg:w-44">
+                        Etiquetas
+                        <select id="gps-label-mode" class="w-full mt-1 border-gray-300 rounded-lg shadow-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-blue-500 focus:ring-blue-500">
+                            <option value="automatic">Automáticas</option>
+                            <option value="all">Mostrar todas</option>
+                            <option value="none">Ocultar todas</option>
+                        </select>
+                    </label>
+                    <label class="inline-flex items-center gap-2 pb-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                        <input id="gps-alert-filter" type="checkbox" class="text-red-600 border-gray-300 rounded focus:ring-red-500">
+                        Solo con alertas recientes
                     </label>
                     <div class="flex gap-2">
                         <button id="gps-refresh" type="button" class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white transition bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
@@ -192,16 +223,71 @@
                         </div>
                     </div>
                     <dl id="gps-detail-grid" class="grid grid-cols-2 gap-px bg-gray-200 dark:bg-gray-700 md:grid-cols-4"></dl>
+                    <div class="px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+                        <p class="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">Dirección aproximada</p>
+                        <p id="gps-detail-address" class="mt-1 text-sm font-medium text-gray-800 dark:text-gray-100">Selecciona una unidad para consultar su dirección.</p>
+                    </div>
+                </section>
+
+                <section class="overflow-hidden bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-800">
+                    <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white">Historial y reproducción</h2>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Selecciona una unidad en el mapa y consulta hasta siete días de recorrido.</p>
+                    </div>
+                    <form id="gps-history-form" class="grid grid-cols-1 gap-3 p-5 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Desde
+                            <input id="gps-history-from" type="datetime-local" required class="w-full mt-1 border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                        </label>
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Hasta
+                            <input id="gps-history-to" type="datetime-local" required class="w-full mt-1 border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                        </label>
+                        <div class="flex gap-2">
+                            <button id="gps-history-load" type="submit" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">
+                                <i class="ti ti-route"></i> Consultar recorrido
+                            </button>
+                            <button id="gps-history-close" type="button" class="hidden px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">Volver al tiempo real</button>
+                        </div>
+                    </form>
+                    <div id="gps-history-error" class="hidden px-5 pb-4 text-sm text-red-700 dark:text-red-300"></div>
+                    <div id="gps-history-content" class="hidden border-t border-gray-200 dark:border-gray-700">
+                        <div id="gps-history-summary" class="grid grid-cols-2 gap-px bg-gray-200 dark:bg-gray-700 md:grid-cols-5"></div>
+                        <div class="flex flex-wrap items-center gap-3 px-5 py-4">
+                            <button id="gps-play" type="button" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg"><i class="ti ti-player-play"></i> Reproducir</button>
+                            <button id="gps-restart" type="button" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"><i class="ti ti-reload"></i> Reiniciar</button>
+                            <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Velocidad
+                                <select id="gps-play-speed" class="ml-1 border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                                    <option value="1000">1×</option><option value="500">2×</option><option value="200">5×</option><option value="100">10×</option>
+                                </select>
+                            </label>
+                            <input id="gps-history-progress" type="range" min="0" max="0" value="0" class="flex-1 min-w-48">
+                            <span id="gps-history-time" class="text-sm text-gray-600 dark:text-gray-300">Sin reproducción</span>
+                        </div>
+                        <div class="grid grid-cols-1 border-t border-gray-200 dark:border-gray-700 lg:grid-cols-2">
+                            <div class="p-5 border-b border-gray-200 dark:border-gray-700 lg:border-b-0 lg:border-r">
+                                <h3 class="font-semibold text-gray-900 dark:text-white">Paradas</h3>
+                                <div id="gps-history-stops" class="mt-3 overflow-y-auto space-y-2 max-h-64"></div>
+                            </div>
+                            <div class="p-5">
+                                <h3 class="font-semibold text-gray-900 dark:text-white">Eventos</h3>
+                                <div id="gps-history-events" class="mt-3 overflow-y-auto space-y-2 max-h-64"></div>
+                            </div>
+                        </div>
+                    </div>
                 </section>
             </div>
         </x-livewire.monitoreo-layout>
     </div>
 
     @push('scripts')
+        <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 const endpoints = {
                     data: @json(route('monitoreo.unidades-gps.data')),
+                    history: @json(route('monitoreo.unidades-gps.history')),
+                    address: @json(route('monitoreo.unidades-gps.address')),
                     socketToken: @json(route('monitoreo.unidades-gps.socket-token')),
                     websocket: @json($websocketUrl),
                 };
@@ -210,13 +296,26 @@
                 const devices = new Map();
                 const positions = new Map();
                 const markers = new Map();
-                const markerLayer = L.layerGroup();
+                const recentEvents = new Map();
+                const addresses = new Map();
+                const markerCluster = L.markerClusterGroup({
+                    disableClusteringAtZoom: 15,
+                    maxClusterRadius: 48,
+                    showCoverageOnHover: false,
+                    spiderfyOnMaxZoom: true,
+                });
+                const focusLayer = L.layerGroup();
+                const historyLayer = L.layerGroup();
                 let socket = null;
                 let reconnectTimer = null;
                 let reconnectAttempts = 0;
                 let closingPage = false;
                 let selectedDeviceId = null;
                 let followedDeviceId = null;
+                let historyPositions = [];
+                let playbackIndex = 0;
+                let playbackTimer = null;
+                let playbackMarker = null;
 
                 const map = L.map('traccar-map', {
                     center: [25.6866, -100.3161],
@@ -227,7 +326,9 @@
                     attribution: '&copy; OpenStreetMap contributors',
                     maxZoom: 19,
                 }).addTo(map);
-                markerLayer.addTo(map);
+                markerCluster.addTo(map);
+                focusLayer.addTo(map);
+                historyLayer.addTo(map);
 
                 const elements = {
                     connectionDot: document.getElementById('gps-connection-dot'),
@@ -250,10 +351,31 @@
                     stopFollow: document.getElementById('gps-stop-follow'),
                     detail: document.getElementById('gps-detail'),
                     detailGrid: document.getElementById('gps-detail-grid'),
+                    detailAddress: document.getElementById('gps-detail-address'),
                     detailIdentity: document.getElementById('gps-detail-identity'),
                     detailName: document.getElementById('gps-detail-name'),
                     detailStatus: document.getElementById('gps-detail-status'),
                     closeDetail: document.getElementById('gps-close-detail'),
+                    offlineCount: document.getElementById('gps-offline-count'),
+                    unknownCount: document.getElementById('gps-unknown-count'),
+                    ignitionFilter: document.getElementById('gps-ignition-filter'),
+                    labelMode: document.getElementById('gps-label-mode'),
+                    alertFilter: document.getElementById('gps-alert-filter'),
+                    historyForm: document.getElementById('gps-history-form'),
+                    historyFrom: document.getElementById('gps-history-from'),
+                    historyTo: document.getElementById('gps-history-to'),
+                    historyLoad: document.getElementById('gps-history-load'),
+                    historyClose: document.getElementById('gps-history-close'),
+                    historyError: document.getElementById('gps-history-error'),
+                    historyContent: document.getElementById('gps-history-content'),
+                    historySummary: document.getElementById('gps-history-summary'),
+                    historyStops: document.getElementById('gps-history-stops'),
+                    historyEvents: document.getElementById('gps-history-events'),
+                    historyProgress: document.getElementById('gps-history-progress'),
+                    historyTime: document.getElementById('gps-history-time'),
+                    play: document.getElementById('gps-play'),
+                    restart: document.getElementById('gps-restart'),
+                    playSpeed: document.getElementById('gps-play-speed'),
                     visibleCount: document.getElementById('gps-visible-count'),
                 };
 
@@ -292,6 +414,7 @@
                 };
 
                 const speedKmhValue = (position) => {
+                    if (position?.speed === null || position?.speed === undefined || position?.speed === '') return null;
                     const speed = Number(position?.speed);
                     return Number.isFinite(speed) ? speed * 1.852 : null;
                 };
@@ -349,6 +472,38 @@
                         : date.toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'medium' });
                 };
 
+                const positionAge = (device, position) => {
+                    const value = positionDate(device, position);
+                    const date = value ? new Date(value) : null;
+                    if (!date || Number.isNaN(date.getTime())) return { label: 'Sin fecha', stale: true };
+
+                    const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+                    if (seconds < 60) return { label: `hace ${seconds} s`, stale: false };
+                    const minutes = Math.floor(seconds / 60);
+                    if (minutes < 60) return { label: `hace ${minutes} min`, stale: minutes >= 10 };
+                    const hours = Math.floor(minutes / 60);
+                    if (hours < 24) return { label: `hace ${hours} h`, stale: true };
+                    return { label: `hace ${Math.floor(hours / 24)} d`, stale: true };
+                };
+
+                const hasRecentAlert = (deviceId) => {
+                    const eventTime = recentEvents.get(String(deviceId));
+                    return eventTime ? Date.now() - eventTime < 30 * 60 * 1000 : false;
+                };
+
+                const eventLabel = (type) => ({
+                    alarm: 'Alarma',
+                    deviceOffline: 'Unidad desconectada',
+                    deviceOnline: 'Unidad conectada',
+                    geofenceEnter: 'Entrada a geocerca',
+                    geofenceExit: 'Salida de geocerca',
+                    ignitionOn: 'Ignición encendida',
+                    ignitionOff: 'Ignición apagada',
+                    overspeed: 'Exceso de velocidad',
+                    deviceMoving: 'Movimiento',
+                    deviceStopped: 'Detención',
+                })[type] ?? type ?? 'Evento';
+
                 const formatNumber = (value, suffix = '', decimals = 0) => {
                     const number = Number(value);
                     return Number.isFinite(number) ? `${number.toFixed(decimals)}${suffix}` : 'No disponible';
@@ -360,6 +515,7 @@
                 };
 
                 const courseData = (position) => {
+                    if (position?.course === null || position?.course === undefined || position?.course === '') return null;
                     const rawCourse = Number(position?.course);
                     if (!Number.isFinite(rawCourse)) return null;
 
@@ -383,12 +539,16 @@
                     const course = courseData(position);
                     const rotation = course?.degrees ?? 0;
                     const name = escapeHtml(device.name || `Unidad ${device.id}`);
+                    const mode = elements.labelMode.value;
+                    const showLabel = String(device.id) === selectedDeviceId
+                        || mode === 'all'
+                        || (mode === 'automatic' && map.getZoom() >= 12);
 
                     return L.divIcon({
                     className: '',
                     html: `<div class="gps-marker gps-marker--${status} ${following ? 'gps-following' : ''}">
                         <span class="gps-marker__direction" style="transform: rotate(${rotation}deg)" title="${escapeHtml(course ? `${course.direction} (${course.degrees.toFixed(0)}°)` : 'Rumbo no disponible')}">${vehicleSvg}</span>
-                        <span class="gps-marker-label">${name}</span>
+                        ${showLabel ? `<span class="gps-marker-label">${name}</span>` : ''}
                     </div>`,
                     iconAnchor: [18, 18],
                     iconSize: [36, 36],
@@ -467,6 +627,7 @@
                     const plate = deviceAttribute(device, 'plate', 'registration', 'vehicleNumber');
                     const driver = positionAttribute(position, 'driverUniqueId', 'driver');
                     const satellites = positionAttribute(position, 'sat', 'satellites');
+                    const age = positionAge(device, position);
 
                     elements.detail.classList.remove('hidden');
                     elements.detailName.textContent = device.name || `Unidad ${device.id}`;
@@ -480,7 +641,7 @@
                         detailItem('Ignición', ignitionLabel(position), 'key'),
                         detailItem('Velocidad', speed === null ? 'No disponible' : `${speed.toFixed(1)} km/h`, 'speedboat'),
                         detailItem('Rumbo', course ? `${course.degrees.toFixed(0)}° · ${course.direction}` : 'No disponible', 'compass'),
-                        detailItem('Última posición', formatDate(positionDate(device, position)), 'clock'),
+                        detailItem('Última posición', `${age.label}${age.stale ? ' · Posición antigua' : ''}`, 'clock'),
                         detailItem('Batería', battery === null ? 'No disponible' : formatNumber(battery, '%', 0), 'battery'),
                         detailItem('Alimentación', power === null ? 'No disponible' : formatNumber(power, ' V', 1), 'bolt'),
                         detailItem('Odómetro', totalDistance !== null && Number.isFinite(totalDistance) ? `${(totalDistance / 1000).toFixed(1)} km` : 'No disponible', 'road'),
@@ -490,11 +651,45 @@
                         detailItem('Satélites', satellites ?? 'No disponible', 'satellite'),
                         detailItem('Identificador GPS', device.uniqueId ?? 'No disponible', 'device-mobile'),
                     ].join('');
+
+                    const addressKey = Number.isFinite(Number(position?.latitude)) && Number.isFinite(Number(position?.longitude))
+                        ? `${Number(position.latitude).toFixed(5)},${Number(position.longitude).toFixed(5)}`
+                        : null;
+                    elements.detailAddress.textContent = position?.address
+                        || (addressKey ? addresses.get(addressKey) : null)
+                        || (addressKey ? 'Consultando dirección…' : 'Dirección no disponible');
+                };
+
+                const resolveSelectedAddress = async () => {
+                    const requestedId = selectedDeviceId;
+                    const position = requestedId ? positions.get(requestedId) : null;
+                    const latitude = Number(position?.latitude);
+                    const longitude = Number(position?.longitude);
+                    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || position?.address) return;
+
+                    const addressKey = `${latitude.toFixed(5)},${longitude.toFixed(5)}`;
+                    if (addresses.has(addressKey)) return;
+
+                    try {
+                        const url = new URL(endpoints.address, window.location.origin);
+                        url.searchParams.set('latitude', latitude);
+                        url.searchParams.set('longitude', longitude);
+                        const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+                        const payload = await response.json();
+                        addresses.set(addressKey, response.ok && payload.address ? payload.address : 'Dirección no disponible');
+                    } catch (error) {
+                        addresses.set(addressKey, 'Dirección no disponible');
+                    }
+
+                    if (selectedDeviceId === requestedId) renderDetail();
                 };
 
                 const selectDevice = (deviceId) => {
                     selectedDeviceId = String(deviceId);
+                    updateMarker(selectedDeviceId);
                     renderDetail();
+                    resolveSelectedAddress();
+                    render();
                     const marker = markers.get(selectedDeviceId);
                     if (marker) {
                         map.setView(marker.getLatLng(), Math.max(map.getZoom(), 16), { animate: true });
@@ -509,6 +704,7 @@
                     elements.followBanner.classList.remove('flex');
                     if (previousId) updateMarker(previousId);
                     renderDetail();
+                    render();
                 };
 
                 const toggleFollowing = () => {
@@ -525,17 +721,26 @@
                     elements.followBanner.classList.remove('hidden');
                     elements.followBanner.classList.add('flex');
                     renderDetail();
+                    render();
                 };
 
                 const render = () => {
                     const query = elements.search.value.trim().toLocaleLowerCase('es-MX');
                     const selectedStatus = elements.statusFilter.value;
+                    const selectedIgnition = elements.ignitionFilter.value;
                     const visibleDevices = [...devices.values()]
                         .filter((device) => {
                             const position = positions.get(String(device.id));
                             const status = operationalStatus(device, position);
+                            const ignition = booleanValue(positionAttribute(position, 'ignition'));
+                            const ignitionMatches = selectedIgnition === 'all'
+                                || (selectedIgnition === 'on' && ignition === true)
+                                || (selectedIgnition === 'off' && ignition === false)
+                                || (selectedIgnition === 'unknown' && ignition === null);
                             const searchable = `${device.name ?? ''} ${device.uniqueId ?? ''} ${device.model ?? ''} ${device.phone ?? ''} ${deviceAttribute(device, 'plate', 'registration', 'vehicleNumber') ?? ''}`.toLocaleLowerCase('es-MX');
                             return (selectedStatus === 'all' || status === selectedStatus)
+                                && ignitionMatches
+                                && (!elements.alertFilter.checked || hasRecentAlert(device.id))
                                 && (query === '' || searchable.includes(query));
                         })
                         .sort((left, right) => String(left.name ?? '').localeCompare(String(right.name ?? ''), 'es-MX'));
@@ -543,9 +748,17 @@
                     const visibleIds = new Set(visibleDevices.map((device) => String(device.id)));
                     markers.forEach((marker, deviceId) => {
                         if (visibleIds.has(deviceId)) {
-                            if (!markerLayer.hasLayer(marker)) markerLayer.addLayer(marker);
-                        } else if (markerLayer.hasLayer(marker)) {
-                            markerLayer.removeLayer(marker);
+                            const focused = deviceId === selectedDeviceId || deviceId === followedDeviceId;
+                            if (focused) {
+                                markerCluster.removeLayer(marker);
+                                if (!focusLayer.hasLayer(marker)) focusLayer.addLayer(marker);
+                            } else {
+                                focusLayer.removeLayer(marker);
+                                if (!markerCluster.hasLayer(marker)) markerCluster.addLayer(marker);
+                            }
+                        } else {
+                            markerCluster.removeLayer(marker);
+                            focusLayer.removeLayer(marker);
                         }
                     });
 
@@ -553,6 +766,8 @@
                     elements.movingCount.textContent = visibleDevices.filter((device) => operationalStatus(device, positions.get(String(device.id))) === 'moving').length;
                     elements.idleCount.textContent = visibleDevices.filter((device) => operationalStatus(device, positions.get(String(device.id))) === 'idle').length;
                     elements.parkedCount.textContent = visibleDevices.filter((device) => operationalStatus(device, positions.get(String(device.id))) === 'parked').length;
+                    elements.offlineCount.textContent = visibleDevices.filter((device) => operationalStatus(device, positions.get(String(device.id))) === 'offline').length;
+                    elements.unknownCount.textContent = visibleDevices.filter((device) => operationalStatus(device, positions.get(String(device.id))) === 'unknown').length;
 
                     if (visibleDevices.length === 0) {
                         elements.deviceList.innerHTML = '<div class="p-6 text-sm text-center text-gray-500 dark:text-gray-400">No hay unidades que coincidan con los filtros.</div>';
@@ -564,6 +779,7 @@
                         const hasPosition = position && Number.isFinite(Number(position.latitude)) && Number.isFinite(Number(position.longitude));
                         const status = operationalStatus(device, position);
                         const speed = speedKmhValue(position);
+                        const age = positionAge(device, position);
                         const secondaryIdentity = deviceAttribute(device, 'plate', 'registration', 'vehicleNumber') || device.model || device.uniqueId || 'Sin modelo registrado';
                         return `
                             <button type="button" data-device-id="${escapeHtml(device.id)}" ${hasPosition ? '' : 'disabled'}
@@ -579,7 +795,7 @@
                                     <span><i class="ti ti-key mr-1"></i>${escapeHtml(ignitionLabel(position))}</span>
                                     <span><i class="ti ti-gauge mr-1"></i>${escapeHtml(speed === null ? 'Sin velocidad' : `${speed.toFixed(1)} km/h`)}</span>
                                 </div>
-                                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">${escapeHtml(formatDate(positionDate(device, position)))}</p>
+                                <p class="mt-2 text-xs ${age.stale ? 'font-semibold text-red-600 dark:text-red-300' : 'text-gray-500 dark:text-gray-400'}">${escapeHtml(age.label)}${hasRecentAlert(device.id) ? ' · ⚠ Alerta reciente' : ''}</p>
                                 ${hasPosition ? '' : '<p class="mt-1 text-xs text-amber-700 dark:text-amber-300">Sin posición disponible</p>'}
                             </button>
                         `;
@@ -587,7 +803,7 @@
                 };
 
                 const fitVisibleMarkers = () => {
-                    const layers = markerLayer.getLayers();
+                    const layers = [...markerCluster.getLayers(), ...focusLayer.getLayers()];
                     if (layers.length === 0) return;
                     if (layers.length === 1) {
                         map.setView(layers[0].getLatLng(), 15);
@@ -612,6 +828,205 @@
                         positions.set(key, position);
                         updateMarker(key);
                     });
+                };
+
+                const mergeEvents = (items) => {
+                    (Array.isArray(items) ? items : []).forEach((event) => {
+                        if (event?.deviceId === undefined) return;
+                        const timestamp = new Date(event.eventTime || event.serverTime || Date.now()).getTime();
+                        if (Number.isFinite(timestamp)) recentEvents.set(String(event.deviceId), timestamp);
+                    });
+                };
+
+                const distanceBetween = (left, right) => {
+                    const radius = 6371;
+                    const toRadians = (degrees) => degrees * Math.PI / 180;
+                    const latitudeDelta = toRadians(Number(right.latitude) - Number(left.latitude));
+                    const longitudeDelta = toRadians(Number(right.longitude) - Number(left.longitude));
+                    const a = Math.sin(latitudeDelta / 2) ** 2
+                        + Math.cos(toRadians(Number(left.latitude))) * Math.cos(toRadians(Number(right.latitude)))
+                        * Math.sin(longitudeDelta / 2) ** 2;
+                    return 2 * radius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                };
+
+                const stopPlayback = () => {
+                    if (playbackTimer) clearInterval(playbackTimer);
+                    playbackTimer = null;
+                    elements.play.innerHTML = '<i class="ti ti-player-play"></i> Reproducir';
+                };
+
+                const updatePlayback = (index) => {
+                    if (historyPositions.length === 0) return;
+                    playbackIndex = Math.max(0, Math.min(Number(index), historyPositions.length - 1));
+                    const position = historyPositions[playbackIndex];
+                    const latitude = Number(position.latitude);
+                    const longitude = Number(position.longitude);
+                    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+                    if (!playbackMarker) {
+                        playbackMarker = L.marker([latitude, longitude], {
+                            icon: L.divIcon({
+                                className: '',
+                                html: `<div class="gps-marker gps-marker--moving"><span class="gps-marker__direction">${vehicleSvg}</span></div>`,
+                                iconAnchor: [18, 18],
+                                iconSize: [36, 36],
+                            }),
+                        }).addTo(historyLayer);
+                    }
+
+                    const course = courseData(position);
+                    playbackMarker.setLatLng([latitude, longitude]);
+                    playbackMarker.setIcon(L.divIcon({
+                        className: '',
+                        html: `<div class="gps-marker gps-marker--moving"><span class="gps-marker__direction" style="transform:rotate(${course?.degrees ?? 0}deg)">${vehicleSvg}</span></div>`,
+                        iconAnchor: [18, 18],
+                        iconSize: [36, 36],
+                    }));
+                    map.panTo([latitude, longitude], { animate: true });
+                    elements.historyProgress.value = playbackIndex;
+                    const playbackSpeed = speedKmhValue(position);
+                    elements.historyTime.textContent = `${formatDate(positionDate(null, position))} · ${playbackSpeed === null ? 'Velocidad no disponible' : `${playbackSpeed.toFixed(1)} km/h`}`;
+                };
+
+                const togglePlayback = () => {
+                    if (historyPositions.length === 0) return;
+                    if (playbackTimer) {
+                        stopPlayback();
+                        return;
+                    }
+                    if (playbackIndex >= historyPositions.length - 1) updatePlayback(0);
+                    elements.play.innerHTML = '<i class="ti ti-player-pause"></i> Pausar';
+                    playbackTimer = setInterval(() => {
+                        if (playbackIndex >= historyPositions.length - 1) {
+                            stopPlayback();
+                            return;
+                        }
+                        updatePlayback(playbackIndex + 1);
+                    }, Number(elements.playSpeed.value));
+                };
+
+                const closeHistory = () => {
+                    stopPlayback();
+                    historyPositions = [];
+                    playbackIndex = 0;
+                    playbackMarker = null;
+                    historyLayer.clearLayers();
+                    elements.historyContent.classList.add('hidden');
+                    elements.historyClose.classList.add('hidden');
+                    if (!map.hasLayer(markerCluster)) markerCluster.addTo(map);
+                    if (!map.hasLayer(focusLayer)) focusLayer.addTo(map);
+                    fitVisibleMarkers();
+                };
+
+                const inferredStops = (route) => {
+                    const stops = [];
+                    let startIndex = null;
+
+                    route.forEach((position, index) => {
+                        const speed = speedKmhValue(position);
+                        const stopped = speed !== null && speed <= 1;
+                        if (stopped && startIndex === null) startIndex = index;
+                        const closesStop = startIndex !== null && (!stopped || index === route.length - 1);
+                        if (!closesStop) return;
+
+                        const endIndex = stopped && index === route.length - 1 ? index : index - 1;
+                        const startTime = new Date(positionDate(null, route[startIndex]));
+                        const endTime = new Date(positionDate(null, route[endIndex]));
+                        const duration = endTime - startTime;
+                        if (duration >= 5 * 60 * 1000) {
+                            stops.push({
+                                latitude: route[startIndex].latitude,
+                                longitude: route[startIndex].longitude,
+                                startTime: startTime.toISOString(),
+                                endTime: endTime.toISOString(),
+                                duration,
+                                address: route[startIndex].address || 'Parada estimada',
+                            });
+                        }
+                        startIndex = null;
+                    });
+
+                    return stops;
+                };
+
+                const renderHistory = (payload) => {
+                    historyPositions = (Array.isArray(payload.positions) ? payload.positions : [])
+                        .filter((position) => Number.isFinite(Number(position.latitude)) && Number.isFinite(Number(position.longitude)))
+                        .sort((left, right) => new Date(positionDate(null, left)) - new Date(positionDate(null, right)));
+                    if (historyPositions.length === 0) throw new Error('No hay posiciones registradas en el periodo seleccionado.');
+
+                    stopPlayback();
+                    historyLayer.clearLayers();
+                    playbackMarker = null;
+                    if (map.hasLayer(markerCluster)) map.removeLayer(markerCluster);
+                    if (map.hasLayer(focusLayer)) map.removeLayer(focusLayer);
+
+                    const coordinates = historyPositions.map((position) => [Number(position.latitude), Number(position.longitude)]);
+                    L.polyline(coordinates, { color: '#4f46e5', weight: 5, opacity: .85 }).addTo(historyLayer);
+                    L.circleMarker(coordinates[0], { radius: 8, color: '#fff', weight: 2, fillColor: '#16a34a', fillOpacity: 1 }).bindTooltip('Inicio').addTo(historyLayer);
+                    L.circleMarker(coordinates[coordinates.length - 1], { radius: 8, color: '#fff', weight: 2, fillColor: '#dc2626', fillOpacity: 1 }).bindTooltip('Fin').addTo(historyLayer);
+
+                    let distance = 0;
+                    for (let index = 1; index < historyPositions.length; index += 1) distance += distanceBetween(historyPositions[index - 1], historyPositions[index]);
+                    const speeds = historyPositions.map(speedKmhValue).filter((speed) => speed !== null);
+                    const durationMs = new Date(positionDate(null, historyPositions.at(-1))) - new Date(positionDate(null, historyPositions[0]));
+                    const durationHours = Math.max(0, durationMs / 3600000);
+                    const averageSpeed = speeds.length ? speeds.reduce((total, speed) => total + speed, 0) / speeds.length : null;
+
+                    elements.historySummary.innerHTML = [
+                        detailItem('Posiciones', historyPositions.length, 'map-pin'),
+                        detailItem('Distancia', `${distance.toFixed(1)} km`, 'route'),
+                        detailItem('Duración', `${durationHours.toFixed(1)} h`, 'clock'),
+                        detailItem('Velocidad máxima', speeds.length ? `${Math.max(...speeds).toFixed(1)} km/h` : 'No disponible', 'gauge'),
+                        detailItem('Velocidad promedio', averageSpeed === null ? 'No disponible' : `${averageSpeed.toFixed(1)} km/h`, 'brand-speedtest'),
+                    ].join('');
+
+                    const reportedStops = Array.isArray(payload.stops) ? payload.stops : [];
+                    const stops = reportedStops.length ? reportedStops : inferredStops(historyPositions);
+                    stops.forEach((stop) => {
+                        const latitude = Number(stop.latitude);
+                        const longitude = Number(stop.longitude);
+                        if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+                            L.circleMarker([latitude, longitude], { radius: 6, color: '#fff', weight: 2, fillColor: '#f59e0b', fillOpacity: 1 })
+                                .bindTooltip(`Parada · ${stop.address || formatDate(stop.startTime)}`)
+                                .addTo(historyLayer);
+                        }
+                    });
+                    elements.historyStops.innerHTML = stops.length
+                        ? stops.map((stop) => `<div class="p-3 text-sm rounded-lg bg-amber-50 dark:bg-amber-900/20"><p class="font-semibold text-amber-900 dark:text-amber-200">${escapeHtml(stop.address || 'Parada registrada')}</p><p class="mt-1 text-amber-700 dark:text-amber-300">${escapeHtml(formatDate(stop.startTime))} · ${escapeHtml(formatNumber(Number(stop.duration) / 60000, ' min', 0))}</p></div>`).join('')
+                        : '<p class="text-sm text-gray-500 dark:text-gray-400">No se reportaron paradas para este periodo.</p>';
+
+                    const events = Array.isArray(payload.events) ? payload.events : [];
+                    elements.historyEvents.innerHTML = events.length
+                        ? events.map((event) => `<div class="p-3 text-sm rounded-lg bg-red-50 dark:bg-red-900/20"><p class="font-semibold text-red-900 dark:text-red-200">${escapeHtml(eventLabel(event.type))}</p><p class="mt-1 text-red-700 dark:text-red-300">${escapeHtml(formatDate(event.eventTime))}</p></div>`).join('')
+                        : '<p class="text-sm text-gray-500 dark:text-gray-400">No se reportaron eventos para este periodo.</p>';
+
+                    elements.historyProgress.max = historyPositions.length - 1;
+                    elements.historyProgress.value = 0;
+                    elements.historyContent.classList.remove('hidden');
+                    elements.historyClose.classList.remove('hidden');
+                    map.fitBounds(L.latLngBounds(coordinates), { padding: [35, 35], maxZoom: 16 });
+                    updatePlayback(0);
+                };
+
+                const loadHistory = async () => {
+                    if (!selectedDeviceId) throw new Error('Selecciona primero una unidad en el mapa o en la lista.');
+                    if (followedDeviceId) stopFollowing();
+                    const from = new Date(elements.historyFrom.value);
+                    const to = new Date(elements.historyTo.value);
+                    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) throw new Error('Selecciona un periodo válido.');
+
+                    const url = new URL(endpoints.history, window.location.origin);
+                    url.searchParams.set('device_id', selectedDeviceId);
+                    url.searchParams.set('from', from.toISOString());
+                    url.searchParams.set('to', to.toISOString());
+                    const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+                    const payload = await response.json();
+                    if (!response.ok) {
+                        const validationMessage = payload.errors ? Object.values(payload.errors).flat()[0] : null;
+                        throw new Error(validationMessage || payload.message || 'No fue posible consultar el recorrido.');
+                    }
+                    renderHistory(payload);
                 };
 
                 const loadData = async ({ fit = false } = {}) => {
@@ -690,6 +1105,7 @@
                                 const payload = JSON.parse(event.data);
                                 mergeDevices(payload.devices);
                                 mergePositions(payload.positions);
+                                mergeEvents(payload.events);
                                 render();
                                 elements.lastUpdate.textContent = `Tiempo real: ${formatDate(new Date().toISOString())}`;
                             } catch (error) {
@@ -713,6 +1129,18 @@
 
                 elements.search.addEventListener('input', render);
                 elements.statusFilter.addEventListener('change', render);
+                elements.ignitionFilter.addEventListener('change', render);
+                elements.alertFilter.addEventListener('change', render);
+                elements.labelMode.addEventListener('change', () => {
+                    devices.forEach((device) => updateMarker(device.id));
+                    render();
+                });
+                document.querySelectorAll('[data-quick-status]').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        elements.statusFilter.value = button.dataset.quickStatus;
+                        render();
+                    });
+                });
                 elements.refresh.addEventListener('click', () => loadData());
                 elements.fit.addEventListener('click', fitVisibleMarkers);
                 elements.follow.addEventListener('click', toggleFollowing);
@@ -720,6 +1148,7 @@
                 elements.closeDetail.addEventListener('click', () => {
                     selectedDeviceId = null;
                     elements.detail.classList.add('hidden');
+                    devices.forEach((device) => updateMarker(device.id));
                     render();
                 });
                 elements.fullscreen.addEventListener('click', async () => {
@@ -739,18 +1168,59 @@
                         : '<i class="ti ti-maximize"></i><span class="sr-only">Pantalla completa</span>';
                     setTimeout(() => map.invalidateSize(), 100);
                 });
+                map.on('zoomend', () => {
+                    if (elements.labelMode.value !== 'automatic') return;
+                    devices.forEach((device) => updateMarker(device.id));
+                    render();
+                });
                 elements.deviceList.addEventListener('click', (event) => {
                     const button = event.target.closest('[data-device-id]');
                     if (!button || button.disabled) return;
                     selectDevice(button.dataset.deviceId);
-                    render();
+                });
+                elements.historyForm.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    elements.historyError.classList.add('hidden');
+                    elements.historyLoad.disabled = true;
+                    elements.historyLoad.classList.add('opacity-60');
+                    try {
+                        await loadHistory();
+                    } catch (error) {
+                        elements.historyError.textContent = error.message || 'No fue posible consultar el recorrido.';
+                        elements.historyError.classList.remove('hidden');
+                    } finally {
+                        elements.historyLoad.disabled = false;
+                        elements.historyLoad.classList.remove('opacity-60');
+                    }
+                });
+                elements.historyClose.addEventListener('click', closeHistory);
+                elements.play.addEventListener('click', togglePlayback);
+                elements.restart.addEventListener('click', () => {
+                    stopPlayback();
+                    updatePlayback(0);
+                });
+                elements.historyProgress.addEventListener('input', () => {
+                    stopPlayback();
+                    updatePlayback(elements.historyProgress.value);
+                });
+                elements.playSpeed.addEventListener('change', () => {
+                    if (!playbackTimer) return;
+                    stopPlayback();
+                    togglePlayback();
                 });
 
                 window.addEventListener('pagehide', () => {
                     closingPage = true;
                     if (reconnectTimer) clearTimeout(reconnectTimer);
+                    stopPlayback();
                     socket?.close();
                 });
+
+                const localDateTimeValue = (date) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                const historyEnd = new Date();
+                const historyStart = new Date(historyEnd.getTime() - 6 * 60 * 60 * 1000);
+                elements.historyFrom.value = localDateTimeValue(historyStart);
+                elements.historyTo.value = localDateTimeValue(historyEnd);
 
                 loadData({ fit: true }).finally(connectSocket);
             });
