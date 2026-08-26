@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Gastos;
-use App\Models\User;
-use App\Models\Misiones;
+use App\Models\Geofence;
 use App\Models\MisionCierreOperativo;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
+use App\Models\Misiones;
+use App\Models\RealtimePosition;
+use App\Models\User;
+use App\Services\AuditLogger;
+use App\Services\CustodiosAvailabilityService;
+use App\Support\Custodios\MissionStatus;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Geocoder\Laravel\Facades\Geocoder;
-use App\Models\Geofence;
-use App\Models\RealtimePosition;
-use App\Services\CustodiosAvailabilityService;
-use App\Support\Custodios\MissionStatus;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -29,42 +30,43 @@ class CustodiosController extends Controller
         'JEFE',
     ];
 
-    public function misionesIndex(){
+    public function misionesIndex()
+    {
         $hoy = Carbon::now();
         $misiones = Misiones::where('fecha_inicio', '<=', $hoy)
-                    ->where('fecha_fin', '>=', $hoy)
-                    ->get();
+            ->where('fecha_fin', '>=', $hoy)
+            ->get();
 
         return view('custodios.misionesActuales', compact('misiones'));
     }
 
     public function custodiosIndex()
-{
-    $agentes = User::query()
-        ->with(['solicitudAlta', 'documentacionAltas'])
-        ->where('estatus', 'Activo')
-        ->whereRaw("LOWER(users.rol) LIKE ?", ['%escolta%'])
-        // 🔹 JOIN para ordenar por apellidos (FK correcta: sol_alta_id)
-        ->leftJoin('solicitud_altas', 'users.sol_alta_id', '=', 'solicitud_altas.id')
-        ->select('users.*')
-        // 🔹 Ordenamiento: alfabético por apellido paterno → materno → nombre
-        ->orderBy('solicitud_altas.apellido_paterno', 'asc')
-        ->orderBy('solicitud_altas.apellido_materno', 'asc')
-        ->orderBy('solicitud_altas.nombre', 'asc')
-        ->paginate(10);
+    {
+        $agentes = User::query()
+            ->with(['solicitudAlta', 'documentacionAltas'])
+            ->where('estatus', 'Activo')
+            ->whereRaw('LOWER(users.rol) LIKE ?', ['%escolta%'])
+            // 🔹 JOIN para ordenar por apellidos (FK correcta: sol_alta_id)
+            ->leftJoin('solicitud_altas', 'users.sol_alta_id', '=', 'solicitud_altas.id')
+            ->select('users.*')
+            // 🔹 Ordenamiento: alfabético por apellido paterno → materno → nombre
+            ->orderBy('solicitud_altas.apellido_paterno', 'asc')
+            ->orderBy('solicitud_altas.apellido_materno', 'asc')
+            ->orderBy('solicitud_altas.nombre', 'asc')
+            ->paginate(10);
 
-    return view('custodios.listaCustodios', compact('agentes'));
-}
+        return view('custodios.listaCustodios', compact('agentes'));
+    }
 
-    public function nuevaMisionForm(){
+    public function nuevaMisionForm()
+    {
         return view('custodios.nuevaMisionForm');
     }
 
     public function obtenerAgentesDisponibles(
         Request $request,
         CustodiosAvailabilityService $availability,
-    )
-    {
+    ) {
         $validated = $request->validate([
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
@@ -90,152 +92,167 @@ class CustodiosController extends Controller
     public function guardarMision(
         Request $request,
         CustodiosAvailabilityService $availability,
-    )
-{
-    $request->validate([
-        'agentes_id' => 'required|array|min:1',
-        'agentes_id.*' => 'exists:users,id',
-        'tipo_servicio' => 'nullable|string|max:255',
-        'ubicaciones' => 'required|array|min:1',
-        'ubicaciones.*.direccion' => 'nullable|string|max:500',
-        'ubicaciones.*.latitud' => 'nullable|numeric',
-        'ubicaciones.*.longitud' => 'nullable|numeric',
-        'fecha_inicio' => 'required|date',
-        'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio',
-        'cliente' => 'nullable|string|max:255',
-        'num_vehiculos' => 'nullable|integer|min:0',
-        'tipo_vehiculos' => 'nullable|array',
-        'tipo_vehiculos.*' => 'string|max:255',
-        'armados' => 'nullable|string|in:armado,desarmado',
+        AuditLogger $audit,
+    ) {
+        $request->validate([
+            'agentes_id' => 'required|array|min:1',
+            'agentes_id.*' => 'exists:users,id',
+            'tipo_servicio' => 'nullable|string|max:255',
+            'ubicaciones' => 'required|array|min:1',
+            'ubicaciones.*.direccion' => 'nullable|string|max:500',
+            'ubicaciones.*.latitud' => 'nullable|numeric',
+            'ubicaciones.*.longitud' => 'nullable|numeric',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio',
+            'cliente' => 'nullable|string|max:255',
+            'num_vehiculos' => 'nullable|integer|min:0',
+            'tipo_vehiculos' => 'nullable|array',
+            'tipo_vehiculos.*' => 'string|max:255',
+            'armados' => 'nullable|string|in:armado,desarmado',
 
-        // ✅ Cambiado: de 'hotel' → 'hoteles' (y es array)
-        'hoteles' => 'nullable|array',
-        'hoteles.*.nombre' => 'nullable|string|max:255',
-        'hoteles.*.latitud' => 'nullable|numeric',
-        'hoteles.*.longitud' => 'nullable|numeric',
+            // ✅ Cambiado: de 'hotel' → 'hoteles' (y es array)
+            'hoteles' => 'nullable|array',
+            'hoteles.*.nombre' => 'nullable|string|max:255',
+            'hoteles.*.latitud' => 'nullable|numeric',
+            'hoteles.*.longitud' => 'nullable|numeric',
 
-        // ✅ Cambiado: de 'aeropuerto' → 'aeropuertos'
-        'aeropuertos' => 'nullable|array',
-        'aeropuertos.*.nombre' => 'nullable|string|max:255',
-        'aeropuertos.*.latitud' => 'nullable|numeric',
-        'aeropuertos.*.longitud' => 'nullable|numeric',
+            // ✅ Cambiado: de 'aeropuerto' → 'aeropuertos'
+            'aeropuertos' => 'nullable|array',
+            'aeropuertos.*.nombre' => 'nullable|string|max:255',
+            'aeropuertos.*.latitud' => 'nullable|numeric',
+            'aeropuertos.*.longitud' => 'nullable|numeric',
 
-        // Vuelos: siguen igual (estructura anidada, no array)
-        'vuelo_llegada.fecha' => 'nullable|date',
-        'vuelo_llegada.flight' => 'nullable|string|max:50',
-        'vuelo_llegada.hora' => 'nullable|date_format:H:i',
+            // Vuelos: siguen igual (estructura anidada, no array)
+            'vuelo_llegada.fecha' => 'nullable|date',
+            'vuelo_llegada.flight' => 'nullable|string|max:50',
+            'vuelo_llegada.hora' => 'nullable|date_format:H:i',
 
-        'vuelo_salida.fecha' => 'nullable|date',
-        'vuelo_salida.flight' => 'nullable|string|max:50',
-        'vuelo_salida.hora' => 'nullable|date_format:H:i',
-    ]);
+            'vuelo_salida.fecha' => 'nullable|date',
+            'vuelo_salida.flight' => 'nullable|string|max:50',
+            'vuelo_salida.hora' => 'nullable|date_format:H:i',
+        ]);
 
-    $availability->assertAvailable(
-        $request->input('agentes_id', []),
-        Carbon::parse($request->fecha_inicio)->startOfDay(),
-        Carbon::parse($request->fecha_fin ?? $request->fecha_inicio)->endOfDay(),
-    );
+        $availability->assertAvailable(
+            $request->input('agentes_id', []),
+            Carbon::parse($request->fecha_inicio)->startOfDay(),
+            Carbon::parse($request->fecha_fin ?? $request->fecha_inicio)->endOfDay(),
+        );
 
-    // === Procesamiento de ubicaciones (sin cambios) ===
-    $ubicacionesProcesadas = [];
-    foreach ($request->ubicaciones as $index => $ubicacion) {
-        $direccion = $ubicacion['direccion'];
-        $lat = $ubicacion['latitud'] ?? null;
-        $lng = $ubicacion['longitud'] ?? null;
+        // === Procesamiento de ubicaciones (sin cambios) ===
+        $ubicacionesProcesadas = [];
+        foreach ($request->ubicaciones as $index => $ubicacion) {
+            $direccion = $ubicacion['direccion'];
+            $lat = $ubicacion['latitud'] ?? null;
+            $lng = $ubicacion['longitud'] ?? null;
 
-        if ($direccion && (!$lat || !$lng)) {
-            try {
-                $resultados = Geocoder::geocode($direccion)->get();
-                if ($resultados->count() > 0) {
-                    $resultado = $resultados->first();
-                    $lat = $resultado->getCoordinates()->getLatitude();
-                    $lng = $resultado->getCoordinates()->getLongitude();
+            if ($direccion && (! $lat || ! $lng)) {
+                try {
+                    $resultados = Geocoder::geocode($direccion)->get();
+                    if ($resultados->count() > 0) {
+                        $resultado = $resultados->first();
+                        $lat = $resultado->getCoordinates()->getLatitude();
+                        $lng = $resultado->getCoordinates()->getLongitude();
+                    }
+                } catch (\Exception $e) {
+                    // Opcional: manejo de error
                 }
-            } catch (\Exception $e) {
-                // Opcional: manejo de error
+            }
+
+            $ubicacionesProcesadas[] = compact('direccion', 'lat', 'lng');
+        }
+
+        try {
+            $mision = Misiones::create([
+                'agentes_id' => json_encode($request->agentes_id ?? []),
+                'tipo_servicio' => $request->tipo_servicio,
+                'ubicacion' => $ubicacionesProcesadas,
+                'fecha_inicio' => $request->fecha_inicio,
+                'fecha_fin' => $request->fecha_fin,
+                'cliente' => $request->cliente,
+                'num_vehiculos' => $request->num_vehiculos,
+                'tipo_vehiculos' => json_encode($request->tipo_vehiculos ?? []),
+                'armados' => $request->armados,
+
+                'datos_hotel' => json_encode($request->input('hoteles', [])),
+                'datos_aeropuerto' => json_encode($request->input('aeropuertos', [])),
+
+                // ✅ CAMBIO CRÍTICO AQUÍ
+                'datos_vuelo' => json_encode([
+                    'llegada' => $request->input('vuelo_llegada', []),
+                    'salida' => $request->input('vuelo_salida', []),
+                ]),
+
+                'estatus' => MissionStatus::SCHEDULED,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al guardar misión:', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->withInput()->with('error', 'Error al guardar la misión.');
+        }
+
+        // === Guardar múltiples geofences ===
+        foreach ($request->input('hoteles', []) as $hotel) {
+            if (! empty($hotel['nombre']) && isset($hotel['latitud']) && isset($hotel['longitud'])) {
+                Geofence::create([
+                    'mision_id' => $mision->id,
+                    'tipo' => 'hotel',
+                    'centro' => [
+                        'lat' => $hotel['latitud'],
+                        'lng' => $hotel['longitud'],
+                    ],
+                    'radio_km' => 1.000,
+                    'nombre_referencia' => $hotel['nombre'],
+                ]);
             }
         }
 
-        $ubicacionesProcesadas[] = compact('direccion', 'lat', 'lng');
-    }
-
-    try {
-        $mision = Misiones::create([
-            'agentes_id' => json_encode($request->agentes_id ?? []),
-            'tipo_servicio' => $request->tipo_servicio,
-            'ubicacion' => $ubicacionesProcesadas,
-            'fecha_inicio' => $request->fecha_inicio,
-            'fecha_fin' => $request->fecha_fin,
-            'cliente' => $request->cliente,
-            'num_vehiculos' => $request->num_vehiculos,
-            'tipo_vehiculos' => json_encode($request->tipo_vehiculos ?? []),
-            'armados' => $request->armados,
-
-            'datos_hotel' => json_encode($request->input('hoteles', [])),
-            'datos_aeropuerto' => json_encode($request->input('aeropuertos', [])),
-
-            // ✅ CAMBIO CRÍTICO AQUÍ
-            'datos_vuelo' => json_encode([
-                'llegada' => $request->input('vuelo_llegada', []),
-                'salida' => $request->input('vuelo_salida', []),
-            ]),
-
-            'estatus' => MissionStatus::SCHEDULED,
-        ]);
-    } catch (\Exception $e) {
-        Log::error('Error al guardar misión:', [
-            'message' => $e->getMessage(),
-        ]);
-        return back()->withInput()->with('error', 'Error al guardar la misión.');
-    }
-
-    // === Guardar múltiples geofences ===
-    foreach ($request->input('hoteles', []) as $hotel) {
-        if (!empty($hotel['nombre']) && isset($hotel['latitud']) && isset($hotel['longitud'])) {
-            Geofence::create([
-                'mision_id' => $mision->id,
-                'tipo' => 'hotel',
-                'centro' => [
-                    'lat' => $hotel['latitud'],
-                    'lng' => $hotel['longitud'],
-                ],
-                'radio_km' => 1.000,
-                'nombre_referencia' => $hotel['nombre'],
-            ]);
+        foreach ($request->input('aeropuertos', []) as $aeropuerto) {
+            if (! empty($aeropuerto['nombre']) && isset($aeropuerto['latitud']) && isset($aeropuerto['longitud'])) {
+                Geofence::create([
+                    'mision_id' => $mision->id,
+                    'tipo' => 'aeropuerto',
+                    'centro' => [
+                        'lat' => $aeropuerto['latitud'],
+                        'lng' => $aeropuerto['longitud'],
+                    ],
+                    'radio_km' => 4.000,
+                    'nombre_referencia' => $aeropuerto['nombre'],
+                ]);
+            }
         }
+
+        Log::info('Misión registrada exitosamente', ['id' => $mision->id]);
+
+        $audit->record('Misiones', 'Misión creada', $mision, [], $mision->only([
+            'agentes_id', 'tipo_servicio', 'ubicacion', 'fecha_inicio', 'fecha_fin',
+            'cliente', 'num_vehiculos', 'tipo_vehiculos', 'armados', 'estatus',
+        ]), [
+            'origen' => 'erp_web',
+            'geocercas_creadas' => $mision->geofences()->count(),
+        ]);
+
+        return redirect()->route('dashboard')->with('success', 'Misión registrada exitosamente.');
     }
 
-    foreach ($request->input('aeropuertos', []) as $aeropuerto) {
-        if (!empty($aeropuerto['nombre']) && isset($aeropuerto['latitud']) && isset($aeropuerto['longitud'])) {
-            Geofence::create([
-                'mision_id' => $mision->id,
-                'tipo' => 'aeropuerto',
-                'centro' => [
-                    'lat' => $aeropuerto['latitud'],
-                    'lng' => $aeropuerto['longitud'],
-                ],
-                'radio_km' => 4.000,
-                'nombre_referencia' => $aeropuerto['nombre'],
-            ]);
-        }
-    }
-
-    Log::info('Misión registrada exitosamente', ['id' => $mision->id]);
-
-    return redirect()->route('dashboard')->with('success', 'Misión registrada exitosamente.');
-}
-    public function historialMisiones(){
+    public function historialMisiones()
+    {
         $misiones = Misiones::paginate(10);
+
         return view('custodios.historialMisiones', compact('misiones'));
     }
 
-    public function misionesTerminadas(){
+    public function misionesTerminadas()
+    {
         $misiones = Misiones::where('fecha_fin', '<', Carbon::now())
             ->paginate(10);
+
         return view('custodios.misionesTerminadas', compact('misiones'));
     }
 
-    public function mensajesIndex(){
+    public function mensajesIndex()
+    {
         return view('custodios.mensajes');
     }
 
@@ -265,7 +282,7 @@ class CustodiosController extends Controller
 
             return [
                 'id' => $mision->id,
-                'nombre' => $mision->nombre_clave ?? 'Misión #' . $mision->id,
+                'nombre' => $mision->nombre_clave ?? 'Misión #'.$mision->id,
                 'agentes_id' => collect($agentesIds)->map(fn ($id) => (int) $id)->values(),
                 'geocercas' => $mision->geofences->map(function ($geocerca) {
                     return [
@@ -363,8 +380,8 @@ class CustodiosController extends Controller
             $finMision = $mision->fecha_fin
                 ? Carbon::parse($mision->fecha_fin)->endOfDay()
                 : null;
-            $misionActiva = (!$inicioMision || $ahora->greaterThanOrEqualTo($inicioMision))
-                && (!$finMision || $ahora->lessThanOrEqualTo($finMision));
+            $misionActiva = (! $inicioMision || $ahora->greaterThanOrEqualTo($inicioMision))
+                && (! $finMision || $ahora->lessThanOrEqualTo($finMision));
 
             $cierresOperativosRecientes = MisionCierreOperativo::query()
                 ->with('user:id,name')
@@ -385,245 +402,257 @@ class CustodiosController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error("Error al cargar detalle de misión: ", ['error' => $e->getMessage()]);
+            Log::error('Error al cargar detalle de misión: ', ['error' => $e->getMessage()]);
             abort(404); // O redirige a una página de error
         }
     }
 
     public function edit($id)
-{
-    $mision = Misiones::findOrFail($id);
+    {
+        $mision = Misiones::findOrFail($id);
 
-    // Decodificar campos existentes
-    $mision->agentes_id = is_string($mision->agentes_id) ? json_decode($mision->agentes_id, true) : $mision->agentes_id;
-    $mision->ubicacion = is_string($mision->ubicacion) ? json_decode($mision->ubicacion, true) : $mision->ubicacion;
-    $mision->datos_hotel = is_string($mision->datos_hotel) ? json_decode($mision->datos_hotel, true) : $mision->datos_hotel;
-    $mision->datos_aeropuerto = is_string($mision->datos_aeropuerto) ? json_decode($mision->datos_aeropuerto, true) : $mision->datos_aeropuerto;
-    $mision->tipo_vehiculos = is_string($mision->tipo_vehiculos) ? json_decode($mision->tipo_vehiculos, true) : $mision->tipo_vehiculos;
+        // Decodificar campos existentes
+        $mision->agentes_id = is_string($mision->agentes_id) ? json_decode($mision->agentes_id, true) : $mision->agentes_id;
+        $mision->ubicacion = is_string($mision->ubicacion) ? json_decode($mision->ubicacion, true) : $mision->ubicacion;
+        $mision->datos_hotel = is_string($mision->datos_hotel) ? json_decode($mision->datos_hotel, true) : $mision->datos_hotel;
+        $mision->datos_aeropuerto = is_string($mision->datos_aeropuerto) ? json_decode($mision->datos_aeropuerto, true) : $mision->datos_aeropuerto;
+        $mision->tipo_vehiculos = is_string($mision->tipo_vehiculos) ? json_decode($mision->tipo_vehiculos, true) : $mision->tipo_vehiculos;
 
-    // ✅ NUEVO: Manejo robusto de datos_vuelo
-    // 1. Verificar si es una cadena
-    if (is_string($mision->datos_vuelo)) {
-        // 2. Intentar decodificarla
-        $decodedVuelo = json_decode($mision->datos_vuelo, true);
-        // 3. Verificar si la decodificación fue exitosa y devolvió un array
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decodedVuelo)) {
-            // 4. Asignar los sub-arrays llegada/salida
-            $mision->datos_vuelo_llegada = $decodedVuelo['llegada'] ?? [];
-            $mision->datos_vuelo_salida = $decodedVuelo['salida'] ?? [];
+        // ✅ NUEVO: Manejo robusto de datos_vuelo
+        // 1. Verificar si es una cadena
+        if (is_string($mision->datos_vuelo)) {
+            // 2. Intentar decodificarla
+            $decodedVuelo = json_decode($mision->datos_vuelo, true);
+            // 3. Verificar si la decodificación fue exitosa y devolvió un array
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decodedVuelo)) {
+                // 4. Asignar los sub-arrays llegada/salida
+                $mision->datos_vuelo_llegada = $decodedVuelo['llegada'] ?? [];
+                $mision->datos_vuelo_salida = $decodedVuelo['salida'] ?? [];
+            } else {
+                // Si falla la decodificación, asignar arrays vacíos o un valor por defecto
+                \Log::warning("json_decode failed for datos_vuelo in mission ID {$mision->id}. Error: ".json_last_error_msg());
+                $mision->datos_vuelo_llegada = [];
+                $mision->datos_vuelo_salida = [];
+            }
+        } elseif (is_array($mision->datos_vuelo)) {
+            // 5. Si ya es un array (posible error previo o inconsistencia), usarlo directamente
+            \Log::warning("datos_vuelo is already an array in mission ID {$mision->id}. This might indicate a data inconsistency.");
+            // Extraer llegada y salida del array directamente
+            $mision->datos_vuelo_llegada = $mision->datos_vuelo['llegada'] ?? [];
+            $mision->datos_vuelo_salida = $mision->datos_vuelo['salida'] ?? [];
         } else {
-            // Si falla la decodificación, asignar arrays vacíos o un valor por defecto
-            \Log::warning("json_decode failed for datos_vuelo in mission ID {$mision->id}. Error: " . json_last_error_msg());
+            // 6. Si no es ni string ni array, asignar arrays vacíos
+            \Log::warning("datos_vuelo is neither a string nor an array in mission ID {$mision->id}. Value: ".var_export($mision->datos_vuelo, true));
             $mision->datos_vuelo_llegada = [];
             $mision->datos_vuelo_salida = [];
         }
-    } elseif (is_array($mision->datos_vuelo)) {
-        // 5. Si ya es un array (posible error previo o inconsistencia), usarlo directamente
-        \Log::warning("datos_vuelo is already an array in mission ID {$mision->id}. This might indicate a data inconsistency.");
-        // Extraer llegada y salida del array directamente
-        $mision->datos_vuelo_llegada = $mision->datos_vuelo['llegada'] ?? [];
-        $mision->datos_vuelo_salida = $mision->datos_vuelo['salida'] ?? [];
-    } else {
-        // 6. Si no es ni string ni array, asignar arrays vacíos
-        \Log::warning("datos_vuelo is neither a string nor an array in mission ID {$mision->id}. Value: " . var_export($mision->datos_vuelo, true));
-        $mision->datos_vuelo_llegada = [];
-        $mision->datos_vuelo_salida = [];
+
+        return view('custodios.editar-mision', [ // Asegúrate de que la ruta sea correcta
+            'mision' => $mision,
+        ]);
     }
 
-    return view('custodios.editar-mision', [ // Asegúrate de que la ruta sea correcta
-        'mision' => $mision,
-    ]);
-}
-
     /**
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
-public function update(
-    Request $request,
-    $id,
-    CustodiosAvailabilityService $availability,
-)
-{
-    $request->validate([
-        'agentes_id' => 'required|array|min:1',
-        'agentes_id.*' => 'exists:users,id',
-        // 'nivel_amenaza' => 'nullable|string|max:255',
-        'tipo_servicio' => 'required|string|max:255',
-        'ubicaciones' => 'required|array|min:1',
-        'ubicaciones.*.direccion' => 'nullable|string|max:500',
-        'ubicaciones.*.latitud' => 'nullable|numeric',
-        'ubicaciones.*.longitud' => 'nullable|numeric',
-        'fecha_inicio' => 'required|date',
-        'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
-        'cliente' => 'nullable|string|max:255',
-        // 'nombre_clave' => 'nullable|string|max:255',
-        // 'pasajeros' => 'nullable|string|max:255',
-        // 'tipo_operacion' => 'nullable|string|max:255',
-        'num_vehiculos' => 'nullable|integer|min:0',
-        'tipo_vehiculos' => 'nullable|array',
-        'tipo_vehiculos.*' => 'string|max:255',
-        'armados' => 'nullable|string|in:armado,desarmado',
+    public function update(
+        Request $request,
+        $id,
+        CustodiosAvailabilityService $availability,
+        AuditLogger $audit,
+    ) {
+        $request->validate([
+            'agentes_id' => 'required|array|min:1',
+            'agentes_id.*' => 'exists:users,id',
+            // 'nivel_amenaza' => 'nullable|string|max:255',
+            'tipo_servicio' => 'required|string|max:255',
+            'ubicaciones' => 'required|array|min:1',
+            'ubicaciones.*.direccion' => 'nullable|string|max:500',
+            'ubicaciones.*.latitud' => 'nullable|numeric',
+            'ubicaciones.*.longitud' => 'nullable|numeric',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            'cliente' => 'nullable|string|max:255',
+            // 'nombre_clave' => 'nullable|string|max:255',
+            // 'pasajeros' => 'nullable|string|max:255',
+            // 'tipo_operacion' => 'nullable|string|max:255',
+            'num_vehiculos' => 'nullable|integer|min:0',
+            'tipo_vehiculos' => 'nullable|array',
+            'tipo_vehiculos.*' => 'string|max:255',
+            'armados' => 'nullable|string|in:armado,desarmado',
 
-        // ✅ Cambiado: de 'hotel.nombre' → 'hoteles.*.nombre' (y es array)
-        'hoteles' => 'nullable|array',
-        'hoteles.*.nombre' => 'nullable|string|max:255',
-        'hoteles.*.latitud' => 'nullable|numeric',
-        'hoteles.*.longitud' => 'nullable|numeric',
+            // ✅ Cambiado: de 'hotel.nombre' → 'hoteles.*.nombre' (y es array)
+            'hoteles' => 'nullable|array',
+            'hoteles.*.nombre' => 'nullable|string|max:255',
+            'hoteles.*.latitud' => 'nullable|numeric',
+            'hoteles.*.longitud' => 'nullable|numeric',
 
-        // ✅ Cambiado: de 'aeropuerto.nombre' → 'aeropuertos.*.nombre'
-        'aeropuertos' => 'nullable|array',
-        'aeropuertos.*.nombre' => 'nullable|string|max:255',
-        'aeropuertos.*.latitud' => 'nullable|numeric',
-        'aeropuertos.*.longitud' => 'nullable|numeric',
+            // ✅ Cambiado: de 'aeropuerto.nombre' → 'aeropuertos.*.nombre'
+            'aeropuertos' => 'nullable|array',
+            'aeropuertos.*.nombre' => 'nullable|string|max:255',
+            'aeropuertos.*.latitud' => 'nullable|numeric',
+            'aeropuertos.*.longitud' => 'nullable|numeric',
 
-        // Vuelos: siguen igual (estructura anidada, no array)
-        'vuelo_llegada.fecha' => 'nullable|date',
-        'vuelo_llegada.flight' => 'nullable|string|max:50',
-        'vuelo_llegada.hora' => 'nullable|date_format:H:i',
+            // Vuelos: siguen igual (estructura anidada, no array)
+            'vuelo_llegada.fecha' => 'nullable|date',
+            'vuelo_llegada.flight' => 'nullable|string|max:50',
+            'vuelo_llegada.hora' => 'nullable|date_format:H:i',
 
-        'vuelo_salida.fecha' => 'nullable|date',
-        'vuelo_salida.flight' => 'nullable|string|max:50',
-        'vuelo_salida.hora' => 'nullable|date_format:H:i',
-    ]);
+            'vuelo_salida.fecha' => 'nullable|date',
+            'vuelo_salida.flight' => 'nullable|string|max:50',
+            'vuelo_salida.hora' => 'nullable|date_format:H:i',
+        ]);
 
-    $availability->assertAvailable(
-        $request->input('agentes_id', []),
-        Carbon::parse($request->fecha_inicio)->startOfDay(),
-        Carbon::parse($request->fecha_fin)->endOfDay(),
-        (int) $id,
-    );
+        $availability->assertAvailable(
+            $request->input('agentes_id', []),
+            Carbon::parse($request->fecha_inicio)->startOfDay(),
+            Carbon::parse($request->fecha_fin)->endOfDay(),
+            (int) $id,
+        );
 
-    $mision = Misiones::findOrFail($id);
+        $mision = Misiones::findOrFail($id);
+        $before = $mision->only([
+            'agentes_id', 'tipo_servicio', 'ubicacion', 'fecha_inicio', 'fecha_fin',
+            'cliente', 'num_vehiculos', 'tipo_vehiculos', 'armados', 'datos_hotel',
+            'datos_aeropuerto', 'datos_vuelo',
+        ]);
 
-    $ubicacionesProcesadas = [];
-    foreach ($request->ubicaciones as $index => $ubicacion) {
-        $direccion = $ubicacion['direccion'];
-        $lat = $ubicacion['latitud'] ?? null;
-        $lng = $ubicacion['longitud'] ?? null;
+        $ubicacionesProcesadas = [];
+        foreach ($request->ubicaciones as $index => $ubicacion) {
+            $direccion = $ubicacion['direccion'];
+            $lat = $ubicacion['latitud'] ?? null;
+            $lng = $ubicacion['longitud'] ?? null;
 
-        if ($direccion && (!$lat || !$lng)) {
-            Log::info("Geocodificando dirección #$index", ['direccion' => $direccion]);
+            if ($direccion && (! $lat || ! $lng)) {
+                Log::info("Geocodificando dirección #$index", ['direccion' => $direccion]);
 
-            try {
-                $resultados = Geocoder::geocode($direccion)->get();
-                if ($resultados->count() > 0) {
-                    $resultado = $resultados->first();
-                    $lat = $resultado->getCoordinates()->getLatitude();
-                    $lng = $resultado->getCoordinates()->getLongitude();
-                    Log::info("Coordenadas #$index obtenidas via Geocoder", ['lat' => $lat, 'lng' => $lng]);
-                } else {
-                    Log::warning("No se encontraron resultados de geocodificación para la dirección #$index", ['direccion' => $direccion]);
+                try {
+                    $resultados = Geocoder::geocode($direccion)->get();
+                    if ($resultados->count() > 0) {
+                        $resultado = $resultados->first();
+                        $lat = $resultado->getCoordinates()->getLatitude();
+                        $lng = $resultado->getCoordinates()->getLongitude();
+                        Log::info("Coordenadas #$index obtenidas via Geocoder", ['lat' => $lat, 'lng' => $lng]);
+                    } else {
+                        Log::warning("No se encontraron resultados de geocodificación para la dirección #$index", ['direccion' => $direccion]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Error geocodificando dirección #$index", [
+                        'direccion' => $direccion,
+                        'message' => $e->getMessage(),
+                    ]);
                 }
-            } catch (\Exception $e) {
-                Log::error("Error geocodificando dirección #$index", [
-                    'direccion' => $direccion,
-                    'message' => $e->getMessage(),
-                ]);
             }
+
+            $ubicacionesProcesadas[] = [
+                'direccion' => $direccion,
+                'latitud' => $lat,
+                'longitud' => $lng,
+            ];
         }
 
-        $ubicacionesProcesadas[] = [
-            'direccion' => $direccion,
-            'latitud' => $lat,
-            'longitud' => $lng,
-        ];
-    }
+        try {
+            $mision->update([
+                'agentes_id' => json_encode($request->agentes_id),
+                // 'nivel_amenaza' => $request->nivel_amenaza,
+                'tipo_servicio' => $request->tipo_servicio,
+                'ubicacion' => $ubicacionesProcesadas,
+                'fecha_inicio' => $request->fecha_inicio,
+                'fecha_fin' => $request->fecha_fin,
+                'cliente' => $request->cliente,
+                // 'nombre_clave' => $request->nombre_clave,
+                // 'pasajeros' => $request->pasajeros,
+                // 'tipo_operacion' => $request->tipo_operacion,
+                'num_vehiculos' => $request->num_vehiculos,
+                'tipo_vehiculos' => json_encode($request->tipo_vehiculos ?? []),
+                'armados' => $request->armados,
 
-    try {
-        $mision->update([
-            'agentes_id' => json_encode($request->agentes_id),
-            // 'nivel_amenaza' => $request->nivel_amenaza,
-            'tipo_servicio' => $request->tipo_servicio,
-            'ubicacion' => $ubicacionesProcesadas,
-            'fecha_inicio' => $request->fecha_inicio,
-            'fecha_fin' => $request->fecha_fin,
-            'cliente' => $request->cliente,
-            // 'nombre_clave' => $request->nombre_clave,
-            // 'pasajeros' => $request->pasajeros,
-            // 'tipo_operacion' => $request->tipo_operacion,
-            'num_vehiculos' => $request->num_vehiculos,
-            'tipo_vehiculos' => json_encode($request->tipo_vehiculos ?? []),
-            'armados' => $request->armados,
+                // ✅ Cambiado: usar 'hoteles' y 'aeropuertos'
+                'datos_hotel' => json_encode($request->input('hoteles', [])),
+                'datos_aeropuerto' => json_encode($request->input('aeropuertos', [])),
 
-            // ✅ Cambiado: usar 'hoteles' y 'aeropuertos'
-            'datos_hotel' => json_encode($request->input('hoteles', [])),
-            'datos_aeropuerto' => json_encode($request->input('aeropuertos', [])),
+                // ✅ Cambiado: usar 'datos_vuelo' en lugar de 'datos_vuelo_llegada' y 'datos_vuelo_salida'
+                'datos_vuelo' => json_encode([
+                    'llegada' => $request->input('vuelo_llegada', []),
+                    'salida' => $request->input('vuelo_salida', []),
+                ]),
+                // 'estatus' => $request->estatus, // Opcionalmente actualizar estatus si es necesario
+            ]);
 
-            // ✅ Cambiado: usar 'datos_vuelo' en lugar de 'datos_vuelo_llegada' y 'datos_vuelo_salida'
-            'datos_vuelo' => json_encode([
-                'llegada' => $request->input('vuelo_llegada', []),
-                'salida' => $request->input('vuelo_salida', []),
-            ]),
-            // 'estatus' => $request->estatus, // Opcionalmente actualizar estatus si es necesario
+            // === SINCRONIZAR GEOFENCES ===
+            // 1. Eliminar todas las geocercas antiguas asociadas a esta misión
+            $mision->geofences()->delete(); // Asumiendo que tienes una relación definida en el modelo Misiones
+
+            // 2. Crear nuevas geocercas basadas en los datos actualizados del formulario
+            foreach ($request->input('hoteles', []) as $hotel) {
+                if (! empty($hotel['nombre']) && isset($hotel['latitud']) && isset($hotel['longitud'])) {
+                    Geofence::create([
+                        'mision_id' => $mision->id,
+                        'tipo' => 'hotel',
+                        'centro' => [
+                            'lat' => $hotel['latitud'],
+                            'lng' => $hotel['longitud'],
+                        ],
+                        'radio_km' => 1.000, // O el valor por defecto que uses
+                        'nombre_referencia' => $hotel['nombre'],
+                    ]);
+                }
+            }
+
+            foreach ($request->input('aeropuertos', []) as $aeropuerto) {
+                if (! empty($aeropuerto['nombre']) && isset($aeropuerto['latitud']) && isset($aeropuerto['longitud'])) {
+                    Geofence::create([
+                        'mision_id' => $mision->id,
+                        'tipo' => 'aeropuerto',
+                        'centro' => [
+                            'lat' => $aeropuerto['latitud'],
+                            'lng' => $aeropuerto['longitud'],
+                        ],
+                        'radio_km' => 4.000, // O el valor por defecto que uses
+                        'nombre_referencia' => $aeropuerto['nombre'],
+                    ]);
+                }
+            }
+
+            /*
+            $agentes = User::whereIn('id', $request->agentes_id)->get();
+            $pdf = Pdf::loadView('pdf.mision', [
+                'mision' => $mision,
+                'agentes' => $agentes,
+            ])->setPaper('a4', 'landscape');
+
+            $rutaRelativa = "misiones/{$mision->id}/archivo_mision.pdf";
+            Storage::makeDirectory("misiones/{$mision->id}"); // Asegurarse que exista el directorio
+            Storage::put($rutaRelativa, $pdf->output());
+
+            $mision->arch_mision = $rutaRelativa; // Actualizar ruta en el modelo
+            $mision->save(); // Guardar la ruta del archivo
+            */
+
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar misión:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'ubicaciones' => $ubicacionesProcesadas,
+            ]);
+
+            return back()->withInput()->with('error', 'Ocurrió un error al actualizar la misión.');
+        }
+
+        Log::info('Misión actualizada exitosamente', ['id' => $mision->id]);
+
+        $audit->record('Misiones', 'Misión actualizada', $mision, $before, $mision->only(array_keys($before)), [
+            'origen' => 'erp_web',
+            'agentes_agregados' => array_values(array_diff($mision->agentesIdsNormalizados(), $this->normalizeAgentIds($before['agentes_id'] ?? []))),
+            'agentes_retirados' => array_values(array_diff($this->normalizeAgentIds($before['agentes_id'] ?? []), $mision->agentesIdsNormalizados())),
+            'geocercas_actuales' => $mision->geofences()->count(),
         ]);
 
-        // === SINCRONIZAR GEOFENCES ===
-        // 1. Eliminar todas las geocercas antiguas asociadas a esta misión
-        $mision->geofences()->delete(); // Asumiendo que tienes una relación definida en el modelo Misiones
-
-        // 2. Crear nuevas geocercas basadas en los datos actualizados del formulario
-        foreach ($request->input('hoteles', []) as $hotel) {
-            if (!empty($hotel['nombre']) && isset($hotel['latitud']) && isset($hotel['longitud'])) {
-                Geofence::create([
-                    'mision_id' => $mision->id,
-                    'tipo' => 'hotel',
-                    'centro' => [
-                        'lat' => $hotel['latitud'],
-                        'lng' => $hotel['longitud'],
-                    ],
-                    'radio_km' => 1.000, // O el valor por defecto que uses
-                    'nombre_referencia' => $hotel['nombre'],
-                ]);
-            }
-        }
-
-        foreach ($request->input('aeropuertos', []) as $aeropuerto) {
-            if (!empty($aeropuerto['nombre']) && isset($aeropuerto['latitud']) && isset($aeropuerto['longitud'])) {
-                Geofence::create([
-                    'mision_id' => $mision->id,
-                    'tipo' => 'aeropuerto',
-                    'centro' => [
-                        'lat' => $aeropuerto['latitud'],
-                        'lng' => $aeropuerto['longitud'],
-                    ],
-                    'radio_km' => 4.000, // O el valor por defecto que uses
-                    'nombre_referencia' => $aeropuerto['nombre'],
-                ]);
-            }
-        }
-
-        /*
-        $agentes = User::whereIn('id', $request->agentes_id)->get();
-        $pdf = Pdf::loadView('pdf.mision', [
-            'mision' => $mision,
-            'agentes' => $agentes,
-        ])->setPaper('a4', 'landscape');
-
-        $rutaRelativa = "misiones/{$mision->id}/archivo_mision.pdf";
-        Storage::makeDirectory("misiones/{$mision->id}"); // Asegurarse que exista el directorio
-        Storage::put($rutaRelativa, $pdf->output());
-
-        $mision->arch_mision = $rutaRelativa; // Actualizar ruta en el modelo
-        $mision->save(); // Guardar la ruta del archivo
-        */
-
-    } catch (\Exception $e) {
-        Log::error('Error al actualizar misión:', [
-            'message' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-            'ubicaciones' => $ubicacionesProcesadas,
-        ]);
-        return back()->withInput()->with('error', 'Ocurrió un error al actualizar la misión.');
+        return redirect()->route('dashboard')->with('success', 'Misión actualizada exitosamente.');
     }
 
-    Log::info('Misión actualizada exitosamente', ['id' => $mision->id]);
-
-    return redirect()->route('dashboard')->with('success', 'Misión actualizada exitosamente.');
-}
-
-    public function updateStatus(Request $request, Misiones $mision)
+    public function updateStatus(Request $request, Misiones $mision, AuditLogger $audit)
     {
         $validated = $request->validate([
             'estatus' => ['required', 'string', Rule::in(MissionStatus::all())],
@@ -639,6 +668,9 @@ public function update(
         }
 
         $mision->update(['estatus' => $nextStatus]);
+        $audit->record('Misiones', 'Estado de misión actualizado', $mision, ['estatus' => $currentStatus], ['estatus' => $nextStatus], [
+            'origen' => 'erp_web',
+        ]);
 
         Log::info('Estado de misión actualizado', [
             'mision_id' => $mision->id,
@@ -651,7 +683,7 @@ public function update(
         return back()->with('success', "Estado actualizado a {$nextStatus}.");
     }
 
-    public function updateRevision(Request $request, Misiones $mision)
+    public function updateRevision(Request $request, Misiones $mision, AuditLogger $audit)
     {
         $validated = $request->validate([
             'revision_estado' => ['required', 'string', Rule::in([
@@ -676,11 +708,15 @@ public function update(
             ]);
         }
 
+        $before = $mision->only(['revision_estado', 'revision_observaciones', 'revision_user_id', 'revision_at']);
         $mision->update([
             'revision_estado' => $validated['revision_estado'],
             'revision_observaciones' => $validated['revision_observaciones'] ?? null,
             'revision_user_id' => $request->user()?->id,
             'revision_at' => now(),
+        ]);
+        $audit->record('Misiones', 'Revisión administrativa actualizada', $mision, $before, $mision->only(array_keys($before)), [
+            'origen' => 'erp_web',
         ]);
 
         return back()->with('success', "Revisión administrativa actualizada: {$validated['revision_estado']}.");
@@ -688,7 +724,7 @@ public function update(
 
     public function mostrarItinerarios(Misiones $mision)
     {
-        if (!$mision->itinerarios || empty($mision->itinerarios)) {
+        if (! $mision->itinerarios || empty($mision->itinerarios)) {
             return redirect()->route('custodios.misionesTerminadas')
                 ->with('warning', 'Esta misión no tiene itinerarios registrados.');
         }
@@ -704,7 +740,7 @@ public function update(
             : $mision->agentes_id;
 
         $usersMap = [];
-        if (is_array($agentesIds) && !empty($agentesIds)) {
+        if (is_array($agentesIds) && ! empty($agentesIds)) {
             $usersMap = \App\Models\User::whereIn('id', $agentesIds)
                 ->pluck('name', 'id') // Retorna: [1 => 'Juan Pérez', 5 => 'María López']
                 ->toArray();
@@ -714,25 +750,26 @@ public function update(
         $eventosPlanos = [];
         foreach ($itinerarios as $usuarioData) {
             $userId = $usuarioData['user_id'] ?? null;
-            $userName = $usersMap[$userId] ?? ('Agente #' . $userId);
+            $userName = $usersMap[$userId] ?? ('Agente #'.$userId);
 
             foreach ($usuarioData['eventos'] ?? [] as $evento) {
                 $eventosPlanos[] = [
-                    'user_id'     => $userId,
-                    'user_name'   => $userName,
-                    'fecha'       => $evento['fecha'] ?? null,
-                    'hora'        => $evento['hora'] ?? null,
+                    'user_id' => $userId,
+                    'user_name' => $userName,
+                    'fecha' => $evento['fecha'] ?? null,
+                    'hora' => $evento['hora'] ?? null,
                     'descripcion' => $evento['descripcion'] ?? null,
-                    'ubicacion'   => $evento['ubicacion'] ?? null,
-                    'created_at'  => $evento['created_at'] ?? null,
+                    'ubicacion' => $evento['ubicacion'] ?? null,
+                    'created_at' => $evento['created_at'] ?? null,
                 ];
             }
         }
 
         // Ordenar eventos cronológicamente (fecha + hora)
-        usort($eventosPlanos, function($a, $b) {
-            $timeA = ($a['fecha'] ?? '') . ' ' . ($a['hora'] ?? '');
-            $timeB = ($b['fecha'] ?? '') . ' ' . ($b['hora'] ?? '');
+        usort($eventosPlanos, function ($a, $b) {
+            $timeA = ($a['fecha'] ?? '').' '.($a['hora'] ?? '');
+            $timeB = ($b['fecha'] ?? '').' '.($b['hora'] ?? '');
+
             return $timeA <=> $timeB;
         });
 
@@ -742,7 +779,7 @@ public function update(
     public function downloadItinerarios(Misiones $mision)
     {
         // Validar que existan itinerarios
-        if (!$mision->itinerarios || empty($mision->itinerarios)) {
+        if (! $mision->itinerarios || empty($mision->itinerarios)) {
             abort(404);
         }
 
@@ -757,7 +794,7 @@ public function update(
             : $mision->agentes_id;
 
         $usersMap = [];
-        if (is_array($agentesIds) && !empty($agentesIds)) {
+        if (is_array($agentesIds) && ! empty($agentesIds)) {
             $usersMap = \App\Models\User::whereIn('id', $agentesIds)
                 ->pluck('name', 'id') // Retorna: [1 => 'Juan Pérez', 5 => 'María López']
                 ->toArray();
@@ -767,25 +804,26 @@ public function update(
         $eventosPlanos = [];
         foreach ($itinerarios as $usuarioData) {
             $userId = $usuarioData['user_id'] ?? null;
-            $userName = $usersMap[$userId] ?? ('Agente #' . $userId);
+            $userName = $usersMap[$userId] ?? ('Agente #'.$userId);
 
             foreach ($usuarioData['eventos'] ?? [] as $evento) {
                 $eventosPlanos[] = [
-                    'user_id'     => $userId,
-                    'user_name'   => $userName,
-                    'fecha'       => $evento['fecha'] ?? null,
-                    'hora'        => $evento['hora'] ?? null,
+                    'user_id' => $userId,
+                    'user_name' => $userName,
+                    'fecha' => $evento['fecha'] ?? null,
+                    'hora' => $evento['hora'] ?? null,
                     'descripcion' => $evento['descripcion'] ?? null,
-                    'ubicacion'   => $evento['ubicacion'] ?? null,
-                    'created_at'  => $evento['created_at'] ?? null,
+                    'ubicacion' => $evento['ubicacion'] ?? null,
+                    'created_at' => $evento['created_at'] ?? null,
                 ];
             }
         }
 
         // 🔹 Ordenar eventos cronológicamente (fecha + hora)
-        usort($eventosPlanos, function($a, $b) {
-            $timeA = ($a['fecha'] ?? '') . ' ' . ($a['hora'] ?? '');
-            $timeB = ($b['fecha'] ?? '') . ' ' . ($b['hora'] ?? '');
+        usort($eventosPlanos, function ($a, $b) {
+            $timeA = ($a['fecha'] ?? '').' '.($a['hora'] ?? '');
+            $timeB = ($b['fecha'] ?? '').' '.($b['hora'] ?? '');
+
             return $timeA <=> $timeB;
         });
 
@@ -808,7 +846,7 @@ public function update(
             ? json_decode($mision->agentes_id, true)
             : $mision->agentes_id;
 
-        if (!is_array($agentesIds) || empty($agentesIds)) {
+        if (! is_array($agentesIds) || empty($agentesIds)) {
             return redirect()->route('custodios.misionesTerminadas')
                 ->with('warning', 'Esta misión no tiene agentes asignados.');
         }
@@ -894,7 +932,7 @@ public function update(
             ? json_decode($mision->agentes_id, true)
             : $mision->agentes_id;
 
-        if (!is_array($agentesIds) || empty($agentesIds)) {
+        if (! is_array($agentesIds) || empty($agentesIds)) {
             abort(404);
         }
 
@@ -931,12 +969,12 @@ public function update(
             'totalLitros',
             'totalKm'
         ))
-        ->setPaper('letter', 'portrait')
-        ->setOptions([
-            'isHtml5ParserEnabled' => true,
-            'isRemoteEnabled' => false,
-            'defaultFont' => 'DejaVu Sans',
-        ]);
+            ->setPaper('letter', 'portrait')
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => false,
+                'defaultFont' => 'DejaVu Sans',
+            ]);
 
         return $pdf->download('gastos-mision-'.$mision->id.'.pdf');
     }
@@ -960,7 +998,7 @@ public function update(
         if (is_array($itinerarios)) {
             foreach ($itinerarios as $usuarioData) {
                 $userId = (int) ($usuarioData['user_id'] ?? 0);
-                $userName = $agentesNombres[$userId] ?? ('Agente #' . $userId);
+                $userName = $agentesNombres[$userId] ?? ('Agente #'.$userId);
 
                 foreach ($usuarioData['eventos'] ?? [] as $evento) {
                     $eventosPlanos[] = [
@@ -977,8 +1015,8 @@ public function update(
         }
 
         usort($eventosPlanos, function ($a, $b) {
-            return (($a['fecha'] ?? '') . ' ' . ($a['hora'] ?? ''))
-                <=> (($b['fecha'] ?? '') . ' ' . ($b['hora'] ?? ''));
+            return (($a['fecha'] ?? '').' '.($a['hora'] ?? ''))
+                <=> (($b['fecha'] ?? '').' '.($b['hora'] ?? ''));
         });
 
         $gastos = Gastos::query()
@@ -1006,6 +1044,25 @@ public function update(
             'totalViaticos' => (float) $gastos->where('Tipo', 'Viaticos')->sum('Monto'),
             'totalGasolina' => (float) $gastos->where('Tipo', 'Gasolina')->sum('Monto'),
         ];
+    }
+
+    /** @return array<int, int> */
+    private function normalizeAgentIds(mixed $value): array
+    {
+        while (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return [];
+            }
+            $value = $decoded;
+        }
+
+        return collect(is_array($value) ? $value : [])
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function assertMissionReadyForBilling(Misiones $mision): void

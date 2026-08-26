@@ -2,18 +2,23 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
 use App\Models\Punto;
-use App\Models\Unidades;
 use App\Models\Turno;
+use App\Models\Unidades;
+use App\Services\AuditLogger;
 use Carbon\Carbon;
+use Livewire\Component;
 
 class Gasolinas extends Component
 {
     public $subpunto_id = null;
+
     public $placa = '';
+
     public $zona_seleccionada = '';
+
     public $fecha_desde;
+
     public $fecha_hasta;
 
     public $registros = [];
@@ -60,11 +65,11 @@ class Gasolinas extends Component
         $puntos = Punto::all();
 
         $registrosFiltrados = collect($this->registros)->filter(function ($r) {
-            return !empty($r['placas']);
+            return ! empty($r['placas']);
         });
 
         $kmInicial = $registrosFiltrados->first() ? $registrosFiltrados->first()['km_inicio'] : 0;
-        $ultimoConCarga = $registrosFiltrados->filter(fn($r) => $r['km_carga'] > 0)->last();
+        $ultimoConCarga = $registrosFiltrados->filter(fn ($r) => $r['km_carga'] > 0)->last();
         $kmFinal = $ultimoConCarga ? $ultimoConCarga['km_carga'] : $kmInicial;
         $diferenciaKm = $kmFinal - $kmInicial;
         $totalDinero = $registrosFiltrados->sum('monto');
@@ -86,17 +91,17 @@ class Gasolinas extends Component
         $fechaHasta = Carbon::parse($this->fecha_hasta);
 
         $query = Turno::query()
-            ->when($this->subpunto_id, fn($q) => $q->where('subpunto_id', $this->subpunto_id))
-            ->when($this->placa, fn($q) => $q->where('Placas_unidad', 'like', "%{$this->placa}%"))
+            ->when($this->subpunto_id, fn ($q) => $q->where('subpunto_id', $this->subpunto_id))
+            ->when($this->placa, fn ($q) => $q->where('Placas_unidad', 'like', "%{$this->placa}%"))
             ->where(function ($q) use ($fechaDesde, $fechaHasta) {
                 $q->where(function ($sub) use ($fechaDesde, $fechaHasta) {
                     $sub->whereNotNull('Fecha')
-                         ->whereDate('Fecha', '>=', $fechaDesde->toDateString())
-                         ->whereDate('Fecha', '<=', $fechaHasta->toDateString());
+                        ->whereDate('Fecha', '>=', $fechaDesde->toDateString())
+                        ->whereDate('Fecha', '<=', $fechaHasta->toDateString());
                 })->orWhere(function ($sub) use ($fechaDesde, $fechaHasta) {
                     $sub->whereNull('Fecha')
-                         ->whereDate('created_at', '>=', $fechaDesde->toDateString())
-                         ->whereDate('created_at', '<=', $fechaHasta->toDateString());
+                        ->whereDate('created_at', '>=', $fechaDesde->toDateString())
+                        ->whereDate('created_at', '<=', $fechaHasta->toDateString());
                 });
             })
             ->orderBy('Fecha', 'asc')
@@ -149,12 +154,15 @@ class Gasolinas extends Component
     public function updatedRegistrosNombreElemento($value, $fullPath)
     {
         preg_match('/registros\.(\d+)\.nombre_elemento/', $fullPath, $matches);
-        if (!isset($matches[1])) return;
+        if (! isset($matches[1])) {
+            return;
+        }
 
-        $index = (int)$matches[1];
+        $index = (int) $matches[1];
 
         if (strlen($value) < 2) {
             $this->tempSuggestions = [];
+
             return;
         }
 
@@ -203,7 +211,9 @@ class Gasolinas extends Component
     public function selectUserFromInput($rowIndex)
     {
         $nombre = $this->registros[$rowIndex]['nombre_elemento'];
-        if (empty($nombre)) return;
+        if (empty($nombre)) {
+            return;
+        }
 
         $user = \App\Models\User::where('estatus', 'Activo')
             ->where('name', $nombre)
@@ -217,10 +227,13 @@ class Gasolinas extends Component
     public function guardarTodos()
     {
         foreach ($this->registros as $dato) {
-            if (empty(trim($dato['nombre_elemento']))) continue;
+            if (empty(trim($dato['nombre_elemento']))) {
+                continue;
+            }
 
-            if (!$dato['user_id']) {
+            if (! $dato['user_id']) {
                 session()->flash('error', 'Debe seleccionar un usuario válido.');
+
                 return;
             }
 
@@ -248,6 +261,10 @@ class Gasolinas extends Component
 
             if ($tiene_carga) {
                 $gasto = \App\Models\Gastos::firstOrNew(['Turno_id' => $turno->id]);
+                $before = $gasto->exists ? $gasto->only([
+                    'user_id', 'Fecha', 'Tipo', 'Hora', 'Km', 'Gasolina_antes_carga',
+                    'Monto', 'Litros', 'Gasolina_despues_carga', 'mision_id',
+                ]) : [];
                 $gasto->Turno_id = $turno->id;
                 $gasto->user_name = $dato['nombre_elemento'];
 
@@ -264,6 +281,14 @@ class Gasolinas extends Component
                     'created_at' => now(),
                     'updated_at' => now(),
                 ])->save();
+
+                app(AuditLogger::class)->record('Gastos', $before === [] ? 'Gasto de gasolina creado' : 'Gasto de gasolina actualizado', $gasto, $before, $gasto->only([
+                    'user_id', 'Fecha', 'Tipo', 'Hora', 'Km', 'Gasolina_antes_carga',
+                    'Monto', 'Litros', 'Gasolina_despues_carga', 'mision_id',
+                ]), [
+                    'origen' => 'erp_web',
+                    'turno_id' => $turno->id,
+                ]);
             }
         }
 

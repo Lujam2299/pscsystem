@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Custodios;
 
+use App\Models\AuditLog;
 use App\Models\Misiones;
 use App\Models\User;
 use App\Support\Custodios\MissionStatus;
@@ -71,6 +72,9 @@ class CustodiosMissionStatusTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertSame(MissionStatus::IN_PROGRESS, $mission->refresh()->estatus);
+        $log = AuditLog::query()->where('action', 'Estado de misión actualizado')->firstOrFail();
+        $this->assertSame(MissionStatus::SCHEDULED, $log->old_values['estatus']);
+        $this->assertSame(MissionStatus::IN_PROGRESS, $log->new_values['estatus']);
     }
 
     public function test_invalid_transition_is_rejected_and_does_not_change_the_mission(): void
@@ -131,6 +135,25 @@ class CustodiosMissionStatusTest extends TestCase
             $table->date('fecha_fin')->nullable();
             $table->string('estatus')->nullable();
             $table->timestamps();
+        });
+
+        $this->createAuditSchema();
+    }
+
+    private function createAuditSchema(): void
+    {
+        Schema::create('audit_logs', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('actor_id')->nullable();
+            $table->string('module');
+            $table->string('action');
+            $table->nullableMorphs('subject');
+            $table->json('old_values')->nullable();
+            $table->json('new_values')->nullable();
+            $table->json('metadata')->nullable();
+            $table->string('ip_address')->nullable();
+            $table->text('user_agent')->nullable();
+            $table->timestamp('created_at')->nullable();
         });
     }
 }

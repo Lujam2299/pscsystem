@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Custodios;
 
+use App\Models\AuditLog;
 use App\Models\MisionCierreOperativo;
 use App\Models\Misiones;
 use App\Models\User;
@@ -68,6 +69,9 @@ class CustodiosMissionReviewTest extends TestCase
         $this->assertSame('Lista para facturar', $mission->revision_estado);
         $this->assertSame($actor->id, $mission->revision_user_id);
         $this->assertNotNull($mission->revision_at);
+        $log = AuditLog::query()->where('action', 'Revisión administrativa actualizada')->firstOrFail();
+        $this->assertSame('Pendiente de revisión', $log->old_values['revision_estado']);
+        $this->assertSame('Lista para facturar', $log->new_values['revision_estado']);
     }
 
     public function test_observada_requiere_observaciones(): void
@@ -146,6 +150,20 @@ class CustodiosMissionReviewTest extends TestCase
             $table->string('client_operation_id', 100)->nullable();
             $table->timestamp('client_created_at')->nullable();
             $table->timestamps();
+        });
+
+        Schema::create('audit_logs', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('actor_id')->nullable();
+            $table->string('module');
+            $table->string('action');
+            $table->nullableMorphs('subject');
+            $table->json('old_values')->nullable();
+            $table->json('new_values')->nullable();
+            $table->json('metadata')->nullable();
+            $table->string('ip_address')->nullable();
+            $table->text('user_agent')->nullable();
+            $table->timestamp('created_at')->nullable();
         });
     }
 }

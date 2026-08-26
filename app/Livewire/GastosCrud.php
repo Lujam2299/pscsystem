@@ -6,6 +6,7 @@ use App\Exports\GastosMisionSpreadsheetExport;
 use App\Models\Gastos;
 use App\Models\Misiones;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -74,6 +75,14 @@ class GastosCrud extends Component
     public function exportarExcel(int $misionId, GastosMisionSpreadsheetExport $exportador)
     {
         $mision = Misiones::query()->findOrFail($misionId);
+        $gastos = Gastos::query()->forMission($mision)->get();
+
+        app(AuditLogger::class)->record('Gastos', 'Gastos de misión exportados', $mision, [], [], [
+            'origen' => 'erp_web',
+            'formato' => 'xlsx',
+            'cantidad_gastos' => $gastos->count(),
+            'total_exportado' => (float) $gastos->sum('Monto'),
+        ]);
 
         return $exportador->download($mision);
     }
