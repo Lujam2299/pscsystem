@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\GpsAlert;
+use App\Models\GpsSpeedLimit;
 use App\Services\TraccarClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -259,6 +260,85 @@ class TraccarMonitoringController extends Controller
         }
 
         return response()->json(['ok' => true]);
+    }
+
+    public function speedLimits(): JsonResponse
+    {
+        return response()->json(['limits' => GpsSpeedLimit::orderBy('device_id')->get()]);
+    }
+
+    public function saveSpeedLimit(Request $request, int $deviceId, TraccarClient $traccar): JsonResponse
+    {
+        $validated = $request->validate([
+            'speed_limit_kmh' => ['required', 'numeric', 'between:10,200'],
+            'tolerance_seconds' => ['required', 'integer', 'between:0,600'],
+            'active' => ['required', 'boolean'],
+        ]);
+        $exists = collect($traccar->devices())->contains(fn ($device) => (int) ($device['id'] ?? 0) === $deviceId);
+        abort_unless($exists, 404, 'La unidad GPS no existe o no está disponible.');
+
+        $limit = GpsSpeedLimit::updateOrCreate(['device_id' => $deviceId], [
+            ...$validated,
+            'updated_by' => $request->user()->id,
+        ]);
+
+        Log::notice('Límite de velocidad GPS actualizado.', ['device_id' => $deviceId, 'user_id' => $request->user()->id]);
+
+        return response()->json(['limit' => $limit]);
+    }
+
+    public function createGeofence(Request $request, TraccarClient $traccar): JsonResponse
+    {
+        $validated = $this->validateGeofence($request);
+        $geofence = $traccar->createGeofence([
+            'id' => 0,
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? '',
+            'area' => $validated['area'],
+            'calendarId' => 0,
+            'attributes' => $validated['attributes'] ?? [],
+        ]);
+        Log::notice('Geocerca creada en Traccar.', ['geofence_id' => $geofence['id'] ?? null, 'user_id' => $request->user()->id]);
+
+        return response()->json(['geofence' => $geofence], 201);
+    }
+
+    public function updateGeofence(Request $request, int $geofenceId, TraccarClient $traccar): JsonResponse
+    {
+        $validated = $this->validateGeofence($request);
+        $current = collect($traccar->geofences())->firstWhere('id', $geofenceId);
+        abort_unless($current, 404, 'La geocerca no existe o no está disponible.');
+        $geofence = $traccar->updateGeofence($geofenceId, [
+            ...$current,
+            'id' => $geofenceId,
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? '',
+            'area' => $validated['area'],
+            'attributes' => $validated['attributes'] ?? ($current['attributes'] ?? []),
+        ]);
+        Log::notice('Geocerca actualizada en Traccar.', ['geofence_id' => $geofenceId, 'user_id' => $request->user()->id]);
+
+        return response()->json(['geofence' => $geofence]);
+    }
+
+    public function deleteGeofence(Request $request, int $geofenceId, TraccarClient $traccar): JsonResponse
+    {
+        $traccar->deleteGeofence($geofenceId);
+        Log::warning('Geocerca eliminada de Traccar.', ['geofence_id' => $geofenceId, 'user_id' => $request->user()->id]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** @return array<string, mixed> */
+    private function validateGeofence(Request $request): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:128'],
+            'description' => ['nullable', 'string', 'max:500'],
+            'area' => ['required', 'string', 'max:50000', 'regex:/^(CIRCLE|POLYGON|LINESTRING)\s*\(/i'],
+            'attributes' => ['nullable', 'array'],
+            'attributes.color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+        ]);
     }
 
     private function alertPriority(string $type, array $attributes): string

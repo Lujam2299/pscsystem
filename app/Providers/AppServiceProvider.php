@@ -57,6 +57,11 @@ class AppServiceProvider extends ServiceProvider
 
             return Str::contains($rol, ['admin', 'monitor']);
         });
+        Gate::define('manage-traccar-monitoring', function ($user) {
+            $rol = Str::lower(Str::ascii(trim((string) ($user->rol ?? ''))));
+
+            return Str::contains($rol, ['admin']);
+        });
 
         Message::observe(MessageObserver::class);
         BuzonQueja::observe(BuzonQuejaObserver::class);

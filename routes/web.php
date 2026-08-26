@@ -28,6 +28,7 @@ use App\Http\Controllers\RiesgoTrabajoController;
 use App\Http\Controllers\SipareController;
 use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\TraccarMonitoringController;
+use App\Http\Controllers\GpsReportController;
 use App\Http\Controllers\UserController;
 use App\Models\Unidades;
 use App\Models\User;
@@ -303,6 +304,16 @@ Route::middleware('auth')->group(function () {
             Route::post('/alerts/read', [TraccarMonitoringController::class, 'readAlerts'])
                 ->middleware('throttle:30,1')
                 ->name('alerts.read');
+            Route::get('/reports', [GpsReportController::class, 'show'])->middleware('throttle:10,1')->name('reports');
+            Route::get('/reports/xlsx', [GpsReportController::class, 'xlsx'])->middleware('throttle:5,1')->name('reports.xlsx');
+            Route::get('/reports/pdf', [GpsReportController::class, 'pdf'])->middleware('throttle:5,1')->name('reports.pdf');
+            Route::get('/speed-limits', [TraccarMonitoringController::class, 'speedLimits'])->name('speed-limits');
+            Route::middleware('can:manage-traccar-monitoring')->group(function () {
+                Route::put('/speed-limits/{deviceId}', [TraccarMonitoringController::class, 'saveSpeedLimit'])->name('speed-limits.save');
+                Route::post('/geofences', [TraccarMonitoringController::class, 'createGeofence'])->name('geofences.create');
+                Route::put('/geofences/{geofenceId}', [TraccarMonitoringController::class, 'updateGeofence'])->name('geofences.update');
+                Route::delete('/geofences/{geofenceId}', [TraccarMonitoringController::class, 'deleteGeofence'])->name('geofences.delete');
+            });
         });
     Route::get('/vehiculos', function () {
         return view('vehiculos.crud');

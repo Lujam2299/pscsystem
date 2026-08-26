@@ -4,6 +4,7 @@
     @push('styles')
         <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css">
         <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
         <style>
             #traccar-map {
                 min-height: 34rem;
@@ -27,6 +28,7 @@
             }
 
             .gps-marker--moving { background: #16a34a; }
+            .gps-marker--overspeed { background: #dc2626; animation: pulse 1s infinite; }
             .gps-marker--idle { background: #f59e0b; }
             .gps-marker--parked { background: #2563eb; }
             .gps-marker--offline { background: #64748b; }
@@ -138,6 +140,7 @@
                         <select id="gps-status-filter" class="w-full mt-1 border-gray-300 rounded-lg shadow-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-blue-500 focus:ring-blue-500">
                             <option value="all">Todos</option>
                             <option value="moving">En movimiento</option>
+                            <option value="overspeed">Exceso de velocidad</option>
                             <option value="idle">Detenida con ignición</option>
                             <option value="parked">Estacionada</option>
                             <option value="offline">Fuera de línea</option>
@@ -195,6 +198,13 @@
                         </select>
                     </label>
                     <p id="gps-geofence-units" class="text-sm text-gray-500 dark:text-gray-400">Cargando geocercas…</p>
+                    @can('manage-traccar-monitoring')
+                        <div class="flex gap-2">
+                            <button id="gps-geofence-new" type="button" class="px-3 py-2 text-sm font-semibold text-white bg-purple-600 rounded-lg">Nueva</button>
+                            <button id="gps-geofence-edit" type="button" class="px-3 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg dark:bg-gray-900 dark:text-white">Editar</button>
+                            <button id="gps-geofence-delete" type="button" class="px-3 py-2 text-sm font-semibold text-red-700 bg-red-50 border border-red-200 rounded-lg">Eliminar</button>
+                        </div>
+                    @endcan
                 </div>
 
                 <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
@@ -273,7 +283,57 @@
                         <p class="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">Dirección aproximada</p>
                         <p id="gps-detail-address" class="mt-1 text-sm font-medium text-gray-800 dark:text-gray-100">Selecciona una unidad para consultar su dirección.</p>
                     </div>
+                    <div class="px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+                        <div class="flex flex-col gap-3 md:flex-row md:items-end">
+                            <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Límite de velocidad (km/h)
+                                <input id="gps-speed-limit" type="number" min="10" max="200" step="1" class="block mt-1 border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                            </label>
+                            <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Tolerancia (segundos)
+                                <input id="gps-speed-tolerance" type="number" min="0" max="600" step="5" value="30" class="block mt-1 border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                            </label>
+                            <label class="inline-flex items-center gap-2 pb-2 text-sm text-gray-700 dark:text-gray-200"><input id="gps-speed-active" type="checkbox" checked> Activo</label>
+                            @can('manage-traccar-monitoring')
+                                <button id="gps-speed-save" type="button" class="px-4 py-2 text-sm font-semibold text-white bg-orange-600 rounded-lg">Guardar límite</button>
+                            @endcan
+                            <span id="gps-speed-status" class="pb-2 text-sm text-gray-500 dark:text-gray-400"></span>
+                        </div>
+                    </div>
                 </section>
+
+                <section class="overflow-hidden bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-800">
+                    <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white">Reportes operativos GPS</h2>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Resumen por unidad, viajes, paradas, desconexiones y excesos de velocidad.</p>
+                    </div>
+                    <form id="gps-report-form" class="grid grid-cols-1 gap-3 p-5 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end">
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Unidad
+                            <select id="gps-report-device" class="w-full mt-1 border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white"><option value="">Todas las unidades</option></select>
+                        </label>
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Desde<input id="gps-report-from" type="datetime-local" required class="w-full mt-1 border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white"></label>
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Hasta<input id="gps-report-to" type="datetime-local" required class="w-full mt-1 border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white"></label>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="submit" class="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg">Generar</button>
+                            <button id="gps-report-xlsx" type="button" class="px-3 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg">XLSX</button>
+                            <button id="gps-report-pdf" type="button" class="px-3 py-2 text-sm font-semibold text-red-700 bg-red-50 border border-red-200 rounded-lg">PDF</button>
+                        </div>
+                    </form>
+                    <div id="gps-report-error" class="hidden px-5 pb-4 text-sm text-red-600"></div>
+                    <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-left text-gray-600 bg-gray-50 dark:bg-gray-900 dark:text-gray-300"><tr><th class="p-3">Unidad</th><th class="p-3">Km</th><th class="p-3">Máx.</th><th class="p-3">Prom.</th><th class="p-3">Viajes</th><th class="p-3">Paradas</th><th class="p-3">Detenida</th><th class="p-3">Descon.</th><th class="p-3">Excesos</th><th class="p-3">Límite</th></tr></thead><tbody id="gps-report-body" class="divide-y divide-gray-100 dark:divide-gray-700"><tr><td colspan="10" class="p-6 text-center text-gray-500">Genera un reporte para consultar resultados.</td></tr></tbody></table></div>
+                </section>
+
+                @can('manage-traccar-monitoring')
+                    <div id="gps-geofence-dialog" class="fixed inset-0 z-[2000] hidden items-center justify-center p-4 bg-slate-950/60">
+                        <form id="gps-geofence-form" class="w-full max-w-lg p-6 bg-white rounded-2xl shadow-2xl dark:bg-gray-800">
+                            <h2 id="gps-geofence-dialog-title" class="text-xl font-bold text-gray-900 dark:text-white">Nueva geocerca</h2>
+                            <input id="gps-geofence-id" type="hidden"><input id="gps-geofence-area" type="hidden">
+                            <label class="block mt-4 text-sm font-medium text-gray-700 dark:text-gray-200">Nombre<input id="gps-geofence-name" required maxlength="128" class="w-full mt-1 border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white"></label>
+                            <label class="block mt-3 text-sm font-medium text-gray-700 dark:text-gray-200">Descripción<textarea id="gps-geofence-description" maxlength="500" rows="3" class="w-full mt-1 border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white"></textarea></label>
+                            <label class="block mt-3 text-sm font-medium text-gray-700 dark:text-gray-200">Color<input id="gps-geofence-color" type="color" value="#7c3aed" class="block mt-1 h-10 w-20"></label>
+                            <p id="gps-geofence-form-error" class="hidden mt-3 text-sm text-red-600"></p>
+                            <div class="flex justify-end gap-2 mt-5"><button id="gps-geofence-cancel" type="button" class="px-4 py-2 border rounded-lg dark:text-white">Cancelar</button><button type="submit" class="px-4 py-2 font-semibold text-white bg-purple-600 rounded-lg">Guardar en Traccar</button></div>
+                        </form>
+                    </div>
+                @endcan
 
                 <section class="overflow-hidden bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-800">
                     <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -328,6 +388,7 @@
 
     @push('scripts')
         <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+        <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 const endpoints = {
@@ -337,6 +398,14 @@
                     geofences: @json(route('monitoreo.unidades-gps.geofences')),
                     alerts: @json(route('monitoreo.unidades-gps.alerts')),
                     readAlerts: @json(route('monitoreo.unidades-gps.alerts.read')),
+                    reports: @json(route('monitoreo.unidades-gps.reports')),
+                    reportXlsx: @json(route('monitoreo.unidades-gps.reports.xlsx')),
+                    reportPdf: @json(route('monitoreo.unidades-gps.reports.pdf')),
+                    speedLimits: @json(route('monitoreo.unidades-gps.speed-limits')),
+                    speedLimitSave: @json(route('monitoreo.unidades-gps.speed-limits.save', 0)),
+                    geofenceCreate: @json(route('monitoreo.unidades-gps.geofences.create')),
+                    geofenceUpdate: @json(route('monitoreo.unidades-gps.geofences.update', 0)),
+                    geofenceDelete: @json(route('monitoreo.unidades-gps.geofences.delete', 0)),
                     socketToken: @json(route('monitoreo.unidades-gps.socket-token')),
                     websocket: @json($websocketUrl),
                 };
@@ -348,7 +417,11 @@
                 const recentEvents = new Map();
                 const addresses = new Map();
                 const gpsAlerts = new Map();
+                const localSpeedAlerts = new Map();
                 const geofences = new Map();
+                const speedLimits = new Map();
+                const speedExceededSince = new Map();
+                const canManageGps = @json(auth()->user()->can('manage-traccar-monitoring'));
                 const markerCluster = L.markerClusterGroup({
                     disableClusteringAtZoom: 15,
                     maxClusterRadius: 48,
@@ -358,6 +431,7 @@
                 const focusLayer = L.layerGroup();
                 const historyLayer = L.layerGroup();
                 const geofenceLayer = L.layerGroup();
+                const editableGeofenceLayer = L.featureGroup();
                 let socket = null;
                 let reconnectTimer = null;
                 let reconnectAttempts = 0;
@@ -371,6 +445,7 @@
                 let alertRefreshTimer = null;
                 let alertPollTimer = null;
                 let lastCriticalAlertId = null;
+                let pendingGeofenceLayer = null;
 
                 const map = L.map('traccar-map', {
                     center: [25.6866, -100.3161],
@@ -385,6 +460,7 @@
                 focusLayer.addTo(map);
                 historyLayer.addTo(map);
                 geofenceLayer.addTo(map);
+                if (canManageGps) editableGeofenceLayer.addTo(map);
 
                 const elements = {
                     connectionDot: document.getElementById('gps-connection-dot'),
@@ -427,6 +503,32 @@
                     geofenceToggle: document.getElementById('gps-geofence-toggle'),
                     geofenceSelect: document.getElementById('gps-geofence-select'),
                     geofenceUnits: document.getElementById('gps-geofence-units'),
+                    geofenceNew: document.getElementById('gps-geofence-new'),
+                    geofenceEdit: document.getElementById('gps-geofence-edit'),
+                    geofenceDelete: document.getElementById('gps-geofence-delete'),
+                    geofenceDialog: document.getElementById('gps-geofence-dialog'),
+                    geofenceForm: document.getElementById('gps-geofence-form'),
+                    geofenceDialogTitle: document.getElementById('gps-geofence-dialog-title'),
+                    geofenceId: document.getElementById('gps-geofence-id'),
+                    geofenceArea: document.getElementById('gps-geofence-area'),
+                    geofenceName: document.getElementById('gps-geofence-name'),
+                    geofenceDescription: document.getElementById('gps-geofence-description'),
+                    geofenceColor: document.getElementById('gps-geofence-color'),
+                    geofenceFormError: document.getElementById('gps-geofence-form-error'),
+                    geofenceCancel: document.getElementById('gps-geofence-cancel'),
+                    speedLimit: document.getElementById('gps-speed-limit'),
+                    speedTolerance: document.getElementById('gps-speed-tolerance'),
+                    speedActive: document.getElementById('gps-speed-active'),
+                    speedSave: document.getElementById('gps-speed-save'),
+                    speedStatus: document.getElementById('gps-speed-status'),
+                    reportForm: document.getElementById('gps-report-form'),
+                    reportDevice: document.getElementById('gps-report-device'),
+                    reportFrom: document.getElementById('gps-report-from'),
+                    reportTo: document.getElementById('gps-report-to'),
+                    reportXlsx: document.getElementById('gps-report-xlsx'),
+                    reportPdf: document.getElementById('gps-report-pdf'),
+                    reportError: document.getElementById('gps-report-error'),
+                    reportBody: document.getElementById('gps-report-body'),
                     historyForm: document.getElementById('gps-history-form'),
                     historyFrom: document.getElementById('gps-history-from'),
                     historyTo: document.getElementById('gps-history-to'),
@@ -490,6 +592,14 @@
                     if (device?.status !== 'online') return 'unknown';
 
                     const speed = speedKmhValue(position);
+                    const limit = speedLimits.get(String(device.id));
+                    if (limit?.active && speed !== null && speed > Number(limit.speed_limit_kmh)) {
+                        const key = String(device.id);
+                        if (!speedExceededSince.has(key)) speedExceededSince.set(key, Date.now());
+                        if (Date.now() - speedExceededSince.get(key) >= Number(limit.tolerance_seconds || 0) * 1000) return 'overspeed';
+                    } else {
+                        speedExceededSince.delete(String(device.id));
+                    }
                     const motion = booleanValue(positionAttribute(position, 'motion'));
                     const ignition = booleanValue(positionAttribute(position, 'ignition'));
 
@@ -500,6 +610,7 @@
                 };
 
                 const statusLabel = (status) => ({
+                    overspeed: 'Exceso de velocidad',
                     moving: 'En movimiento',
                     idle: 'Detenida con ignición',
                     parked: 'Estacionada',
@@ -508,6 +619,7 @@
                 })[status] ?? 'Desconocido';
 
                 const statusClasses = (status) => ({
+                    overspeed: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
                     moving: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
                     idle: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
                     parked: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
@@ -636,6 +748,16 @@
 
                     if (!device || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
                     const status = operationalStatus(device, position);
+                    if (status === 'overspeed') {
+                        const alertKey = `speed-${key}`;
+                        if (!localSpeedAlerts.has(alertKey)) {
+                            localSpeedAlerts.set(alertKey, {
+                                id: alertKey, device_id: Number(device.id), type: 'overspeed', priority: 'high',
+                                event_time: new Date().toISOString(), is_read: false, local: true,
+                            });
+                        }
+                        recentEvents.set(key, Date.now());
+                    }
 
                     let marker = markers.get(key);
                     if (!marker) {
@@ -724,6 +846,13 @@
                     elements.detailAddress.textContent = position?.address
                         || (addressKey ? addresses.get(addressKey) : null)
                         || (addressKey ? 'Consultando dirección…' : 'Dirección no disponible');
+                    const configuredLimit = speedLimits.get(String(device.id));
+                    elements.speedLimit.value = configuredLimit?.speed_limit_kmh ?? '';
+                    elements.speedTolerance.value = configuredLimit?.tolerance_seconds ?? 30;
+                    elements.speedActive.checked = configuredLimit?.active ?? true;
+                    elements.speedStatus.textContent = configuredLimit
+                        ? `Configurado en ${Number(configuredLimit.speed_limit_kmh).toFixed(0)} km/h`
+                        : 'Sin límite configurado';
                 };
 
                 const resolveSelectedAddress = async () => {
@@ -959,6 +1088,7 @@
                         const payload = await response.json();
                         if (!response.ok) throw new Error(payload.message || 'No fue posible consultar las geocercas.');
                         geofenceLayer.clearLayers();
+                        editableGeofenceLayer.clearLayers();
                         geofences.clear();
                         elements.geofenceSelect.innerHTML = '<option value="">Todas las geocercas</option>';
                         (payload.geofences || []).forEach((geofence) => {
@@ -966,7 +1096,8 @@
                             if (!shape || geofence.id === undefined) return;
                             const id = String(geofence.id);
                             shape.layer.bindTooltip(escapeHtml(geofence.name || `Geocerca ${id}`));
-                            shape.layer.addTo(geofenceLayer);
+                            shape.layer._gpsGeofenceId = id;
+                            shape.layer.addTo(canManageGps ? editableGeofenceLayer : geofenceLayer);
                             geofences.set(id, { ...shape, data: geofence });
                             elements.geofenceSelect.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(id)}">${escapeHtml(geofence.name || `Geocerca ${id}`)}</option>`);
                         });
@@ -974,6 +1105,112 @@
                     } catch (error) {
                         elements.geofenceUnits.textContent = error.message || 'Geocercas no disponibles';
                     }
+                };
+
+                const loadSpeedLimits = async () => {
+                    try {
+                        const response = await fetch(endpoints.speedLimits, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+                        const payload = await response.json();
+                        if (!response.ok) throw new Error(payload.message || 'No fue posible consultar los límites.');
+                        speedLimits.clear();
+                        (payload.limits || []).forEach((limit) => speedLimits.set(String(limit.device_id), limit));
+                        devices.forEach((device) => updateMarker(device.id));
+                        render();
+                        renderDetail();
+                    } catch (error) {
+                        elements.speedStatus.textContent = error.message || 'Límites no disponibles';
+                    }
+                };
+
+                const saveSelectedSpeedLimit = async () => {
+                    if (!selectedDeviceId) throw new Error('Selecciona primero una unidad.');
+                    const endpoint = endpoints.speedLimitSave.replace(/\/0$/, `/${selectedDeviceId}`);
+                    const response = await fetch(endpoint, {
+                        method: 'PUT', credentials: 'same-origin',
+                        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                        body: JSON.stringify({
+                            speed_limit_kmh: Number(elements.speedLimit.value),
+                            tolerance_seconds: Number(elements.speedTolerance.value),
+                            active: elements.speedActive.checked,
+                        }),
+                    });
+                    const payload = await response.json();
+                    if (!response.ok) throw new Error(Object.values(payload.errors || {}).flat()[0] || payload.message || 'No fue posible guardar el límite.');
+                    speedLimits.set(String(payload.limit.device_id), payload.limit);
+                    updateMarker(selectedDeviceId);
+                    renderDetail();
+                    render();
+                };
+
+                const reportUrl = (base) => {
+                    const url = new URL(base, window.location.origin);
+                    if (elements.reportDevice.value) url.searchParams.append('device_ids[]', elements.reportDevice.value);
+                    url.searchParams.set('from', new Date(elements.reportFrom.value).toISOString());
+                    url.searchParams.set('to', new Date(elements.reportTo.value).toISOString());
+                    return url;
+                };
+
+                const renderOperationalReport = (report) => {
+                    const rows = Array.isArray(report.rows) ? report.rows : [];
+                    elements.reportBody.innerHTML = rows.length ? rows.map((row) => `<tr class="dark:text-gray-200">
+                        <td class="p-3 font-semibold">${escapeHtml(row.device_name)}</td><td class="p-3">${escapeHtml(row.distance_km)}</td><td class="p-3">${escapeHtml(row.max_speed_kmh)} km/h</td><td class="p-3">${escapeHtml(row.average_speed_kmh)} km/h</td>
+                        <td class="p-3">${escapeHtml(row.trips_count)}</td><td class="p-3">${escapeHtml(row.stops_count)}</td><td class="p-3">${escapeHtml(row.stopped_hours)} h</td><td class="p-3">${escapeHtml(row.offline_events)}</td>
+                        <td class="p-3 ${Number(row.overspeed_events) + Number(row.trips_over_limit) > 0 ? 'font-bold text-red-600' : ''}">${Number(row.overspeed_events) + Number(row.trips_over_limit)}</td><td class="p-3">${row.speed_limit_kmh ?? 'N/D'}</td>
+                    </tr>`).join('') : '<tr><td colspan="10" class="p-6 text-center text-gray-500">No hay datos para el periodo seleccionado.</td></tr>';
+                };
+
+                const loadOperationalReport = async () => {
+                    const response = await fetch(reportUrl(endpoints.reports), { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+                    const payload = await response.json();
+                    if (!response.ok) throw new Error(Object.values(payload.errors || {}).flat()[0] || payload.message || 'No fue posible generar el reporte.');
+                    renderOperationalReport(payload);
+                };
+
+                const layerToArea = (layer) => {
+                    if (layer instanceof L.Circle) {
+                        const center = layer.getLatLng();
+                        return `CIRCLE (${center.lat.toFixed(6)} ${center.lng.toFixed(6)}, ${Math.round(layer.getRadius())})`;
+                    }
+                    const latLngs = layer.getLatLngs();
+                    const points = Array.isArray(latLngs[0]) ? latLngs[0] : latLngs;
+                    const coordinates = points.map((point) => `${point.lat.toFixed(6)} ${point.lng.toFixed(6)}`);
+                    if (layer instanceof L.Polygon) {
+                        if (coordinates[0] !== coordinates.at(-1)) coordinates.push(coordinates[0]);
+                        return `POLYGON ((${coordinates.join(', ')}))`;
+                    }
+                    return `LINESTRING (${coordinates.join(', ')})`;
+                };
+
+                const openGeofenceDialog = (layer, geofenceId = '') => {
+                    if (!canManageGps) return;
+                    const existing = geofences.get(String(geofenceId));
+                    pendingGeofenceLayer = layer;
+                    elements.geofenceId.value = geofenceId;
+                    elements.geofenceArea.value = layer ? layerToArea(layer) : existing?.data.area || '';
+                    elements.geofenceName.value = existing?.data.name || '';
+                    elements.geofenceDescription.value = existing?.data.description || '';
+                    elements.geofenceColor.value = existing?.data.attributes?.color || '#7c3aed';
+                    elements.geofenceDialogTitle.textContent = geofenceId ? 'Editar geocerca' : 'Nueva geocerca';
+                    elements.geofenceFormError.classList.add('hidden');
+                    elements.geofenceDialog.classList.remove('hidden');
+                    elements.geofenceDialog.classList.add('flex');
+                };
+
+                const closeGeofenceDialog = () => {
+                    elements.geofenceDialog?.classList.add('hidden');
+                    elements.geofenceDialog?.classList.remove('flex');
+                    pendingGeofenceLayer = null;
+                };
+
+                const initializeGeofenceDrawing = () => {
+                    if (!canManageGps || !window.L?.Control?.Draw) return;
+                    map.addControl(new L.Control.Draw({
+                        position: 'topleft',
+                        draw: { rectangle: false, marker: false, circlemarker: false },
+                        edit: { featureGroup: editableGeofenceLayer, remove: false },
+                    }));
+                    map.on(L.Draw.Event.CREATED, (event) => openGeofenceDialog(event.layer));
+                    map.on(L.Draw.Event.EDITED, (event) => event.layers.eachLayer((layer) => openGeofenceDialog(layer, layer._gpsGeofenceId || '')));
                 };
 
                 const priorityLabel = (priority) => ({ critical: 'Crítica', high: 'Alta', medium: 'Media', info: 'Informativa' })[priority] || 'Informativa';
@@ -1004,7 +1241,9 @@
 
                 const renderAlerts = () => {
                     const query = elements.alertSearch.value.trim().toLocaleLowerCase('es-MX');
-                    const alerts = [...gpsAlerts.values()].filter((alert) => {
+                    const alerts = [...gpsAlerts.values(), ...localSpeedAlerts.values()]
+                        .sort((left, right) => new Date(right.event_time) - new Date(left.event_time))
+                        .filter((alert) => {
                         const device = devices.get(String(alert.device_id));
                         return query === '' || `${device?.name || ''} ${eventLabel(alert.type)} ${alert.attributes?.alarm || ''}`.toLocaleLowerCase('es-MX').includes(query);
                     });
@@ -1061,6 +1300,9 @@
                         devices.set(key, { ...(devices.get(key) ?? {}), ...device });
                         updateMarker(key);
                     });
+                    elements.reportDevice.innerHTML = '<option value="">Todas las unidades</option>'
+                        + [...devices.values()].sort((left, right) => String(left.name || '').localeCompare(String(right.name || ''), 'es-MX'))
+                            .map((device) => `<option value="${escapeHtml(device.id)}">${escapeHtml(device.name || `Unidad ${device.id}`)}</option>`).join('');
                 };
 
                 const mergePositions = (items) => {
@@ -1071,6 +1313,7 @@
                         updateMarker(key);
                     });
                     renderGeofenceUnits();
+                    renderAlerts();
                 };
 
                 const mergeEvents = (items) => {
@@ -1382,11 +1625,71 @@
                 elements.geofenceToggle.addEventListener('change', () => {
                     if (elements.geofenceToggle.checked) {
                         if (!map.hasLayer(geofenceLayer)) geofenceLayer.addTo(map);
+                        if (canManageGps && !map.hasLayer(editableGeofenceLayer)) editableGeofenceLayer.addTo(map);
                     } else if (map.hasLayer(geofenceLayer)) {
                         map.removeLayer(geofenceLayer);
+                        if (map.hasLayer(editableGeofenceLayer)) map.removeLayer(editableGeofenceLayer);
                     }
                 });
                 elements.geofenceSelect.addEventListener('change', () => selectGeofence(elements.geofenceSelect.value));
+                elements.speedSave?.addEventListener('click', () => {
+                    elements.speedStatus.textContent = 'Guardando…';
+                    saveSelectedSpeedLimit().then(() => {
+                        elements.speedStatus.textContent = 'Límite guardado';
+                    }).catch((error) => {
+                        elements.speedStatus.textContent = error.message;
+                    });
+                });
+                elements.reportForm.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    elements.reportError.classList.add('hidden');
+                    loadOperationalReport().catch((error) => {
+                        elements.reportError.textContent = error.message;
+                        elements.reportError.classList.remove('hidden');
+                    });
+                });
+                elements.reportXlsx.addEventListener('click', () => { window.location.href = reportUrl(endpoints.reportXlsx).toString(); });
+                elements.reportPdf.addEventListener('click', () => { window.location.href = reportUrl(endpoints.reportPdf).toString(); });
+                elements.geofenceNew?.addEventListener('click', () => new L.Draw.Polygon(map).enable());
+                elements.geofenceEdit?.addEventListener('click', () => {
+                    const selected = geofences.get(elements.geofenceSelect.value);
+                    if (!selected) return showError('Selecciona una geocerca para editarla.');
+                    openGeofenceDialog(selected.layer, elements.geofenceSelect.value);
+                });
+                elements.geofenceDelete?.addEventListener('click', async () => {
+                    const geofenceId = elements.geofenceSelect.value;
+                    const selected = geofences.get(geofenceId);
+                    if (!selected) return showError('Selecciona una geocerca para eliminarla.');
+                    if (!window.confirm(`¿Eliminar definitivamente la geocerca "${selected.data.name}" de Traccar?`)) return;
+                    try {
+                        const response = await fetch(endpoints.geofenceDelete.replace(/\/0$/, `/${geofenceId}`), {
+                            method: 'DELETE', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                        });
+                        if (!response.ok) throw new Error('No fue posible eliminar la geocerca.');
+                        await loadGeofences();
+                    } catch (error) { showError(error.message); }
+                });
+                elements.geofenceCancel?.addEventListener('click', closeGeofenceDialog);
+                elements.geofenceForm?.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    const geofenceId = elements.geofenceId.value;
+                    const endpoint = geofenceId ? endpoints.geofenceUpdate.replace(/\/0$/, `/${geofenceId}`) : endpoints.geofenceCreate;
+                    try {
+                        const response = await fetch(endpoint, {
+                            method: geofenceId ? 'PUT' : 'POST', credentials: 'same-origin',
+                            headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                            body: JSON.stringify({ name: elements.geofenceName.value, description: elements.geofenceDescription.value, area: elements.geofenceArea.value, attributes: { color: elements.geofenceColor.value } }),
+                        });
+                        const payload = await response.json();
+                        if (!response.ok) throw new Error(Object.values(payload.errors || {}).flat()[0] || payload.message || 'No fue posible guardar la geocerca.');
+                        closeGeofenceDialog();
+                        await loadGeofences();
+                        if (payload.geofence?.id) selectGeofence(payload.geofence.id);
+                    } catch (error) {
+                        elements.geofenceFormError.textContent = error.message;
+                        elements.geofenceFormError.classList.remove('hidden');
+                    }
+                });
                 elements.alertPriority.addEventListener('change', () => loadAlerts().catch((error) => showError(error.message)));
                 elements.alertReadFilter.addEventListener('change', () => loadAlerts().catch((error) => showError(error.message)));
                 elements.alertSearch.addEventListener('input', renderAlerts);
@@ -1394,11 +1697,11 @@
                 elements.alertList.addEventListener('click', (event) => {
                     const button = event.target.closest('[data-gps-alert-id]');
                     if (!button) return;
-                    const alertId = Number(button.dataset.gpsAlertId);
+                    const rawAlertId = button.dataset.gpsAlertId;
                     const deviceId = button.dataset.deviceId;
                     if (deviceId && devices.has(String(deviceId))) selectDevice(deviceId);
                     if (button.dataset.geofenceId) selectGeofence(button.dataset.geofenceId, false);
-                    markAlertsRead([alertId]).catch((error) => showError(error.message));
+                    if (!rawAlertId.startsWith('speed-')) markAlertsRead([Number(rawAlertId)]).catch((error) => showError(error.message));
                 });
                 elements.labelMode.addEventListener('change', () => {
                     devices.forEach((device) => updateMarker(device.id));
@@ -1492,9 +1795,13 @@
                 const historyStart = new Date(historyEnd.getTime() - 6 * 60 * 60 * 1000);
                 elements.historyFrom.value = localDateTimeValue(historyStart);
                 elements.historyTo.value = localDateTimeValue(historyEnd);
+                elements.reportFrom.value = localDateTimeValue(new Date(historyEnd.getTime() - 24 * 60 * 60 * 1000));
+                elements.reportTo.value = localDateTimeValue(historyEnd);
 
                 loadData({ fit: true }).finally(connectSocket);
                 loadGeofences();
+                loadSpeedLimits();
+                initializeGeofenceDrawing();
                 loadAlerts().catch((error) => {
                     elements.alertList.innerHTML = `<p class="p-6 text-sm text-center text-red-600 dark:text-red-300">${escapeHtml(error.message)}</p>`;
                 });

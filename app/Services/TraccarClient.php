@@ -132,6 +132,41 @@ class TraccarClient
             ->json();
     }
 
+    /** @return array<int, array<string, mixed>> */
+    public function summaryReport(array $deviceIds, string $from, string $to): array
+    {
+        return $this->multiDeviceReport('reports/summary', $deviceIds, $from, $to);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function tripsReport(array $deviceIds, string $from, string $to): array
+    {
+        return $this->multiDeviceReport('reports/trips', $deviceIds, $from, $to);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function stopsReport(array $deviceIds, string $from, string $to): array
+    {
+        return $this->multiDeviceReport('reports/stops', $deviceIds, $from, $to);
+    }
+
+    /** @return array<string, mixed> */
+    public function createGeofence(array $payload): array
+    {
+        return $this->request()->post($this->endpoint('geofences'), $payload)->throw()->json();
+    }
+
+    /** @return array<string, mixed> */
+    public function updateGeofence(int $id, array $payload): array
+    {
+        return $this->request()->put($this->endpoint("geofences/{$id}"), $payload)->throw()->json();
+    }
+
+    public function deleteGeofence(int $id): void
+    {
+        $this->request()->delete($this->endpoint("geofences/{$id}"))->throw();
+    }
+
     /**
      * Generate a short-lived token for the browser WebSocket connection.
      */
@@ -175,6 +210,26 @@ class TraccarClient
         return Http::acceptJson()
             ->withToken($token)
             ->timeout(max(1, (int) config('services.traccar.timeout', 5)));
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function multiDeviceReport(string $path, array $deviceIds, string $from, string $to): array
+    {
+        $deviceIds = array_values(array_unique(array_filter(array_map('intval', $deviceIds))));
+        if ($deviceIds === []) {
+            return [];
+        }
+
+        $query = array_merge(
+            array_map(fn (int $deviceId) => 'deviceId='.rawurlencode((string) $deviceId), $deviceIds),
+            ['from='.rawurlencode($from), 'to='.rawurlencode($to)],
+        );
+
+        return $this->request()
+            ->timeout(max(30, (int) config('services.traccar.timeout', 5)))
+            ->get($this->endpoint($path).'?'.implode('&', $query))
+            ->throw()
+            ->json();
     }
 
     private function endpoint(string $path): string
