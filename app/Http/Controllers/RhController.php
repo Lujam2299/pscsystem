@@ -74,15 +74,17 @@ class RhController extends Controller
         return redirect()->route('rh.solicitudesAltas')->with('success', 'Solicitud respondida correctamente.');
     }
 
-    public function enviarObservacion(Request $request, $id)
+    public function enviarObservacion(Request $request, $id, AuditLogger $audit)
     {
         $request->validate([
             'observacion' => 'required|string|max:1000',
         ]);
 
-        $solicitud = SolicitudAlta::find($id);
+        $solicitud = SolicitudAlta::findOrFail($id);
+        $before = $solicitud->only(['observaciones']);
         $solicitud->observaciones = $request->observacion;
         $solicitud->save();
+        $audit->record('Altas', 'Observación de solicitud actualizada', $solicitud, $before, $solicitud->only(['observaciones']));
 
         return redirect()->route('rh.detalleSolicitud', $id)->with('success', 'Observación enviada correctamente.');
     }
@@ -225,7 +227,7 @@ class RhController extends Controller
         return view('rh.generarAlta', compact('tipo', 'puntos'));
     }
 
-    public function guardarAlta(Request $request)
+    public function guardarAlta(Request $request, AuditLogger $audit)
     {
         try {
             $validated = $request->validate([
@@ -312,6 +314,12 @@ class RhController extends Controller
 
             $solicitud->save();
 
+            $audit->record('Altas', 'Solicitud de alta creada por RH', $solicitud, [], $solicitud->only([
+                'solicitante', 'nombre', 'apellido_paterno', 'apellido_materno', 'tipo_empleado',
+                'departamento', 'rol', 'punto', 'empresa', 'fecha_ingreso', 'email',
+                'tipo_periodo', 'status', 'observaciones',
+            ]));
+
             return redirect()->route('rh.subirArchivosAltaForm', ['id' => $solicitud->id, 'tipo' => $tipoSeleccionado]);
 
         } catch (\Exception $e) {
@@ -346,7 +354,7 @@ class RhController extends Controller
         return view('rh.subirArchivosAlta', compact('solicitud', 'tipo', 'fecha_ingreso'));
     }
 
-    public function guardarArchivosAlta(Request $request, $id)
+    public function guardarArchivosAlta(Request $request, $id, AuditLogger $audit)
     {
         try {
             $request->validate([
@@ -416,6 +424,11 @@ class RhController extends Controller
             $documentacion->solicitud_id = $solicitudId;
             $documentacion->save();
 
+            $archivosCargados = collect($archivos)
+                ->filter(fn (string $campo): bool => $request->hasFile($campo))
+                ->values()
+                ->all();
+
             $solicitud->status = 'Aceptada';
             $solicitud->observaciones = 'Solicitud Aceptada.';
             $solicitud->save();
@@ -440,6 +453,14 @@ class RhController extends Controller
 
                 $user->save();
             }
+
+            $audit->record('Altas', 'Documentación de alta cargada', $solicitud, [], $solicitud->only([
+                'status', 'observaciones',
+            ]), [
+                'documentacion_id' => $documentacion->id,
+                'archivos_cargados' => $archivosCargados,
+                'usuario_creado_id' => isset($user) ? $user->id : null,
+            ]);
 
             return redirect()->route('dashboard')->with('success', 'Documentación subida correctamente');
         } catch (\Throwable $e) {
@@ -469,7 +490,7 @@ class RhController extends Controller
         return view('rh.llenarBaja', compact('user', 'solicitud', 'solicitudpendiente'));
     }
 
-    public function almacenarBaja(Request $request, $id)
+    public function almacenarBaja(Request $request, $id, AuditLogger $audit)
     {
         $request->validate([
             'fecha_baja' => 'required|date',
@@ -543,10 +564,17 @@ class RhController extends Controller
 
         $solicitud->save();
 
+        $audit->record('Bajas', 'Solicitud de baja creada por RH', $solicitud, [], $solicitud->only([
+            'user_id', 'fecha_solicitud', 'fecha_baja', 'motivo', 'incapacidad', 'por',
+            'ultima_asistencia', 'adelanto_nomina', 'descuento', 'estatus', 'observaciones',
+        ]), [
+            'archivos_cargados' => collect($archivos)->filter(fn (string $campo): bool => $request->hasFile($campo))->values()->all(),
+        ]);
+
         return redirect()->route('dashboard')->with('success', 'Baja de usuario realizada correctamente.');
     }
 
-    public function actualizar(Request $request, $id)
+    public function actualizar(Request $request, $id, AuditLogger $audit)
     {
         // Validación (igual que en el registro, pero con archivos opcionales)
         $request->validate([
@@ -562,6 +590,10 @@ class RhController extends Controller
         ]);
 
         $solicitud = SolicitudBajas::findOrFail($id);
+        $before = $solicitud->only([
+            'fecha_baja', 'ultima_asistencia', 'incapacidad', 'por', 'motivo', 'descuento',
+            'archivo_baja', 'arch_equipo_entregado', 'arch_renuncia',
+        ]);
 
         // Actualizar campos básicos
         $solicitud->fecha_baja = $request->fecha_baja;
@@ -602,6 +634,11 @@ class RhController extends Controller
 
         // Guardar cambios finales
         $solicitud->save();
+
+        $audit->record('Bajas', 'Solicitud de baja actualizada', $solicitud, $before, $solicitud->only([
+            'fecha_baja', 'ultima_asistencia', 'incapacidad', 'por', 'motivo', 'descuento',
+            'archivo_baja', 'arch_equipo_entregado', 'arch_renuncia',
+        ]));
 
         return redirect()->back()->with('success', 'Solicitud de baja actualizada correctamente.');
     }

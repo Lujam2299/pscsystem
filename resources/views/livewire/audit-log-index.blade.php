@@ -8,13 +8,17 @@
             <a href="{{ route('dashboard') }}" class="rounded-lg bg-gray-700 px-4 py-2 text-sm font-semibold text-white">Regresar</a>
         </div>
 
-        <div class="mb-5 grid gap-3 rounded-xl bg-white p-4 shadow dark:bg-gray-800 md:grid-cols-6">
+        <div class="mb-5 grid gap-3 rounded-xl bg-white p-4 shadow dark:bg-gray-800 md:grid-cols-7">
             <input wire:model.live.debounce.400ms="search" placeholder="Usuario o ID" class="rounded-lg border-gray-300 dark:bg-gray-700 dark:text-white md:col-span-2">
             <select wire:model.live="module" class="rounded-lg border-gray-300 dark:bg-gray-700 dark:text-white">
                 <option value="">Todos los módulos</option>
                 @foreach($modules as $moduleOption)<option value="{{ $moduleOption }}">{{ $moduleOption }}</option>@endforeach
             </select>
             <input wire:model.live.debounce.400ms="action" placeholder="Acción" class="rounded-lg border-gray-300 dark:bg-gray-700 dark:text-white">
+            <select wire:model.live="subjectType" class="rounded-lg border-gray-300 dark:bg-gray-700 dark:text-white">
+                <option value="">Todos los registros</option>
+                @foreach($subjectTypes as $subjectTypeOption)<option value="{{ $subjectTypeOption }}">{{ class_basename($subjectTypeOption) }}</option>@endforeach
+            </select>
             <input wire:model.live="dateFrom" type="date" class="rounded-lg border-gray-300 dark:bg-gray-700 dark:text-white">
             <input wire:model.live="dateTo" type="date" class="rounded-lg border-gray-300 dark:bg-gray-700 dark:text-white">
             <button wire:click="resetFilters" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white md:col-span-6 md:justify-self-end">Limpiar filtros</button>
@@ -33,8 +37,27 @@
                             <td class="px-4 py-3">{{ $log->module }}</td>
                             <td class="px-4 py-3 font-medium">{{ $log->action }}</td>
                             <td class="px-4 py-3"><div>{{ class_basename($log->subject_type ?? '') ?: 'N/D' }}</div><div class="text-xs text-gray-500">ID: {{ $log->subject_id ?? 'N/D' }}</div></td>
-                            <td class="min-w-72 px-4 py-3"><details><summary class="cursor-pointer text-blue-600">Ver detalle</summary><pre class="mt-2 max-w-xl overflow-auto rounded bg-gray-100 p-2 text-xs dark:bg-gray-950">{{ json_encode(['antes' => $log->old_values, 'después' => $log->new_values, 'datos' => $log->metadata], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre></details></td>
-                            <td class="whitespace-nowrap px-4 py-3">{{ $log->ip_address ?? 'N/D' }}</td>
+                            <td class="min-w-72 px-4 py-3">
+                                <details>
+                                    <summary class="cursor-pointer font-medium text-blue-600">Ver detalle de la acción</summary>
+                                    <div class="mt-2 space-y-3 rounded bg-gray-100 p-3 text-xs dark:bg-gray-950">
+                                        @foreach(['Antes' => $log->old_values, 'Después' => $log->new_values, 'Información adicional' => $log->metadata] as $label => $values)
+                                            @if(!empty($values))
+                                                <div>
+                                                    <div class="mb-1 font-semibold">{{ $label }}</div>
+                                                    @foreach($values as $key => $value)
+                                                        <div><span class="font-medium">{{ str_replace('_', ' ', ucfirst($key)) }}:</span> {{ is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : ($value ?? 'N/D') }}</div>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                </details>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="whitespace-nowrap">{{ $log->ip_address ?? 'N/D' }}</div>
+                                <div class="mt-1 max-w-48 text-xs text-gray-500" title="{{ $log->user_agent }}">{{ \Illuminate\Support\Str::limit($log->user_agent, 55) ?: 'Dispositivo no identificado' }}</div>
+                            </td>
                         </tr>
                     @empty
                         <tr><td colspan="7" class="px-4 py-10 text-center text-gray-500">No hay acciones que coincidan con los filtros.</td></tr>

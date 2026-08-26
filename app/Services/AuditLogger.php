@@ -9,7 +9,8 @@ final class AuditLogger
 {
     private const SENSITIVE_KEYS = [
         'password', 'password_confirmation', 'remember_token', 'token',
-        'api_token', 'current_password',
+        'api_token', 'current_password', 'rfc', 'curp', 'nss',
+        'cuenta_bancaria', 'bank_account',
     ];
 
     public function record(
@@ -36,9 +37,25 @@ final class AuditLogger
 
     private function sanitize(array $values): array
     {
-        return collect($values)
-            ->except(self::SENSITIVE_KEYS)
-            ->map(fn ($value) => is_array($value) ? $this->sanitize($value) : $value)
-            ->all();
+        $sanitized = [];
+
+        foreach ($values as $key => $value) {
+            if (is_string($key) && $this->isSensitiveKey($key)) {
+                continue;
+            }
+
+            $sanitized[$key] = is_array($value) ? $this->sanitize($value) : $value;
+        }
+
+        return $sanitized;
+    }
+
+    private function isSensitiveKey(string $key): bool
+    {
+        $normalized = strtolower($key);
+
+        return in_array($normalized, self::SENSITIVE_KEYS, true)
+            || str_contains($normalized, 'password')
+            || str_contains($normalized, 'token');
     }
 }

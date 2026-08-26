@@ -8,6 +8,7 @@ use App\Models\SolicitudAlta;
 use App\Models\SolicitudBajas;
 use App\Models\SolicitudVacaciones;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,7 +26,7 @@ class UserController extends Controller
         return view('admi.crearUsuario');
     }
 
-    public function registrarUsuario(Request $request)
+    public function registrarUsuario(Request $request, AuditLogger $audit)
     {
         $this->authorize('create', User::class);
 
@@ -49,6 +50,10 @@ class UserController extends Controller
             'fecha_ingreso' => date('Y-m-d'),
         ]);
 
+        $audit->record('Usuarios', 'Usuario creado', $user, [], $user->only([
+            'name', 'email', 'rol', 'punto', 'empresa', 'estatus', 'fecha_ingreso',
+        ]));
+
         return redirect()->route('admin.verUsuarios')->with('success', '¡Usuario creado exitosamente!');
     }
 
@@ -61,7 +66,7 @@ class UserController extends Controller
         return view('users.solicitarBajaForm', compact('user', 'solicitud', 'solicitudpendiente'));
     }
 
-    public function solicitarBaja(Request $request, $id)
+    public function solicitarBaja(Request $request, $id, AuditLogger $audit)
     {
         $request->validate([
             'fecha_hoy' => 'required|date',
@@ -85,6 +90,10 @@ class UserController extends Controller
         $solicitud->observaciones = 'Solicitud de baja en proceso';
         try {
             $solicitud->save();
+            $audit->record('Bajas', 'Solicitud de baja creada', $solicitud, [], $solicitud->only([
+                'user_id', 'fecha_solicitud', 'motivo', 'incapacidad', 'por',
+                'ultima_asistencia', 'estatus', 'observaciones',
+            ]));
         } catch (\Exception $e) {
             return redirect()->route('dashboard')->with('error', 'Error al enviar la solicitud');
         }
@@ -156,7 +165,7 @@ class UserController extends Controller
         return view('users.solicitarVacacionesForm', compact('user', 'solicitud', 'documentacion', 'antiguedad', 'dias', 'diasDisponibles', 'diasUtilizados', 'mesesLaborados'));
     }
 
-    public function solicitarVacaciones(Request $request, $id)
+    public function solicitarVacaciones(Request $request, $id, AuditLogger $audit)
     {
         Log::info('Solicitud de vacaciones recibida', [
             'dias_solicitados' => $request->dias_solicitados,
@@ -251,6 +260,12 @@ class UserController extends Controller
             $solicitud->estatus = 'En Proceso';
         }
         $solicitud->save();
+
+        $audit->record('Vacaciones', 'Solicitud de vacaciones creada', $solicitud, [], $solicitud->only([
+            'user_id', 'tipo', 'periodo', 'fecha_inicio', 'fecha_fin', 'dias_solicitados',
+            'dias_ya_utilizados', 'dias_disponibles', 'dias_por_derecho', 'turno_doble',
+            'estatus', 'observaciones',
+        ]));
 
         if (Auth::user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->rol == 'Auxiliar recursos humanos') {
             return redirect()->route('dashboard')->with('success', 'Solicitud de vacaciones enviada correctamente');

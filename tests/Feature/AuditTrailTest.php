@@ -8,6 +8,7 @@ use App\Services\AuditLogger;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class AuditTrailTest extends TestCase
@@ -85,6 +86,28 @@ class AuditTrailTest extends TestCase
         $this->actingAs($guard)->get(route('admin.audit.index'))->assertForbidden();
     }
 
+    public function test_sensitive_values_are_removed_recursively_and_case_insensitively(): void
+    {
+        $actor = User::factory()->create(['rol' => 'admin']);
+        $this->actingAs($actor);
+
+        app(AuditLogger::class)->record('Usuarios', 'Datos actualizados', $actor, [], [
+            'name' => 'Usuario seguro',
+            'Password' => 'no-debe-guardarse',
+            'profile' => [
+                'api_token' => 'token-secreto',
+                'curp' => 'CURP-SECRETA',
+                'visible' => 'dato permitido',
+            ],
+        ]);
+
+        $values = AuditLog::firstOrFail()->new_values;
+
+        $this->assertSame('Usuario seguro', $values['name']);
+        $this->assertArrayNotHasKey('Password', $values);
+        $this->assertSame(['visible' => 'dato permitido'], $values['profile']);
+    }
+
     public function test_sensitive_state_change_routes_only_accept_mutating_http_methods(): void
     {
         foreach ([
@@ -99,5 +122,19 @@ class AuditTrailTest extends TestCase
             $this->assertContains('POST', $route->methods(), "$routeName no acepta POST.");
             $this->assertNotContains('GET', $route->methods(), "$routeName todavía acepta GET.");
         }
+    }
+
+    public function test_audit_view_can_filter_by_record_type(): void
+    {
+        $admin = User::factory()->create(['rol' => 'Administrador']);
+        $this->actingAs($admin);
+
+        app(AuditLogger::class)->record('Usuarios', 'Usuario visible', $admin);
+        app(AuditLogger::class)->record('Sistema', 'Acción sin registro asociado');
+
+        Livewire::test(\App\Livewire\AuditLogIndex::class)
+            ->set('subjectType', User::class)
+            ->assertSee('Usuario visible')
+            ->assertDontSee('Acción sin registro asociado');
     }
 }

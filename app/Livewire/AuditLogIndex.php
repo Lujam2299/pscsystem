@@ -18,6 +18,8 @@ class AuditLogIndex extends Component
 
     public string $action = '';
 
+    public string $subjectType = '';
+
     public string $dateFrom = '';
 
     public string $dateTo = '';
@@ -29,14 +31,14 @@ class AuditLogIndex extends Component
 
     public function updated(string $property): void
     {
-        if (in_array($property, ['search', 'module', 'action', 'dateFrom', 'dateTo'], true)) {
+        if (in_array($property, ['search', 'module', 'action', 'subjectType', 'dateFrom', 'dateTo'], true)) {
             $this->resetPage();
         }
     }
 
     public function resetFilters(): void
     {
-        $this->reset(['search', 'module', 'action', 'dateFrom', 'dateTo']);
+        $this->reset(['search', 'module', 'action', 'subjectType', 'dateFrom', 'dateTo']);
         $this->resetPage();
     }
 
@@ -46,6 +48,7 @@ class AuditLogIndex extends Component
             ->with('actor:id,name,email')
             ->when($this->module, fn ($q) => $q->where('module', $this->module))
             ->when($this->action, fn ($q) => $q->where('action', 'like', "%{$this->action}%"))
+            ->when($this->subjectType, fn ($q) => $q->where('subject_type', $this->subjectType))
             ->when($this->search, function ($q): void {
                 $q->where(function ($nested): void {
                     $nested->whereHas('actor', fn ($actor) => $actor
@@ -62,6 +65,11 @@ class AuditLogIndex extends Component
         return view('livewire.audit-log-index', [
             'logs' => $logs,
             'modules' => AuditLog::query()->distinct()->orderBy('module')->pluck('module'),
+            'subjectTypes' => AuditLog::query()
+                ->whereNotNull('subject_type')
+                ->distinct()
+                ->orderBy('subject_type')
+                ->pluck('subject_type'),
         ])->layout('layouts.app');
     }
 }

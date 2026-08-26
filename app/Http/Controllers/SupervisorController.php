@@ -42,7 +42,7 @@ class SupervisorController extends Controller
         return view('supervisor.nuevoUsuarioForm', compact('tipo', 'puntos'));
     }
 
-    public function guardarInfo(Request $request)
+    public function guardarInfo(Request $request, AuditLogger $audit)
     {
         try {
             $validated = $request->validate([
@@ -118,6 +118,12 @@ class SupervisorController extends Controller
 
             $solicitud->save();
 
+            $audit->record('Altas', 'Solicitud de alta creada por supervisor', $solicitud, [], $solicitud->only([
+                'solicitante', 'nombre', 'apellido_paterno', 'apellido_materno', 'tipo_empleado',
+                'departamento', 'rol', 'punto', 'empresa', 'fecha_ingreso', 'email',
+                'status', 'observaciones',
+            ]));
+
             return redirect()->route('sup.subirArchivosForm', ['id' => $solicitud->id, 'tipo' => $tipoSeleccionado]);
 
         } catch (\Exception $e) {
@@ -133,7 +139,7 @@ class SupervisorController extends Controller
         return view('supervisor.subirArchivosForm', compact('solicitud', 'tipo'));
     }
 
-    public function guardarArchivos(Request $request, $id)
+    public function guardarArchivos(Request $request, $id, AuditLogger $audit)
     {
         $request->validate([
             'arch_acta_nacimiento' => 'nullable|file',
@@ -214,6 +220,14 @@ class SupervisorController extends Controller
             $solicitud->save();
         }
 
+        $audit->record('Altas', 'Documentación de alta cargada por supervisor', $solicitud, [], $solicitud->only([
+            'status', 'observaciones',
+        ]), [
+            'documentacion_id' => $documentacion->id,
+            'archivos_cargados' => collect($archivos)->filter(fn (string $campo): bool => $request->hasFile($campo))->values()->all(),
+            'usuario_creado_id' => isset($user) ? $user->id : null,
+        ]);
+
         return redirect()->route('sup.nuevoUsuarioForm')->with('success', 'Documentación subida correctamente');
     }
 
@@ -248,7 +262,7 @@ class SupervisorController extends Controller
         return view('supervisor.editarSolicitudForm', compact('solicitud', 'documentacion'));
     }
 
-    public function editarInformacionSolicitud(Request $request, $id)
+    public function editarInformacionSolicitud(Request $request, $id, AuditLogger $audit)
     {
         try {
             $validated = $request->validate([
@@ -290,6 +304,10 @@ class SupervisorController extends Controller
             ]);
 
             $solicitud = SolicitudAlta::findOrFail($id);
+            $before = $solicitud->only([
+                'nombre', 'apellido_paterno', 'apellido_materno', 'tipo_empleado', 'departamento',
+                'rol', 'punto', 'empresa', 'fecha_ingreso', 'email', 'tipo_periodo', 'status', 'observaciones',
+            ]);
 
             // Actualizar todos los campos de la solicitud
             $solicitud->solicitante = auth()->user()->name;
@@ -370,6 +388,10 @@ class SupervisorController extends Controller
                 $user->save();
             }
 
+            $audit->record('Altas', 'Solicitud de alta actualizada', $solicitud, $before, $solicitud->only(array_keys($before)), [
+                'usuario_actualizado_id' => $user?->id,
+            ]);
+
             $documentacion = DocumentacionAltas::where('solicitud_id', $id)->first();
             $tipo = $solicitud->tipo_empleado;
 
@@ -380,12 +402,13 @@ class SupervisorController extends Controller
         }
     }
 
-    public function subirArchivosEditados(Request $request, $id)
+    public function subirArchivosEditados(Request $request, $id, AuditLogger $audit)
     {
         $solicitudId = $id;
         $sol = SolicitudAlta::find($solicitudId);
         $user = User::where('sol_alta_id', $solicitudId)->first();
         $documentacion = DocumentacionAltas::firstOrNew(['solicitud_id' => $solicitudId]);
+        $beforeDocuments = $documentacion->exists ? $documentacion->only($documentacion->getFillable()) : [];
         $carpeta = 'solicitudesAltas/'.$solicitudId;
 
         $camposArchivos = [
@@ -437,6 +460,14 @@ class SupervisorController extends Controller
             $sol->observaciones = 'Documentación actualizada, en espera de revisión.';
         }
         $sol->save();
+
+        $audit->record('Altas', 'Documentación de alta actualizada', $sol, [], $sol->only([
+            'status', 'observaciones',
+        ]), [
+            'documentacion_id' => $documentacion->id,
+            'archivos_anteriores' => $beforeDocuments,
+            'archivos_actualizados' => collect($camposArchivos)->filter(fn (string $campo): bool => $request->hasFile($campo))->values()->all(),
+        ]);
 
         if (Auth()->user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH') {
             return redirect()->route('user.verFicha', $user->id)->with('success', 'Documentos actualizados correctamente.');
@@ -495,7 +526,7 @@ class SupervisorController extends Controller
         return view('supervisor.vistaSolicitarBaja', compact('user', 'solicitud', 'solicitudpendiente'));
     }
 
-    public function guardarBajaNueva(Request $request, $id)
+    public function guardarBajaNueva(Request $request, $id, AuditLogger $audit)
     {
         $request->validate([
             'fecha_hoy' => 'required|date',
@@ -546,6 +577,13 @@ class SupervisorController extends Controller
             }
 
             $solicitud->save();
+
+            $audit->record('Bajas', 'Solicitud de baja creada por supervisor', $solicitud, [], $solicitud->only([
+                'user_id', 'fecha_solicitud', 'motivo', 'incapacidad', 'por', 'ultima_asistencia',
+                'descuento', 'estatus', 'observaciones',
+            ]), [
+                'archivos_cargados' => collect($archivos)->filter(fn (string $campo): bool => $request->hasFile($campo))->values()->all(),
+            ]);
 
             return redirect()->route('dashboard')->with('success', 'Solicitud de baja enviada correctamente');
         } catch (\Exception $e) {

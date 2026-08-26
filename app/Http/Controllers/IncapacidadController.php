@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Incapacidad;
-use App\Models\User; // Importa el modelo User
-
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log; // Para depuración
+use App\Models\User;
+use App\Services\AuditLogger; // Importa el modelo User
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage; // Para depuración
 
 class IncapacidadController extends Controller
 {
@@ -26,16 +26,17 @@ class IncapacidadController extends Controller
     public function create(User $user)
     {
         // Laravel automáticamente inyecta el User basado en el ID de la URL
-        Log::info('IncapacidadController@create: User ID recibido - ' . $user->id);
+        Log::info('IncapacidadController@create: User ID recibido - '.$user->id);
+
         return view('auxadmin.incapacidadForm', compact('user'));
     }
 
     /**
      * Guarda una nueva incapacidad en la base de datos.
      */
-    public function store(Request $request, User $id=null) // Recibimos el Request y el modelo User
+    public function store(Request $request, AuditLogger $audit, ?User $id = null) // Recibimos el Request y el modelo User
     {
-        //Log::info('IncapacidadController@store: Intentando guardar incapacidad para User ID - ' . $user->id);
+        // Log::info('IncapacidadController@store: Intentando guardar incapacidad para User ID - ' . $user->id);
 
         // Validar los datos del formulario
         $request->validate([
@@ -48,7 +49,7 @@ class IncapacidadController extends Controller
             'archivo_pdf' => 'required|file|mimes:pdf,jpg,jpeg,png|max:2048',
         ], [
             'folio.unique' => 'El folio de incapacidad ya existe. Por favor, verifica.',
-             'archivo_pdf.mimes' => 'El archivo debe ser un PDF, JPG, JPEG o PNG.',
+            'archivo_pdf.mimes' => 'El archivo debe ser un PDF, JPG, JPEG o PNG.',
         ]);
 
         $rutaArchivo = null;
@@ -58,8 +59,8 @@ class IncapacidadController extends Controller
         }
 
         // Crear el registro de la incapacidad
-        Incapacidad::create([
-            'user_id' =>$request->user_id, // Asignamos el ID del usuario
+        $incapacidad = Incapacidad::create([
+            'user_id' => $request->user_id, // Asignamos el ID del usuario
             'motivo' => $request->motivo,
             'tipo_incapacidad' => $request->tipo_incapacidad,
             'ramo_seguro' => $request->ramo_seguro,
@@ -69,9 +70,15 @@ class IncapacidadController extends Controller
             'ruta_archivo_pdf' => $rutaArchivo,
         ]);
 
+        $audit->record('Incapacidades', 'Incapacidad registrada', $incapacidad, [], $incapacidad->only([
+            'user_id', 'motivo', 'tipo_incapacidad', 'ramo_seguro', 'dias_incapacidad',
+            'fecha_inicio', 'folio', 'ruta_archivo_pdf',
+        ]));
+
         return redirect()->route('aux.incapacidadesList')->with('success', 'Incapacidad registrada exitosamente para ');
     }
-     public function showIncapacidadesHistory()
+
+    public function showIncapacidadesHistory()
     {
         return view('auxadmin.historialIncapacidades');
     }
