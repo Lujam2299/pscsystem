@@ -9,19 +9,27 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up()
+    public function up(): void
     {
-        DB::statement("
-            ALTER TABLE solicitud_vacaciones
-            CHANGE COLUMN dias_ya_utlizados dias_ya_utilizados INT NOT NULL DEFAULT 0
-        ");
+        if (
+            Schema::hasColumn('solicitud_vacaciones', 'dias_ya_utlizados')
+            && ! Schema::hasColumn('solicitud_vacaciones', 'dias_ya_utilizados')
+        ) {
+            Schema::table('solicitud_vacaciones', function (Blueprint $table): void {
+                $table->renameColumn('dias_ya_utlizados', 'dias_ya_utilizados');
+            });
+        }
     }
 
-    public function down()
+    public function down(): void
     {
-        DB::statement("
-            ALTER TABLE solicitud_vacaciones
-            CHANGE COLUMN dias_ya_utilizados dias_ya_utlizados INT NOT NULL
-        ");
+        if (
+            Schema::hasColumn('solicitud_vacaciones', 'dias_ya_utilizados')
+            && ! Schema::hasColumn('solicitud_vacaciones', 'dias_ya_utlizados')
+        ) {
+            Schema::table('solicitud_vacaciones', function (Blueprint $table): void {
+                $table->renameColumn('dias_ya_utilizados', 'dias_ya_utlizados');
+            });
+        }
     }
 };

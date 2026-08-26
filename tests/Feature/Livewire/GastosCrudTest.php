@@ -210,6 +210,7 @@ class GastosCrudTest extends TestCase
         Schema::create('gastos', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('mision_id')->nullable();
             $table->decimal('Monto', 10, 2)->nullable();
             $table->date('Fecha')->nullable();
             $table->time('Hora')->nullable();

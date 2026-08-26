@@ -14,6 +14,7 @@ class CustodiosMissionStatusTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['modules.disabled.erp_custodios' => false]);
         $this->createSchema();
     }
 

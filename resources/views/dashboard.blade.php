@@ -42,9 +42,6 @@
                         @endif
                     @endif
                     @if (! \App\Support\Authorization\RoleNormalizer::isAdministrator(Auth::user()))
-                    <p class="text-2xl text-gray-900 dark:text-gray-100">
-                        Tablero de Opciones
-                    </p>
                     <div class="">
                         @php
                         $user = Auth::user();

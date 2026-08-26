@@ -90,7 +90,6 @@
                         @if(Auth::user()->rol == 'admin')
                             Administrador
                         @else
-                            {{ Auth::user()->rol }}
                         @endif
                     </h3>
                 </div>

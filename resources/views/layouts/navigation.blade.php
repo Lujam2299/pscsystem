@@ -16,13 +16,13 @@
     $empresas = [
         'PSC' => [
             'nombre' => 'PRIVATE SECURITY CONTRACTORS DE MEXICO, S.A. DE C.V.',
-            'corto' => 'PSC de México',
+            'corto' => 'PSC',
             'logo' => 'images/psc.png',
             'acento' => 'bg-indigo-600',
         ],
         'Montana' => [
             'nombre' => 'SUMINISTROS COMERCIALES MONTANA, S.A. DE C.V.',
-            'corto' => 'Comerciales Montana',
+            'corto' => 'Montana',
             'logo' => 'images/montana.png',
             'acento' => 'bg-emerald-600',
         ],
@@ -94,7 +94,6 @@
                         </span>
                         <span class="hidden min-w-0 lg:block">
                             <span class="block max-w-40 truncate text-sm font-semibold text-gray-800 dark:text-gray-100">{{ Auth::user()->name }}</span>
-                            <span class="block text-xs text-gray-500 dark:text-gray-400">{{ Auth::user()->rol ?? 'Usuario' }}</span>
                         </span>
                         <i class="ti ti-chevron-down text-gray-400 transition-transform" :class="profileOpen && 'rotate-180'" aria-hidden="true"></i>
                     </button>
