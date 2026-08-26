@@ -34,6 +34,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\Rule;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -43,9 +44,12 @@ Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::middleware(['auth'])->post('/generate-api-token', function (Request $request) {
+Route::middleware(['auth', 'permission:tokens.manage'])->post('/generate-api-token', function (Request $request) {
     $request->validate([
         'token_name' => 'required|string|max:255',
+        'current_password' => ['required', 'current_password'],
+        'abilities' => ['nullable', 'array'],
+        'abilities.*' => [Rule::in(['mobile:read', 'mobile:write', 'messages:read', 'messages:write'])],
     ]);
 
     $user = auth()->user();
@@ -54,7 +58,12 @@ Route::middleware(['auth'])->post('/generate-api-token', function (Request $requ
     $user->tokens()->where('name', $request->token_name)->delete();
 
     // Crear nuevo token
-    $token = $user->createToken($request->token_name, ['*']);
+    $expiresAt = now()->addHours(24);
+    $token = $user->createToken(
+        $request->token_name,
+        $request->input('abilities', ['mobile:read', 'mobile:write']),
+        $expiresAt,
+    );
 
     return response()->json([
         'token' => $token->plainTextToken,
@@ -62,20 +71,29 @@ Route::middleware(['auth'])->post('/generate-api-token', function (Request $requ
             'id' => $user->id,
             'name' => $user->name,
         ],
+        'expires_at' => $expiresAt->toIso8601String(),
         'message' => 'Token generado exitosamente. ¡Guárdalo ahora!',
     ]);
 });
 
-Route::middleware(['auth'])->get('/my-api-token', function () {
-    $user = auth()->user();
+Route::middleware(['auth', 'permission:tokens.manage'])->post('/my-api-token', function (Request $request) {
+    $request->validate([
+        'current_password' => ['required', 'current_password'],
+    ]);
 
-    // Genera un token temporal
-    $token = $user->createToken('mobile_app_token_'.now()->format('Y-m-d_H-i-s'));
+    $user = auth()->user();
+    $expiresAt = now()->addHours(24);
+
+    $token = $user->createToken(
+        'mobile_app_token_'.now()->format('Y-m-d_H-i-s'),
+        ['mobile:read', 'mobile:write'],
+        $expiresAt,
+    );
 
     return response()->json([
         'token' => $token->plainTextToken,
         'user' => $user->only(['id', 'name', 'email']),
-        'expires_at' => now()->addHours(24),
+        'expires_at' => $expiresAt->toIso8601String(),
     ]);
 });
 
@@ -93,7 +111,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/editar_usuario/{id}', [AdminController::class, 'editarUsuario'])->name('admin.editarUsuarioForm');
     Route::get('/ver_usuarios', [AdminController::class, 'verUsuarios'])->name('admin.verUsuarios');
     Route::get('/tablero_supervisores', [AdminController::class, 'tableroSupervisores'])
-        ->middleware('module.enabled:erp_supervisores')
+        ->middleware(['permission:supervisors.access', 'module.enabled:erp_supervisores'])
         ->name('admin.verTableroSupervisores');
     Route::get('/admin_solicitudes_altas', [AdminController::class, 'verSolicitudesAltas'])->name('admi.verSolicitudesAltas');
     Route::get('/admin/baja_usuario/{id}', [AdminController::class, 'bajaUsuario'])->name('admin.darDeBajaUsuario');
@@ -111,7 +129,7 @@ Route::middleware('auth')->group(function () {
     Route::get('tablero_monitoreo', [AdminController::class, 'tableroMonitoreo'])->name('admin.monitoreoDashboard');
     Route::get('tablero_juridico', [AdminController::class, 'tableroJuridico'])->name('admin.juridicoDashboard');
     Route::get('/tablero_custodios', [AdminController::class, 'tableroCustodios'])
-        ->middleware(['custodios.role', 'module.enabled:erp_custodios'])
+        ->middleware(['permission:custodians.access', 'custodios.role', 'module.enabled:erp_custodios'])
         ->name('admin.custodiosDashboard');
     Route::get('/admin_vacaciones', [AdminController::class, 'solicitudesVacaciones'])->name('admin.solicitudesVacaciones');
     Route::get('/registrar_nominas', [AdminController::class, 'registrarNominas'])->name('registrarNominas');
@@ -119,7 +137,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/import/unify-duplicates', [ImportController::class, 'unifyDuplicates'])->name('admin.import.unify-duplicates');
 
     // Usuario Supervisor - módulo ERP deshabilitado, conservando datos históricos.
-    Route::middleware('module.enabled:erp_supervisores')->group(function () {
+    Route::middleware(['permission:supervisors.access', 'module.enabled:erp_supervisores'])->group(function () {
         Route::get('/nuevoUsuario', [SupervisorController::class, 'nuevoUsuarioForm'])->name('sup.nuevoUsuarioForm');
         Route::post('/infoUsuario', [SupervisorController::class, 'guardarInfo'])->name('sup.guardarInfo');
         Route::get('/subir-archivos/{id}', [SupervisorController::class, 'subirArchivosForm'])->name('sup.subirArchivosForm');
@@ -296,7 +314,7 @@ Route::middleware('auth')->group(function () {
             ->toArray();
 
         return response()->json(['placas' => $placas]);
-    });
+    })->middleware('permission:map.view');
 
     Route::get('/api/users', function (\Illuminate\Http\Request $request) {
         $q = $request->get('q');
@@ -309,7 +327,7 @@ Route::middleware('auth')->group(function () {
             ->toArray();
 
         return response()->json(['users' => $users]);
-    });
+    })->middleware('permission:map.view');
 
     // Compras CRUD (Livewire)
     Route::get('/compras', \App\Livewire\ComprasCrud::class)->name('compras.index');
@@ -317,13 +335,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/compras/{id}', \App\Livewire\CompraDetalle::class)->name('compras.detalle');
 
     Route::get('/mapa-geocercas', [CustodiosController::class, 'mostrarMapaGeocercas'])
-        ->middleware(['custodios.role', 'module.enabled:erp_custodios'])
+        ->middleware(['permission:custodians.access', 'custodios.role', 'module.enabled:erp_custodios'])
         ->name('admin.mapaGeocercas');
     Route::get('/api/custodios/geocercas-activas', [CustodiosController::class, 'geocercasActivasRealtime'])
-        ->middleware(['custodios.role', 'module.enabled:erp_custodios'])
+        ->middleware(['permission:custodians.access', 'custodios.role', 'module.enabled:erp_custodios'])
         ->name('admin.geocercasActivasRealtime');
     Route::get('/detalle-mision/{mision}', [CustodiosController::class, 'verDetalleMision'])
-        ->middleware(['custodios.role', 'module.enabled:erp_custodios'])
+        ->middleware(['permission:custodians.access', 'custodios.role', 'module.enabled:erp_custodios'])
         ->name('admin.detalleMision');
 
     // Usuario Aux Admin
@@ -412,7 +430,7 @@ Route::middleware('auth')->group(function () {
     })->name('notificaciones.leer');
 
     // Custodios
-    Route::middleware(['custodios.role', 'module.enabled:erp_custodios'])->group(function () {
+    Route::middleware(['permission:custodians.access', 'custodios.role', 'module.enabled:erp_custodios'])->group(function () {
         Route::get('/nueva_mision', [CustodiosController::class, 'nuevaMisionForm'])->name('custodios.nuevaMisionForm');
         Route::post('/agentes-disponibles', [CustodiosController::class, 'obtenerAgentesDisponibles'])
             ->name('custodios.agentesDisponibles');
@@ -447,7 +465,8 @@ Route::middleware('auth')->group(function () {
     // Usuario Auxiliar Contabilidad
     Route::get('/Lista_finiquitos', [AuxContController::class, 'listaFiniquitos'])->name('auxcont.finiquitos');
     Route::post('/subir-cheque/{id}', [AuxcontController::class, 'subirCheque'])->name('subir.cheque');
-    Route::put('/solicitud_bajas/{id}/actualizar_cheque', [AuxcontController::class, 'actualizarCheque']);
+    Route::put('/solicitud_bajas/{id}/actualizar_cheque', [AuxcontController::class, 'actualizarCheque'])
+        ->middleware('permission:severance-checks.manage');
     Route::get('historial_cheques', [AuxcontController::class, 'historialCheques'])->name('auxcont.finiquitos.historial');
     Route::get('/eventuales', [AuxcontController::class, 'eventualesList'])->name('auxcont.eventuales');
     Route::get('/vales-comida', [AuxcontController::class, 'valesComida'])->name('auxcont.valesComida');
@@ -505,7 +524,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/mensajes/enviar', [ChatWebController::class, 'storeMensaje'])->name('mensajes.store');
 
     // Ubicaciones en tiempo real
-    Route::get('/api/realtime-position/user/{id}/recent', [RealtimePositionController::class, 'getUserRecentPositions']);
+    Route::get('/api/realtime-position/user/{id}/recent', [RealtimePositionController::class, 'getUserRecentPositions'])
+        ->middleware('permission:map.view');
 });
 
 require __DIR__.'/auth.php';

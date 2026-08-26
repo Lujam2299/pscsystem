@@ -2,6 +2,8 @@
 
 namespace App\Livewire;
 
+use App\Support\Authorization\Permission;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 use App\Models\User;
 use App\Models\Punto;
@@ -17,6 +19,11 @@ use Carbon\Carbon;
 
 class AsistenciasTabla extends Component
 {
+    public function boot(): void
+    {
+        Gate::authorize(Permission::ATTENDANCE_VIEW);
+    }
+
     public $punto = '';
     public $fecha_inicio = '';
     public $fecha_fin = '';

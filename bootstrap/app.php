@@ -18,10 +18,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'custodios.role' => \App\Http\Middleware\EnsureCustodiosRole::class,
             'module.enabled' => \App\Http\Middleware\EnsureModuleEnabled::class,
+            'permission' => \App\Http\Middleware\EnsurePermission::class,
         ]);
 
         // Configura grupos de middleware predeterminados
-        $middleware->web(prepend: [], append: []);
+        $middleware->web(prepend: [], append: [
+            \App\Http\Middleware\EnsureRoutePermission::class,
+        ]);
         $middleware->api(prepend: [], append: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',

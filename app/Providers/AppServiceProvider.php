@@ -12,6 +12,7 @@ use App\Models\Message;
 use App\Models\RiesgoTrabajo;
 use App\Models\SolicitudBajas;
 use App\Models\ValesComida;
+use App\Models\User;
 use App\Observers\AsistenciaObserver;
 use App\Observers\BuzonQuejaObserver;
 use App\Observers\EventualesObserver;
@@ -22,6 +23,9 @@ use App\Observers\RiesgoTrabajoObserver;
 use App\Observers\SolicitudBajasObserver;
 use App\Observers\ValesComidaObserver;
 use App\Policies\SolicitudBajasPolicy;
+use App\Policies\UserPolicy;
+use App\Support\Authorization\Permission;
+use App\Support\Authorization\RolePermissionMap;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -42,7 +46,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        foreach (Permission::all() as $permission) {
+            Gate::define($permission, fn ($user) => RolePermissionMap::allows($user, $permission));
+        }
+
         Gate::policy(SolicitudBajas::class, SolicitudBajasPolicy::class);
+        Gate::policy(User::class, UserPolicy::class);
         Gate::define('view-traccar-monitoring', function ($user) {
             $rol = Str::lower(Str::ascii(trim((string) ($user->rol ?? ''))));
 

@@ -100,7 +100,7 @@
     $conteoNominas = $conteoAltasNominas + $conteoBajasNominas;
 
     $cards = array_filter([
-        Auth::user()->email == 'gino@spyt.com.mx'
+        \Illuminate\Support\Facades\Gate::allows(\App\Support\Authorization\Permission::HIRES_REVIEW)
             ? [
                 'titulo' => 'Nuevas Altas',
                 'ruta' => route('admi.verSolicitudesAltas'),

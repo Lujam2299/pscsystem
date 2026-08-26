@@ -2,6 +2,8 @@
 
 namespace App\Livewire;
 
+use App\Support\Authorization\Permission;
+use Illuminate\Support\Facades\Gate;
 use App\Models\Asistencia;
 use App\Models\Punto;
 use App\Models\Retardo;
@@ -18,6 +20,11 @@ use Livewire\WithFileUploads;
 
 class AsistenciaDiaria extends Component
 {
+    public function boot(): void
+    {
+        Gate::authorize(Permission::ATTENDANCE_CAPTURE);
+    }
+
     use WithFileUploads;
 
     private const ROLES_ASISTENCIA = [

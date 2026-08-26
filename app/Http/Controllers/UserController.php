@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rules;
 use App\Models\User;
 use App\Models\SolicitudAlta;
 use App\Models\SolicitudBajas;
@@ -18,23 +19,31 @@ use Carbon\Carbon;
 class UserController extends Controller
 {
     public function crearUsuario(){
+        $this->authorize('create', User::class);
+
         return view('admi.crearUsuario');
     }
 
     public function registrarUsuario(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|confirmed|min:6',
+        $this->authorize('create', User::class);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'rol' => ['required', 'string', 'max:100'],
+            'punto' => ['nullable', 'string', 'max:255'],
+            'empresa' => ['nullable', 'string', 'max:100'],
         ]);
+
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'rol' => $request->rol,
-            'punto' => $request->punto,
-            'empresa' => $request->empresa,
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'rol' => $validated['rol'],
+            'punto' => $validated['punto'] ?? null,
+            'empresa' => $validated['empresa'] ?? null,
             'estatus' => 'Activo',
             'fecha_ingreso' => date('Y-m-d'),
         ]);
@@ -59,6 +68,7 @@ class UserController extends Controller
         ]);
 
         $user = User::findorFail($id);
+        $this->authorize('requestTermination', $user);
 
         $solicitud = new SolicitudBajas();
         $solicitud->user_id = $user->id;
@@ -161,6 +171,7 @@ public function solicitarVacaciones(Request $request, $id){
     ]);
 
     $user = User::findOrFail($id);
+    $this->authorize('requestVacation', $user);
 
     if(Auth::user()->rol == 'Supervisor' || Auth::user()->rol == 'SUPERVISOR'){
         $supervisor = User::where('rol', 'admin')->get();
@@ -249,6 +260,7 @@ public function solicitarVacaciones(Request $request, $id){
 
     public function verFicha($id){
         $user = User::findorFail($id);
+        $this->authorize('view', $user);
         $solicitud = SolicitudAlta::where('id', $user->sol_alta_id)->first();
         $documentacion = DocumentacionAltas::where('solicitud_id', $user->sol_alta_id)->first();
 
@@ -261,6 +273,7 @@ public function solicitarVacaciones(Request $request, $id){
 
     public function enviarSugerencia(Request $request, $id){
         $user = User::findorFail($id);
+        $this->authorize('submitComplaint', $user);
         $request->validate([
             'fecha' => 'required|date',
             'asunto' => 'required|string|max:255',
@@ -279,6 +292,8 @@ public function solicitarVacaciones(Request $request, $id){
 
     public function buscarUsuarios(Request $request)
     {
+        Gate::authorize(\App\Support\Authorization\Permission::MESSAGES_ACCESS);
+
         $request->validate([
             'search' => 'required|string|min:2|max:100'
         ]);

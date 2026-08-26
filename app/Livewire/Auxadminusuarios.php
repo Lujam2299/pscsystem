@@ -2,6 +2,8 @@
 
 namespace App\Livewire;
 
+use App\Support\Authorization\Permission;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\User;
@@ -9,6 +11,11 @@ use Illuminate\Support\Facades\Auth;
 
 class Auxadminusuarios extends Component
 {
+    public function boot(): void
+    {
+        Gate::authorize(Permission::IMSS_ACCESS);
+    }
+
     use WithPagination;
 
     public $search = '';

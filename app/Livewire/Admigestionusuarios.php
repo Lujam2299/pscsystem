@@ -2,6 +2,8 @@
 
 namespace App\Livewire;
 
+use App\Support\Authorization\Permission;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -12,6 +14,11 @@ use Illuminate\Support\Facades\Auth;
 
 class Admigestionusuarios extends Component
 {
+    public function boot(): void
+    {
+        Gate::authorize(Permission::USERS_VIEW);
+    }
+
     use WithPagination;
 
     public $search = '';

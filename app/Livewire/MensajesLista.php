@@ -2,6 +2,8 @@
 
 namespace App\Livewire;
 
+use App\Support\Authorization\Permission;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 use App\Models\User;
 use App\Models\Conversation;
@@ -9,6 +11,11 @@ use Illuminate\Support\Facades\Auth;
 
 class MensajesLista extends Component
 {
+    public function boot(): void
+    {
+        Gate::authorize(Permission::MESSAGES_ACCESS);
+    }
+
     public $conversaciones;
     public $buscarUsuario = '';
     public $usuariosFiltrados = [];

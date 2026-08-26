@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Support\Authorization\Permission;
 use App\Events\MensajeEnviado;
 use App\Events\MessagesRead;
 use App\Events\MessageDeleted;
@@ -14,6 +15,11 @@ use Livewire\Component;
 
 class MensajesChat extends Component
 {
+    public function boot(): void
+    {
+        Gate::authorize(Permission::MESSAGES_ACCESS);
+    }
+
     public ?Conversation $conversation = null;
     public array $messages = [];
     public string $body = '';

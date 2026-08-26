@@ -2,6 +2,8 @@
 
 namespace App\Livewire;
 
+use App\Support\Authorization\Permission;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
@@ -11,6 +13,11 @@ use Carbon\Carbon;
 
 class NominasRegistrosTable extends Component
 {
+    public function boot(): void
+    {
+        Gate::authorize(Permission::PAYROLL_VIEW);
+    }
+
     use WithPagination, WithFileUploads;
 
     public $search = '';
