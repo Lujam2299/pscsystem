@@ -2,16 +2,16 @@
 
 namespace App\Livewire;
 
-use App\Support\Authorization\Permission;
-use Illuminate\Support\Facades\Gate;
 use App\Models\Asistencia;
 use App\Models\Punto;
 use App\Models\Retardo;
 use App\Models\Subpunto;
 use App\Models\TiemposExtra;
 use App\Models\User;
+use App\Support\Authorization\Permission;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;

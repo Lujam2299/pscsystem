@@ -2,12 +2,12 @@
 
 namespace App\Livewire;
 
+use App\Models\Conversation;
+use App\Models\User;
 use App\Support\Authorization\Permission;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
-use App\Models\User;
-use App\Models\Conversation;
-use Illuminate\Support\Facades\Auth;
 
 class MensajesLista extends Component
 {
@@ -17,10 +17,15 @@ class MensajesLista extends Component
     }
 
     public $conversaciones;
+
     public $buscarUsuario = '';
+
     public $usuariosFiltrados = [];
+
     public $mostrarBuscador = false;
+
     public $buscarConversacion = '';
+
     public $selectedConversationId = null;
 
     protected $listeners = [
@@ -37,25 +42,25 @@ class MensajesLista extends Component
         $this->cargarConversaciones();
     }
 
-public function cargarConversaciones()
-{
-    $this->conversaciones = Auth::user()
-        ->conversations()
-        ->with([
-            'users' => function($query) {
-                $query->withPivot(['last_read_at', 'unread_count']);
-            },
-            'latestMessage'
-        ])
-        ->when(mb_strlen(trim($this->buscarConversacion)) >= 2, function ($query) {
-            $term = trim($this->buscarConversacion);
-            $query->where(function ($query) use ($term) {
-                $query->where('title', 'like', "%{$term}%")
-                    ->orWhereHas('users', fn ($users) => $users->where('users.name', 'like', "%{$term}%"));
-            });
-        })->orderByDesc('updated_at')
-        ->get();
-}
+    public function cargarConversaciones()
+    {
+        $this->conversaciones = Auth::user()
+            ->conversations()
+            ->with([
+                'users' => function ($query) {
+                    $query->withPivot(['last_read_at', 'unread_count']);
+                },
+                'latestMessage',
+            ])
+            ->when(mb_strlen(trim($this->buscarConversacion)) >= 2, function ($query) {
+                $term = trim($this->buscarConversacion);
+                $query->where(function ($query) use ($term) {
+                    $query->where('title', 'like', "%{$term}%")
+                        ->orWhereHas('users', fn ($users) => $users->where('users.name', 'like', "%{$term}%"));
+                });
+            })->orderByDesc('updated_at')
+            ->get();
+    }
 
     public function updatedBuscarConversacion(): void
     {
@@ -103,12 +108,12 @@ public function cargarConversaciones()
     public function iniciarConversacion($usuarioId)
     {
         $existe = Conversation::where('is_group', false)
-            ->whereHas('users', fn($q) => $q->where('users.id', $usuarioId))
-            ->whereHas('users', fn($q) => $q->where('users.id', auth()->id()))
+            ->whereHas('users', fn ($q) => $q->where('users.id', $usuarioId))
+            ->whereHas('users', fn ($q) => $q->where('users.id', auth()->id()))
             ->first();
 
         $conv = $existe ?: Conversation::create();
-        if (!$existe) {
+        if (! $existe) {
             $conv->users()->attach([
                 $usuarioId => ['api_user_id' => $usuarioId],
                 auth()->id() => ['api_user_id' => auth()->id()],
@@ -131,7 +136,7 @@ public function cargarConversaciones()
         $id = $payload['id'];
         $conv = Conversation::with('messages')->find($id);
 
-        if (!$conv || !$conv->users->pluck('id')->contains(auth()->id())) {
+        if (! $conv || ! $conv->users->pluck('id')->contains(auth()->id())) {
             return;
         }
 
@@ -153,7 +158,7 @@ public function cargarConversaciones()
 
     public function toggleBuscador()
     {
-        $this->mostrarBuscador = !$this->mostrarBuscador;
+        $this->mostrarBuscador = ! $this->mostrarBuscador;
         $this->dispatch('focusSearchInput');
     }
 

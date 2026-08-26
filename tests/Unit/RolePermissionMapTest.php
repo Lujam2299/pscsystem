@@ -64,7 +64,7 @@ class RolePermissionMapTest extends TestCase
 
     private function userWithRole(string $role): User
     {
-        return (new User())
+        return (new User)
             ->forceFill(['rol' => $role])
             ->setRelation('solicitudAlta', null);
     }

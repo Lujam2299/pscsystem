@@ -2,12 +2,12 @@
 
 namespace App\Livewire;
 
-use App\Support\Authorization\Permission;
 use App\Events\MensajeEnviado;
-use App\Events\MessagesRead;
 use App\Events\MessageDeleted;
+use App\Events\MessagesRead;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Support\Authorization\Permission;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -21,13 +21,21 @@ class MensajesChat extends Component
     }
 
     public ?Conversation $conversation = null;
+
     public array $messages = [];
+
     public string $body = '';
+
     public string $componentId;
+
     public ?int $conversationId = null;
+
     public ?int $replyToMessageId = null;
+
     public string $buscarMensaje = '';
+
     public bool $hasMoreMessages = false;
+
     public string $sendState = 'idle';
 
     protected $listeners = [
@@ -37,13 +45,14 @@ class MensajesChat extends Component
 
     public function mount(): void
     {
-        $this->componentId = 'chat-' . uniqid();
+        $this->componentId = 'chat-'.uniqid();
     }
 
     public function cargarConversacion($id): void
     {
-        if (!$id) {
+        if (! $id) {
             $this->cerrarConversacion();
+
             return;
         }
 
@@ -76,7 +85,9 @@ class MensajesChat extends Component
 
     public function cargarAnteriores(): void
     {
-        if (!$this->conversationId || !$this->messages || !$this->hasMoreMessages) return;
+        if (! $this->conversationId || ! $this->messages || ! $this->hasMoreMessages) {
+            return;
+        }
 
         $oldestId = collect($this->messages)->min('id');
         $items = $this->consultaMensajes()->where('id', '<', $oldestId)->latest('id')->limit(31)->get();
@@ -88,15 +99,18 @@ class MensajesChat extends Component
 
     public function updatedBuscarMensaje(): void
     {
-        if (!$this->conversationId) return;
+        if (! $this->conversationId) {
+            return;
+        }
 
         if (mb_strlen(trim($this->buscarMensaje)) < 2) {
             $this->cargarMensajesRecientes();
+
             return;
         }
 
         $this->messages = $this->consultaMensajes()
-            ->where('body', 'like', '%' . trim($this->buscarMensaje) . '%')
+            ->where('body', 'like', '%'.trim($this->buscarMensaje).'%')
             ->latest('id')->limit(50)->get()->reverse()->values()->toArray();
         $this->hasMoreMessages = false;
     }
@@ -131,9 +145,15 @@ class MensajesChat extends Component
     public function agregarMensaje($data): void
     {
         $messageData = $data['message'] ?? $data;
-        if ((int) ($messageData['conversation_id'] ?? 0) !== $this->conversationId) return;
-        if ((int) ($messageData['user_id'] ?? 0) === (int) Auth::id()) return;
-        if (collect($this->messages)->contains('id', $messageData['id'] ?? null)) return;
+        if ((int) ($messageData['conversation_id'] ?? 0) !== $this->conversationId) {
+            return;
+        }
+        if ((int) ($messageData['user_id'] ?? 0) === (int) Auth::id()) {
+            return;
+        }
+        if (collect($this->messages)->contains('id', $messageData['id'] ?? null)) {
+            return;
+        }
 
         $this->messages[] = $messageData;
         $this->marcarComoLeidos();
@@ -142,11 +162,16 @@ class MensajesChat extends Component
 
     public function actualizarLecturas(): void
     {
-        if (!$this->conversationId) return;
+        if (! $this->conversationId) {
+            return;
+        }
         $readIds = Message::where('conversation_id', $this->conversationId)
             ->where('user_id', Auth::id())->whereNotNull('read_at')->pluck('id');
         $this->messages = collect($this->messages)->map(function ($message) use ($readIds) {
-            if ($readIds->contains($message['id'])) $message['read_at'] = now()->toIso8601String();
+            if ($readIds->contains($message['id'])) {
+                $message['read_at'] = now()->toIso8601String();
+            }
+
             return $message;
         })->all();
     }

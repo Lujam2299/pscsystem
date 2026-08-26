@@ -71,7 +71,7 @@ class OptionalModuleAuthorizationTest extends TestCase
 
     private function assertRoleResponse(string $role, string $uri, int $status): void
     {
-        $user = (new User())->forceFill([
+        $user = (new User)->forceFill([
             'id' => abs(crc32($role.$uri)),
             'name' => "Prueba $role",
             'email' => strtolower(str_replace(' ', '.', $role)).'@example.test',

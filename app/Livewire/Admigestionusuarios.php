@@ -2,15 +2,15 @@
 
 namespace App\Livewire;
 
+use App\Models\Punto;
+use App\Models\Subpunto;
+use App\Models\User;
 use App\Support\Authorization\Permission;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Illuminate\Pagination\LengthAwarePaginator;
-use App\Models\User;
-use App\Models\Punto;
-use App\Models\Subpunto;
-use Illuminate\Support\Facades\Auth;
 
 class Admigestionusuarios extends Component
 {
@@ -22,10 +22,15 @@ class Admigestionusuarios extends Component
     use WithPagination;
 
     public $search = '';
+
     public $tipo_pago = 'todos';
+
     public $estatus = 'Activo'; // ✅ Valor por defecto 'Activo'
+
     public $punto = '';
+
     public $sortField = 'name';
+
     public $sortDirection = 'asc';
 
     protected $queryString = [
@@ -153,13 +158,13 @@ class Admigestionusuarios extends Component
         $rol = Auth::user()?->rol;
         if ($rol === 'AUXILIAR OPERACIONES') {
             $subpuntosMap = [
-                'MONTERREY' => $subpuntosMap['MONTERREY'] ?? []
+                'MONTERREY' => $subpuntosMap['MONTERREY'] ?? [],
             ];
         }
 
         $baseQuery = User::with('solicitudAlta', 'documentacionAltas')
             ->when($this->search, function ($query) {
-                $query->where('name', 'like', '%' . $this->search . '%');
+                $query->where('name', 'like', '%'.$this->search.'%');
             })
             ->when($this->tipo_pago !== 'todos', function ($query) {
                 $query->whereHas('solicitudAlta', function ($subQuery) {
@@ -196,11 +201,11 @@ class Admigestionusuarios extends Component
                 }
             }
 
-            if (!$puntoGeneral) {
+            if (! $puntoGeneral) {
                 $baseQuery->where(function ($query) use ($filtro) {
                     $query->where('punto', $filtro)
-                          ->orWhere('punto', strtoupper($filtro))
-                          ->orWhere('punto', strtolower($filtro));
+                        ->orWhere('punto', strtoupper($filtro))
+                        ->orWhere('punto', strtolower($filtro));
                 });
             } else {
                 $baseQuery->where(function ($query) use ($subpuntos, $puntoGeneral) {
@@ -214,7 +219,7 @@ class Admigestionusuarios extends Component
                             }
                             if ($nombre === 'MARY KAY CORPORATIVO') {
                                 $q->orWhereRaw('LOWER(punto) = ?', ['marykay corporativo'])
-                                  ->orWhereRaw('LOWER(punto) = ?', ['mar kay corporativo']);
+                                    ->orWhereRaw('LOWER(punto) = ?', ['mar kay corporativo']);
                             }
                             if ($codigo !== null && $puntoGeneral === 'MONTERREY') {
                                 $q->orWhere('punto', $codigo);
@@ -231,17 +236,17 @@ class Admigestionusuarios extends Component
                 'AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH',
                 'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH',
                 'AUXILIAR NOMINAS', 'Auxiliar Nominas',
-                'AUX NOMINAS', 'Aux Nominas', 'Auxiliar nóminas'
+                'AUX NOMINAS', 'Aux Nominas', 'Auxiliar nóminas',
             ], true) ||
             ($authUser->solicitudAlta?->departamento == 'Recursos Humanos');
 
-        if (!$esAdminOrRH) {
+        if (! $esAdminOrRH) {
             $puntoUsuarioRaw = $authUser->punto;
             $subpuntosZona = collect();
 
             $punto = \App\Models\Punto::where('nombre', $puntoUsuarioRaw)->first();
 
-            if (!$punto) {
+            if (! $punto) {
                 $subpunto = \App\Models\Subpunto::where('nombre', $puntoUsuarioRaw)->first()
                     ?? \App\Models\Subpunto::where('codigo', $puntoUsuarioRaw)->first();
 
@@ -269,7 +274,7 @@ class Admigestionusuarios extends Component
         if (in_array($authUser->rol, $rolesOperaciones, true)) {
             $baseQuery->where(function ($query) {
                 $query->whereRaw('LOWER(rol) LIKE ?', ['%guardia%'])
-                      ->orWhereRaw('LOWER(rol) LIKE ?', ['%patrullero%']);
+                    ->orWhereRaw('LOWER(rol) LIKE ?', ['%patrullero%']);
             });
         }
 
@@ -292,7 +297,7 @@ class Admigestionusuarios extends Component
 
             $completados = 0;
             foreach ($documentos as $campo) {
-                if (!empty($documentacion?->$campo)) {
+                if (! empty($documentacion?->$campo)) {
                     $completados++;
                 }
             }
@@ -308,6 +313,7 @@ class Admigestionusuarios extends Component
             $users = $this->sortDirection === 'asc'
                 ? $users->sortBy(function ($user) {
                     $solicitud = $user->solicitudAlta;
+
                     // Concatenar apellidos y nombre en mayúsculas para ordenamiento consistente
                     return strtoupper(sprintf(
                         '%s %s %s',
@@ -318,6 +324,7 @@ class Admigestionusuarios extends Component
                 })
                 : $users->sortByDesc(function ($user) {
                     $solicitud = $user->solicitudAlta;
+
                     return strtoupper(sprintf(
                         '%s %s %s',
                         $solicitud?->apellido_paterno ?? '',

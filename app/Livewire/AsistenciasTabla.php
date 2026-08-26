@@ -2,20 +2,19 @@
 
 namespace App\Livewire;
 
+use App\Models\Asistencia;
+use App\Models\Punto;
+use App\Models\Retardo;
+use App\Models\Subpunto;
+use App\Models\TiemposExtra;
+use App\Models\User;
+use App\Services\CalculoNominaService;
 use App\Support\Authorization\Permission;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
-use App\Models\User;
-use App\Models\Punto;
-use App\Models\Subpunto;
-use App\Models\Asistencia;
-use App\Models\TiemposExtra;
-use App\Models\FaltaJustificada;
-use App\Models\Retardo;
-use App\Services\CalculoNominaService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
 
 class AsistenciasTabla extends Component
 {
@@ -25,13 +24,21 @@ class AsistenciasTabla extends Component
     }
 
     public $punto = '';
+
     public $fecha_inicio = '';
+
     public $fecha_fin = '';
+
     protected $puntosAsignadosMap = [];
+
     public $tipoFiltro = '';
+
     public $usuariosConAlerta = [];
+
     public $showModal = false;
+
     public $detalleNomina = null;
+
     public $userIdModal = null;
 
     private CalculoNominaService $calculoService;
@@ -46,8 +53,9 @@ class AsistenciasTabla extends Component
     public function mostrarDetalleNomina(int $userId)
     {
         $user = User::find($userId);
-        if (!$user) {
+        if (! $user) {
             session()->flash('error', 'Usuario no encontrado');
+
             return;
         }
 
@@ -131,12 +139,12 @@ class AsistenciasTabla extends Component
         $incapacidades = \App\Models\Incapacidad::where('user_id', $userId)
             ->where(function ($q) use ($inicio, $fin) {
                 $q->whereBetween('fecha_inicio', [$inicio, $fin])
-                  ->orWhereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>=', $inicio)
-                  ->where('fecha_inicio', '<=', $fin)
-                  ->orWhere(function ($subq) use ($inicio, $fin) {
-                      $subq->where('fecha_inicio', '<', $inicio)
-                           ->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>', $fin);
-                  });
+                    ->orWhereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>=', $inicio)
+                    ->where('fecha_inicio', '<=', $fin)
+                    ->orWhere(function ($subq) use ($inicio, $fin) {
+                        $subq->where('fecha_inicio', '<', $inicio)
+                            ->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>', $fin);
+                    });
             })
             ->get();
 
@@ -152,6 +160,7 @@ class AsistenciasTabla extends Component
                 }
             }
         }
+
         return array_unique($dias);
     }
 
@@ -164,11 +173,11 @@ class AsistenciasTabla extends Component
             ->where('con_goce', 0) // ✅ Filtrar directamente por 0 (tinyint)
             ->where(function ($q) use ($inicio, $fin) {
                 $q->whereBetween('fecha_inicio', [$inicio, $fin])
-                  ->orWhereBetween('fecha_fin', [$inicio, $fin])
-                  ->orWhere(function ($subq) use ($inicio, $fin) {
-                      $subq->where('fecha_inicio', '<', $inicio)
-                           ->where('fecha_fin', '>', $fin);
-                  });
+                    ->orWhereBetween('fecha_fin', [$inicio, $fin])
+                    ->orWhere(function ($subq) use ($inicio, $fin) {
+                        $subq->where('fecha_inicio', '<', $inicio)
+                            ->where('fecha_fin', '>', $fin);
+                    });
             })
             ->get();
 
@@ -184,6 +193,7 @@ class AsistenciasTabla extends Component
                 }
             }
         }
+
         return array_unique($dias);
     }
 
@@ -196,7 +206,7 @@ class AsistenciasTabla extends Component
 
         if ($rol === 'AUXILIAR OPERACIONES') {
             $subpuntosMap = [
-                'MONTERREY' => $subpuntosMap['MONTERREY'] ?? []
+                'MONTERREY' => $subpuntosMap['MONTERREY'] ?? [],
             ];
         }
 
@@ -227,7 +237,7 @@ class AsistenciasTabla extends Component
 
     public function obtenerDatos()
     {
-        if (!$this->fecha_inicio || !$this->fecha_fin) {
+        if (! $this->fecha_inicio || ! $this->fecha_fin) {
             return [
                 'usuarios' => collect(),
                 'fechas' => [],
@@ -267,14 +277,14 @@ class AsistenciasTabla extends Component
             }
         }
 
-        if (!$puntoGeneral && in_array($filtro, ['MARYKAY CORPORATIVO', 'MARY KAY CORPORATIVO'])) {
+        if (! $puntoGeneral && in_array($filtro, ['MARYKAY CORPORATIVO', 'MARY KAY CORPORATIVO'])) {
             $puntoGeneral = 'MONTERREY';
             $subpuntos = [
-                collect($this->getSubpuntosPorPunto()['MONTERREY'])->firstWhere('nombre', 'LIKE', $filtro)
+                collect($this->getSubpuntosPorPunto()['MONTERREY'])->firstWhere('nombre', 'LIKE', $filtro),
             ];
         }
 
-        if (!$puntoGeneral) {
+        if (! $puntoGeneral) {
             $puntoGeneral = $filtro;
             $subpuntos = [['nombre' => $filtro, 'codigo' => null]];
         }
@@ -296,7 +306,7 @@ class AsistenciasTabla extends Component
             ->whereIn('punto', $puntosAsistencias)
             ->whereBetween('fecha', [$this->fecha_inicio, $this->fecha_fin])
             ->get()
-            ->groupBy(fn($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
+            ->groupBy(fn ($a) => Carbon::parse($a->fecha)->format('Y-m-d'));
 
         $puntosAsignadosMap = [];
         foreach ($asistenciasIndexadas as $fecha => $registros) {
@@ -320,12 +330,12 @@ class AsistenciasTabla extends Component
 
                     $query->orWhere(function ($q) use ($nombre, $codigo, $puntoGeneral) {
                         if ($nombre) {
-                            $q->whereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%']);
+                            $q->whereRaw('LOWER(punto) LIKE ?', ['%'.strtolower($nombre).'%']);
                         }
                         if ($nombre === 'MARY KAY CORPORATIVO') {
-                            $q->orWhereRaw('LOWER(punto) LIKE ?', ['%' . strtolower($nombre) . '%'])
-                              ->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
-                              ->orWhereRaw('LOWER(punto) LIKE ?', ['%mar kay corporativo%']);
+                            $q->orWhereRaw('LOWER(punto) LIKE ?', ['%'.strtolower($nombre).'%'])
+                                ->orWhereRaw('LOWER(punto) LIKE ?', ['%marykay corporativo%'])
+                                ->orWhereRaw('LOWER(punto) LIKE ?', ['%mar kay corporativo%']);
                         }
                         if ($codigo && $puntoGeneral === 'MONTERREY') {
                             $q->orWhere('punto', $codigo);
@@ -337,18 +347,19 @@ class AsistenciasTabla extends Component
         if ($filtro === 'MONTERREY') {
             $usuarios->orWhere(function ($q) {
                 $q->where('punto', 'KANSAS')
-                  ->orWhere('punto', 'MTY');
+                    ->orWhere('punto', 'MTY');
             });
         }
 
         $usuarios = $usuarios->get()
             ->filter(function ($user) {
                 $rol = $this->normalize($user->rol);
+
                 return in_array($rol, ['patrullero', 'guardia']);
             })
             ->sortBy([
                 ['punto', 'asc'],
-                ['name', 'asc']
+                ['name', 'asc'],
             ]);
 
         // Filtrar usuarios según el tipo seleccionado
@@ -357,9 +368,12 @@ class AsistenciasTabla extends Component
                 foreach ($asistenciasIndexadas as $registros) {
                     foreach ($registros as $asistencia) {
                         $enlistados = json_decode($asistencia->elementos_enlistados, true) ?? [];
-                        if (in_array($user->id, $enlistados)) return true;
+                        if (in_array($user->id, $enlistados)) {
+                            return true;
+                        }
                     }
                 }
+
                 return false;
             });
         } elseif ($this->tipoFiltro === 'faltas') {
@@ -367,9 +381,12 @@ class AsistenciasTabla extends Component
                 foreach ($asistenciasIndexadas as $registros) {
                     foreach ($registros as $asistencia) {
                         $faltantes = json_decode($asistencia->faltas, true) ?? [];
-                        if (in_array($user->id, $faltantes)) return true;
+                        if (in_array($user->id, $faltantes)) {
+                            return true;
+                        }
                     }
                 }
+
                 return false;
             });
         } elseif ($this->tipoFiltro === 'descansos') {
@@ -377,9 +394,12 @@ class AsistenciasTabla extends Component
                 foreach ($asistenciasIndexadas as $registros) {
                     foreach ($registros as $asistencia) {
                         $descansantes = json_decode($asistencia->descansos, true) ?? [];
-                        if (in_array($user->id, $descansantes)) return true;
+                        if (in_array($user->id, $descansantes)) {
+                            return true;
+                        }
                     }
                 }
+
                 return false;
             });
         }
@@ -440,7 +460,7 @@ class AsistenciasTabla extends Component
             ->orWhereBetween('fecha_fin', [$this->fecha_inicio, $this->fecha_fin])
             ->orWhere(function ($q) {
                 $q->where('fecha_inicio', '<', $this->fecha_inicio)
-                  ->where('fecha_fin', '>', $this->fecha_fin);
+                    ->where('fecha_fin', '>', $this->fecha_fin);
             })
             ->get();
 
@@ -486,15 +506,15 @@ class AsistenciasTabla extends Component
         $incapacidades = \App\Models\Incapacidad::where(function ($q) {
             $q->whereBetween('fecha_inicio', [$this->fecha_inicio, $this->fecha_fin]);
         })
-        ->orWhere(function ($q) {
-            $q->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>=', $this->fecha_inicio)
-              ->where('fecha_inicio', '<=', $this->fecha_fin);
-        })
-        ->orWhere(function ($q) {
-            $q->where('fecha_inicio', '<', $this->fecha_inicio)
-              ->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>', $this->fecha_fin);
-        })
-        ->get();
+            ->orWhere(function ($q) {
+                $q->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>=', $this->fecha_inicio)
+                    ->where('fecha_inicio', '<=', $this->fecha_fin);
+            })
+            ->orWhere(function ($q) {
+                $q->where('fecha_inicio', '<', $this->fecha_inicio)
+                    ->whereDate(\DB::raw('DATE_ADD(fecha_inicio, INTERVAL dias_incapacidad - 1 DAY)'), '>', $this->fecha_fin);
+            })
+            ->get();
 
         foreach ($incapacidades as $incapacidad) {
             $inicio = Carbon::parse($incapacidad->fecha_inicio);
@@ -539,7 +559,7 @@ class AsistenciasTabla extends Component
             } catch (\Exception $e) {
                 $nominaPorUsuario[$user->id] = [
                     'success' => false,
-                    'error' => 'Excepción: ' . $e->getMessage(),
+                    'error' => 'Excepción: '.$e->getMessage(),
                     'subtotal_percepciones' => 0,
                 ];
             }
@@ -562,12 +582,17 @@ class AsistenciasTabla extends Component
     public function asistenciaUsuarioFecha($indexadas, string $fecha, int $userId)
     {
         $registros = $indexadas->get($fecha, collect());
-        if (!($registros instanceof \Illuminate\Support\Collection)) $registros = collect([$registros]);
+        if (! ($registros instanceof \Illuminate\Support\Collection)) {
+            $registros = collect([$registros]);
+        }
 
         return $registros->first(function ($registro) use ($userId) {
             foreach (['elementos_enlistados', 'faltas', 'descansos'] as $campo) {
-                if (in_array($userId, json_decode($registro->{$campo} ?? '[]', true) ?? [])) return true;
+                if (in_array($userId, json_decode($registro->{$campo} ?? '[]', true) ?? [])) {
+                    return true;
+                }
             }
+
             return false;
         });
     }

@@ -8,15 +8,25 @@ use Illuminate\Support\Str;
 final class RoleNormalizer
 {
     public const ADMIN = 'admin';
+
     public const ACCOUNTING = 'accounting';
+
     public const PAYROLL = 'payroll';
+
     public const HUMAN_RESOURCES = 'human-resources';
+
     public const OPERATIONS = 'operations';
+
     public const IMSS = 'imss';
+
     public const MONITORING = 'monitoring';
+
     public const LEGAL = 'legal';
+
     public const SUPERVISOR = 'supervisor';
+
     public const CUSTODIAN = 'custodian';
+
     public const USER = 'user';
 
     public static function for(User $user): string

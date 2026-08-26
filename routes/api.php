@@ -1,10 +1,9 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\RealtimePositionController;
-use Illuminate\Http\Request;
-use App\Support\Authorization\RolePermissionMap;
 use App\Support\Authorization\Permission;
+use App\Support\Authorization\RolePermissionMap;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
 
 // Rutas de autenticación API

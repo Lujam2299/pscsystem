@@ -114,6 +114,16 @@ class AsistenciaDiariaUnificadaTest extends TestCase
 
     public function test_ordena_monterrey_primero_y_sus_subpuntos_por_codigo(): void
     {
+        $operaciones = User::create([
+            'name' => 'Usuario Operaciones',
+            'email' => 'operaciones-orden@example.test',
+            'password' => 'secret',
+            'punto' => 'OFICINA',
+            'rol' => 'OPERACIONES',
+            'estatus' => 'Activo',
+            'empresa' => 'PSC',
+        ]);
+
         Punto::create(['nombre' => 'AGUASCALIENTES']);
         $monterrey = Punto::create(['nombre' => 'MONTERREY']);
 
@@ -121,7 +131,9 @@ class AsistenciaDiariaUnificadaTest extends TestCase
         Subpunto::create(['punto_id' => $monterrey->id, 'nombre' => 'CODIGO VEINTE', 'codigo' => 20]);
         Subpunto::create(['punto_id' => $monterrey->id, 'nombre' => 'CODIGO TRES', 'codigo' => 3]);
 
-        $mapa = Livewire::test(AsistenciaDiaria::class)->get('subpuntosMap');
+        $mapa = Livewire::actingAs($operaciones)
+            ->test(AsistenciaDiaria::class)
+            ->get('subpuntosMap');
 
         $this->assertSame('MONTERREY', array_key_first($mapa));
         $this->assertSame(

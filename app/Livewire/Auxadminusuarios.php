@@ -2,12 +2,11 @@
 
 namespace App\Livewire;
 
+use App\Models\User;
 use App\Support\Authorization\Permission;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\User;
-use Illuminate\Support\Facades\Auth;
 
 class Auxadminusuarios extends Component
 {
@@ -19,6 +18,7 @@ class Auxadminusuarios extends Component
     use WithPagination;
 
     public $search = '';
+
     protected $queryString = ['search' => ['except' => '']];
 
     public function updatingSearch()
@@ -29,17 +29,17 @@ class Auxadminusuarios extends Component
     public function render()
     {
 
-    $users = User::query()
-        ->when($this->search, function ($query) {
-            $query->where('name', 'like', '%'.$this->search.'%');
+        $users = User::query()
+            ->when($this->search, function ($query) {
+                $query->where('name', 'like', '%'.$this->search.'%');
 
-        })
-        ->where('estatus','Activo')
-        ->orderBy('name')
-        ->paginate(10);
+            })
+            ->where('estatus', 'Activo')
+            ->orderBy('name')
+            ->paginate(10);
 
         return view('livewire.auxadminusuarios', [
-            'users' => $users
+            'users' => $users,
         ]);
     }
 }

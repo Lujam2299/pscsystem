@@ -4,16 +4,16 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Support\Authorization\RolePermissionMap;
-use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, SoftDeletes, HasApiTokens;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -61,14 +61,17 @@ class User extends Authenticatable
     {
         return RolePermissionMap::allows($this, $permission);
     }
+
     public function solicitudBajas()
     {
         return $this->hasMany(SolicitudBajas::class);
     }
+
     public function documentacionAltas()
     {
         return $this->hasOne(DocumentacionAltas::class, 'id', 'sol_docs_id');
     }
+
     public function solicitudAlta()
     {
         return $this->hasOne(SolicitudAlta::class, 'id', 'sol_alta_id');
