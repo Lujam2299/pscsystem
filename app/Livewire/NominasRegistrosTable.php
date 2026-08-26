@@ -3,7 +3,9 @@
 namespace App\Livewire;
 
 use App\Models\Archivonomina;
+use App\Services\AuditLogger;
 use App\Support\Authorization\Permission;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -128,6 +130,10 @@ class NominasRegistrosTable extends Component
         \Log::info('Validación exitosa');
 
         $registro = Archivonomina::findOrFail($this->editandoId);
+        $before = $registro->only([
+            'periodo', 'subtotal', 'total_destajos', 'arch_nomina',
+            'arch_nomina_spyt', 'arch_nomina_montana', 'arch_destajo',
+        ]);
         \Log::info('Registro cargado:', [
             'id' => $registro->id,
             'arch_nomina_actual' => $registro->arch_nomina,
@@ -213,6 +219,13 @@ class NominasRegistrosTable extends Component
         $registro->subtotal = $subtotalNominas;
         $registro->total_destajos = $totalDestajos;
         $registro->save(); // ← Esto garantiza que se guarden todos los cambios
+
+        app(AuditLogger::class)->record('Nómina', 'Registro de nómina actualizado', $registro, $before, $registro->only(array_keys($before)), [
+            'archivos_reemplazados' => collect(array_keys($archivos))
+                ->filter(fn (string $campo): bool => (bool) $this->{$campo})
+                ->values()
+                ->all(),
+        ]);
 
         \Log::info('Registro actualizado en BD', [
             'id' => $registro->id,
@@ -443,7 +456,11 @@ class NominasRegistrosTable extends Component
 
     private function obtenerAniosDisponibles()
     {
-        return Archivonomina::selectRaw('YEAR(created_at) as anio')
+        $yearExpression = DB::connection()->getDriverName() === 'sqlite'
+            ? "CAST(strftime('%Y', created_at) AS INTEGER)"
+            : 'YEAR(created_at)';
+
+        return Archivonomina::selectRaw("{$yearExpression} as anio")
             ->distinct()
             ->orderBy('anio', 'desc')
             ->pluck('anio')

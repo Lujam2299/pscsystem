@@ -1,37 +1,40 @@
 <?php
 
 namespace App\Http\Controllers;
-use Illuminate\Support\Facades\Auth;
-use App\Models\User;
+
+use App\Exports\DestajosSpreadsheetExport;
 use App\Models\Alerta;
 use App\Models\Archivonomina;
 use App\Models\ArchivoPagoSemanal;
 use App\Models\Asistencia;
+use App\Models\Deducciones;
+use App\Models\Finiquito;
 use App\Models\Nomina;
-use App\Models\SolicitudVacaciones;
+use App\Models\Punto;
 use App\Models\SolicitudAlta;
 use App\Models\SolicitudBajas;
-use App\Models\Punto;
+use App\Models\SolicitudVacaciones;
 use App\Models\Subpunto;
-use App\Models\Deducciones;
-use App\Exports\DestajosSpreadsheetExport;
-use PhpOffice\PhpSpreadsheet\IOFactory;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
+use App\Models\User;
+use App\Services\AuditLogger;
+use App\Services\FiniquitoCalculator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Models\Finiquito;
-use App\Services\FiniquitoCalculator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class NominasController extends Controller
 {
-    public function antiguedades(){
+    public function antiguedades()
+    {
         return view('nominas.antiguedades');
     }
 
-    public function verBajas(){
+    public function verBajas()
+    {
         Gate::authorize('viewFiniquitos', SolicitudBajas::class);
 
         $bajas = SolicitudBajas::where('estatus', 'Aceptada')
@@ -40,22 +43,25 @@ class NominasController extends Controller
             ->with('user')
             ->orderByDesc('fecha_baja')
             ->paginate(10);
+
         return view('nominas.verBajas', compact('bajas'));
     }
 
-    public function nuevasAltas(){
+    public function nuevasAltas()
+    {
         $solicitudes = SolicitudAlta::where('status', 'Aceptada')
-            ->whereDate('fecha_ingreso', '>=', Carbon::today('America/Mexico_City')->subDays(15))//si se requiere respetar a toda la quincena
+            ->whereDate('fecha_ingreso', '>=', Carbon::today('America/Mexico_City')->subDays(15))// si se requiere respetar a toda la quincena
             ->with('usuario')
             ->get();
         $users = User::where('estatus', 'Activo')
             ->where('num_empleado', null)
             ->where('fecha_ingreso', '>=', Carbon::today('America/Mexico_City')->subDays(15))
             ->get();
+
         return view('nominas.nuevasAltas', compact('solicitudes', 'users'));
     }
 
-    public function guardarCalculoFiniquito(Request $request, FiniquitoCalculator $calculator)
+    public function guardarCalculoFiniquito(Request $request, FiniquitoCalculator $calculator, AuditLogger $audit)
     {
         $validated = $request->validate([
             'imagen' => ['required', 'string', 'max:10485760', 'regex:/^data:image\/png;base64,/'],
@@ -65,13 +71,13 @@ class NominasController extends Controller
         $solicitud = SolicitudBajas::with('user.solicitudAlta')->findOrFail($validated['solicitud_id']);
         Gate::authorize('processFiniquito', $solicitud);
 
-        if (!$solicitud->arch_renuncia) {
+        if (! $solicitud->arch_renuncia) {
             return response()->json(['success' => false, 'error' => 'Falta la renuncia firmada.'], 422);
         }
 
         $encoded = substr($validated['imagen'], strpos($validated['imagen'], ',') + 1);
         $imagen = base64_decode($encoded, true);
-        if ($imagen === false || !str_starts_with($imagen, "\x89PNG\r\n\x1a\n")) {
+        if ($imagen === false || ! str_starts_with($imagen, "\x89PNG\r\n\x1a\n")) {
             return response()->json(['success' => false, 'error' => 'La imagen del cálculo no es un PNG válido.'], 422);
         }
 
@@ -81,25 +87,36 @@ class NominasController extends Controller
             return response()->json(['success' => false, 'error' => $e->getMessage()], 422);
         }
         $carpeta = "finiquitos/{$solicitud->id}";
-        $nombreArchivo = 'finiquito_' . now()->format('Ymd_His_u') . '.png';
+        $nombreArchivo = 'finiquito_'.now()->format('Ymd_His_u').'.png';
         $rutaCompleta = "{$carpeta}/{$nombreArchivo}";
-        if (!Storage::disk('local')->put($rutaCompleta, $imagen)) {
+        if (! Storage::disk('local')->put($rutaCompleta, $imagen)) {
             return response()->json(['success' => false, 'error' => 'No fue posible almacenar el documento.'], 500);
         }
         $rutaAnterior = $solicitud->calculo_finiquito;
+        $before = $solicitud->only(['calculo_finiquito', 'observaciones']);
 
         try {
-            DB::transaction(function () use ($solicitud, $rutaCompleta, $calculo) {
+            DB::transaction(function () use ($solicitud, $rutaCompleta, $calculo, $audit, $before) {
                 $solicitud->update([
-                    'calculo_finiquito' => 'private:' . $rutaCompleta,
+                    'calculo_finiquito' => 'private:'.$rutaCompleta,
                     'observaciones' => 'Finiquito enviado a RH.',
                 ]);
 
                 $this->persistCalculation($solicitud, $calculo);
+
+                $finiquito = Finiquito::where('baja_id', $solicitud->id)->firstOrFail();
+                $audit->record('Finiquitos', 'Finiquito calculado y enviado a RH', $finiquito, $before, [
+                    'calculo_finiquito' => $solicitud->calculo_finiquito,
+                    'observaciones' => $solicitud->observaciones,
+                    'monto' => $finiquito->monto,
+                    'salario_diario' => $finiquito->salario_diario,
+                    'version_formula' => $finiquito->version_formula,
+                ], ['solicitud_baja_id' => $solicitud->id]);
             });
         } catch (\Throwable $e) {
             Storage::disk('local')->delete($rutaCompleta);
             Log::error('Error al guardar finiquito.', ['exception' => $e]);
+
             return response()->json(['success' => false, 'error' => 'No fue posible guardar el finiquito.'], 500);
         }
 
@@ -112,11 +129,13 @@ class NominasController extends Controller
         ]);
     }
 
-    public function asistenciasNominas(){
+    public function asistenciasNominas()
+    {
         return view('nominas.asistencias');
     }
 
-    public function vacacionesNominas(){
+    public function vacacionesNominas()
+    {
         return view('nominas.vacaciones');
     }
 
@@ -154,7 +173,8 @@ class NominasController extends Controller
         return view('nominas.vacaciones', compact('vacaciones'));
     }
 
-    public function vistaNominas(){
+    public function vistaNominas()
+    {
         return view('nominas.vistaNominas');
     }
 
@@ -175,86 +195,97 @@ class NominasController extends Controller
 
         $usuarios = $query->get();
         $fechaInicio = $request->fecha_inicio ? Carbon::parse($request->fecha_inicio) : null;
-    $fechaFin = $request->fecha_fin ? Carbon::parse($request->fecha_fin) : null;
+        $fechaFin = $request->fecha_fin ? Carbon::parse($request->fecha_fin) : null;
 
-    foreach ($usuarios as $user) {
-        $asistencias = Asistencia::query()
-            ->when($fechaInicio && $fechaFin, function ($q) use ($fechaInicio, $fechaFin) {
-                return $q->whereBetween('fecha', [$fechaInicio, $fechaFin]);
-            })
-            ->where('punto', $user->punto)
-            ->get();
+        foreach ($usuarios as $user) {
+            $asistencias = Asistencia::query()
+                ->when($fechaInicio && $fechaFin, function ($q) use ($fechaInicio, $fechaFin) {
+                    return $q->whereBetween('fecha', [$fechaInicio, $fechaFin]);
+                })
+                ->where('punto', $user->punto)
+                ->get();
 
-        $asistencias_count = 0;
-        $descansos_count = 0;
-        $faltas_count = 0;
+            $asistencias_count = 0;
+            $descansos_count = 0;
+            $faltas_count = 0;
 
-        foreach ($asistencias as $registro) {
-            $enlistados = json_decode($registro->elementos_enlistados, true) ?? [];
-            $descansos = json_decode($registro->descansos, true) ?? [];
-            $faltas = json_decode($registro->faltas, true) ?? [];
+            foreach ($asistencias as $registro) {
+                $enlistados = json_decode($registro->elementos_enlistados, true) ?? [];
+                $descansos = json_decode($registro->descansos, true) ?? [];
+                $faltas = json_decode($registro->faltas, true) ?? [];
 
-            if (in_array($user->id, $enlistados)) $asistencias_count++;
-            if (in_array($user->id, $descansos)) $descansos_count++;
-            if (in_array($user->id, $faltas)) $faltas_count++;
+                if (in_array($user->id, $enlistados)) {
+                    $asistencias_count++;
+                }
+                if (in_array($user->id, $descansos)) {
+                    $descansos_count++;
+                }
+                if (in_array($user->id, $faltas)) {
+                    $faltas_count++;
+                }
+            }
+            $deducciones = Deducciones::where('user_id', $user->id)
+                ->where(function ($q) {
+                    $q->where('status', 'Pendiente')
+                        ->orWhere('monto_pendiente', '>', 0);
+                })
+                ->get();
+
+            $montoDeducciones = 0;
+
+            foreach ($deducciones as $deduccion) {
+                $montoQuincenal = $deduccion->monto / $deduccion->num_quincenas;
+                $montoQuincenal = round($montoQuincenal, 2);
+                $montoDeducciones += $montoQuincenal;
+            }
+
+            $vacaciones = SolicitudVacaciones::where('user_id', $user->id)
+                ->where('estatus', 'Aceptada')
+                ->where(function ($q) use ($fechaInicio, $fechaFin) {
+                    $q->whereBetween('fecha_inicio', [$fechaInicio, $fechaFin])
+                        ->orWhereBetween('fecha_fin', [$fechaInicio, $fechaFin]);
+                })
+                ->get();
+
+            $montoVacaciones = 0;
+            foreach ($vacaciones as $vacacion) {
+                $dias = $vacacion->dias_solicitados ?? 0;
+                $sd = $user->solicitudAlta->sd ?? 0;
+                $monto = $sd * $dias;
+                $montoVacaciones += $monto;
+            }
+
+            $user->monto_vacaciones = round($montoVacaciones, 2);
+            $user->monto_deducciones = $montoDeducciones;
+            $user->asistencias_count = $asistencias_count;
+            $user->descansos_count = $descansos_count;
+            $user->faltas_count = $faltas_count;
         }
-        $deducciones = Deducciones::where('user_id', $user->id)
-            ->where(function ($q) {
-                $q->where('status', 'Pendiente')
-                ->orWhere('monto_pendiente', '>', 0);
-            })
-            ->get();
-
-        $montoDeducciones = 0;
-
-        foreach ($deducciones as $deduccion) {
-            $montoQuincenal = $deduccion->monto / $deduccion->num_quincenas;
-            $montoQuincenal = round($montoQuincenal, 2);
-            $montoDeducciones += $montoQuincenal;
-        }
-
-        $vacaciones = SolicitudVacaciones::where('user_id', $user->id)
-            ->where('estatus', 'Aceptada')
-            ->where(function ($q) use ($fechaInicio, $fechaFin) {
-                $q->whereBetween('fecha_inicio', [$fechaInicio, $fechaFin])
-                ->orWhereBetween('fecha_fin', [$fechaInicio, $fechaFin]);
-            })
-            ->get();
-
-        $montoVacaciones = 0;
-        foreach ($vacaciones as $vacacion) {
-            $dias = $vacacion->dias_solicitados ?? 0;
-            $sd = $user->solicitudAlta->sd ?? 0;
-            $monto = $sd * $dias;
-            $montoVacaciones += $monto;
-        }
-
-        $user->monto_vacaciones = round($montoVacaciones, 2);
-        $user->monto_deducciones = $montoDeducciones;
-        $user->asistencias_count = $asistencias_count;
-        $user->descansos_count = $descansos_count;
-        $user->faltas_count = $faltas_count;
-    }
 
         return view('nominas.vistaNominas', compact('usuarios'));
     }
 
-    public function graficas(){
+    public function graficas()
+    {
         return view('nominas.graficas');
     }
 
-    public function deduccionesIndex(){
+    public function deduccionesIndex()
+    {
         $deducciones = Deducciones::where('status', 'Pendiente')
             ->paginate(10);
+
         return view('nominas.deducciones', compact('deducciones'));
     }
 
-    public function nuevaDeduccionForm(){
+    public function nuevaDeduccionForm()
+    {
         return view('nominas.deduccionForm');
     }
 
-    public function guardarDeduccion(Request $request){
-        try{
+    public function guardarDeduccion(Request $request, AuditLogger $audit)
+    {
+        try {
             $request->validate([
                 'user_id' => 'required|integer|exists:users,id',
                 'concepto' => 'required|string',
@@ -263,8 +294,7 @@ class NominasController extends Controller
                 'num_quincenas' => 'required|integer',
             ]);
 
-
-            $deduccion = new Deducciones();
+            $deduccion = new Deducciones;
             $deduccion->user_id = $request->user_id;
             $deduccion->concepto = $request->concepto;
             $deduccion->fecha_inicio = $request->fecha_inicio;
@@ -274,70 +304,80 @@ class NominasController extends Controller
             $deduccion->status = 'Pendiente';
             $deduccion->save();
 
+            $audit->record('Nómina', 'Deducción creada', $deduccion, [], $deduccion->only([
+                'user_id', 'concepto', 'fecha_inicio', 'monto', 'num_quincenas', 'monto_pendiente', 'status',
+            ]));
+
             return redirect()->route('nominas.deducciones')
                 ->with('success', 'Deducción guardada correctamente');
-        }catch(\Exception $e){
-            Log::error('Error al guardar deduccion: '. $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Error al guardar deduccion: '.$e->getMessage());
+
             return redirect()->route('nominas.deducciones')
-                ->with('error', 'Error al guardar la deducción: '. $e->getMessage())
+                ->with('error', 'Error al guardar la deducción: '.$e->getMessage())
                 ->withInput();
         }
     }
 
-    public function asignarNumEmpleado(Request $request){
+    public function asignarNumEmpleado(Request $request, AuditLogger $audit)
+    {
         $request->validate([
             'user_id' => 'required|exists:users,id',
             'num_empleado' => 'required|integer|min:1',
         ]);
 
         $user = User::find($request->user_id);
+        $before = $user->only(['num_empleado']);
         $user->num_empleado = $request->num_empleado;
         $user->save();
 
+        $audit->record('Nómina', 'Número de empleado asignado', $user, $before, $user->only(['num_empleado']));
+
         return response()->json([
             'success' => true,
-            'message' => 'Número de empleado asignado correctamente.'
+            'message' => 'Número de empleado asignado correctamente.',
         ]);
     }
 
-public function solicitarConstancia(Request $request)
-{
-    $user = User::findOrFail($request->user_id);
-    Log::info('Solicitud de constancia iniciada por el usuario: ' . Auth::id());
+    public function solicitarConstancia(Request $request)
+    {
+        $user = User::findOrFail($request->user_id);
+        Log::info('Solicitud de constancia iniciada por el usuario: '.Auth::id());
 
-    try {
-        $usuariosRH = User::where('estatus', 'Activo')->where(function ($query) {
-            $query->where('rol', 'admin')
-                ->orWhereIn('rol', [
-                    'AUXILIAR RECURSOS HUMANOS', 'Auxiliar recursos humanos'
-                ])
-                ->orWhereHas('solicitudAlta', function ($q) {
-                    $q->where('departamento', 'Recursos Humanos')
-                        ->orWhereIn('rol', [
-                        'AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH',
-                        'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH'
-                    ]);
-                });
-        })->get();
+        try {
+            $usuariosRH = User::where('estatus', 'Activo')->where(function ($query) {
+                $query->where('rol', 'admin')
+                    ->orWhereIn('rol', [
+                        'AUXILIAR RECURSOS HUMANOS', 'Auxiliar recursos humanos',
+                    ])
+                    ->orWhereHas('solicitudAlta', function ($q) {
+                        $q->where('departamento', 'Recursos Humanos')
+                            ->orWhereIn('rol', [
+                                'AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH',
+                                'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH',
+                            ]);
+                    });
+            })->get();
 
-        Log::info('Usuarios RH encontrados: ' . $usuariosRH->count());
+            Log::info('Usuarios RH encontrados: '.$usuariosRH->count());
 
             Alerta::create([
                 'user_id' => $user->id,
                 'titulo' => 'Solicitud de Constancia',
-                'mensaje' =>'Depto. Nóminas solicitó una Constancia de Situación Fiscal del usuario: '. $user->name,
+                'mensaje' => 'Depto. Nóminas solicitó una Constancia de Situación Fiscal del usuario: '.$user->name,
             ]);
 
+            return response()->json(['ok' => true]);
 
-        return response()->json(['ok' => true]);
+        } catch (\Exception $e) {
+            Log::error('Error al enviar solicitud de constancia: '.$e->getMessage());
 
-    } catch (\Exception $e) {
-        Log::error('Error al enviar solicitud de constancia: ' . $e->getMessage());
-        return response()->json(['ok' => false], 500);
+            return response()->json(['ok' => false], 500);
+        }
     }
-}
 
-    public function destajos(){
+    public function destajos()
+    {
         return view('nominas.destajos');
     }
 
@@ -345,42 +385,44 @@ public function solicitarConstancia(Request $request)
     {
         $dias = $asistencias + $descansos;
         $sueldo = $dias * $sdi;
+
         return round(($sueldo * 0.00625) + ($sueldo * 0.01125) + ($sdi * 0.05), 2);
     }
 
     private function calcularISR(float $sd, int $asistencias, int $descansos, int $faltas): float
-{
-    $diasTrabajados = $asistencias + $descansos;
-    $sueldo = $sd * $diasTrabajados;
+    {
+        $diasTrabajados = $asistencias + $descansos;
+        $sueldo = $sd * $diasTrabajados;
 
-    if ($faltas === 0) {
-        $sueldo += $sueldo * 0.20; // Bono de 20% si no faltó
-    }
-
-    $tablaISR = [
-        ['limInf' => 0.01,       'limSup' =>  368.10,    'cuotaFija' => 0.00,     'porcentaje' => 1.92],
-        ['limInf' => 368.11,     'limSup' => 3124.35,    'cuotaFija' => 7.05,     'porcentaje' => 6.40],
-        ['limInf' => 3124.36,    'limSup' => 5490.75,    'cuotaFija' => 183.45,   'porcentaje' => 10.88],
-        ['limInf' => 5490.76,    'limSup' => 6382.80,    'cuotaFija' => 441.00,   'porcentaje' => 16.00],
-        ['limInf' => 6382.81,    'limSup' => 7641.90,    'cuotaFija' => 583.65,   'porcentaje' => 17.92],
-        ['limInf' => 7641.91,    'limSup' => 15412.80,   'cuotaFija' => 809.25,   'porcentaje' => 21.36],
-        ['limInf' => 15412.81,   'limSup' => 24292.65,   'cuotaFija' => 2469.15,  'porcentaje' => 23.52],
-        ['limInf' => 24292.66,   'limSup' => 46378.50,   'cuotaFija' => 4557.75,  'porcentaje' => 30.00],
-        ['limInf' => 46378.51,   'limSup' => 61838.10,   'cuotaFija' => 11183.40, 'porcentaje' => 32.00],
-        ['limInf' => 61838.11,   'limSup' => 185514.30,  'cuotaFija' => 16130.55, 'porcentaje' => 34.00],
-        ['limInf' => 185514.31,  'limSup' => INF,        'cuotaFija' => 58180.35, 'porcentaje' => 35.00],
-    ];
-
-    foreach ($tablaISR as $rango) {
-        if ($sueldo >= $rango['limInf'] && $sueldo <= $rango['limSup']) {
-            $excedente = $sueldo - $rango['limInf'];
-            $isr = $rango['cuotaFija'] + ($excedente * ($rango['porcentaje'] / 100));
-            return round($isr, 2);
+        if ($faltas === 0) {
+            $sueldo += $sueldo * 0.20; // Bono de 20% si no faltó
         }
-    }
 
-    return 0;
-}
+        $tablaISR = [
+            ['limInf' => 0.01,       'limSup' => 368.10,    'cuotaFija' => 0.00,     'porcentaje' => 1.92],
+            ['limInf' => 368.11,     'limSup' => 3124.35,    'cuotaFija' => 7.05,     'porcentaje' => 6.40],
+            ['limInf' => 3124.36,    'limSup' => 5490.75,    'cuotaFija' => 183.45,   'porcentaje' => 10.88],
+            ['limInf' => 5490.76,    'limSup' => 6382.80,    'cuotaFija' => 441.00,   'porcentaje' => 16.00],
+            ['limInf' => 6382.81,    'limSup' => 7641.90,    'cuotaFija' => 583.65,   'porcentaje' => 17.92],
+            ['limInf' => 7641.91,    'limSup' => 15412.80,   'cuotaFija' => 809.25,   'porcentaje' => 21.36],
+            ['limInf' => 15412.81,   'limSup' => 24292.65,   'cuotaFija' => 2469.15,  'porcentaje' => 23.52],
+            ['limInf' => 24292.66,   'limSup' => 46378.50,   'cuotaFija' => 4557.75,  'porcentaje' => 30.00],
+            ['limInf' => 46378.51,   'limSup' => 61838.10,   'cuotaFija' => 11183.40, 'porcentaje' => 32.00],
+            ['limInf' => 61838.11,   'limSup' => 185514.30,  'cuotaFija' => 16130.55, 'porcentaje' => 34.00],
+            ['limInf' => 185514.31,  'limSup' => INF,        'cuotaFija' => 58180.35, 'porcentaje' => 35.00],
+        ];
+
+        foreach ($tablaISR as $rango) {
+            if ($sueldo >= $rango['limInf'] && $sueldo <= $rango['limSup']) {
+                $excedente = $sueldo - $rango['limInf'];
+                $isr = $rango['cuotaFija'] + ($excedente * ($rango['porcentaje'] / 100));
+
+                return round($isr, 2);
+            }
+        }
+
+        return 0;
+    }
 
     public function calculoDestajos(Request $request)
     {
@@ -406,7 +448,7 @@ public function solicitarConstancia(Request $request)
         $meses = [
             'enero' => 1, 'febrero' => 2, 'marzo' => 3, 'abril' => 4,
             'mayo' => 5, 'junio' => 6, 'julio' => 7, 'agosto' => 8,
-            'septiembre' => 9, 'octubre' => 10, 'noviembre' => 11, 'diciembre' => 12
+            'septiembre' => 9, 'octubre' => 10, 'noviembre' => 11, 'diciembre' => 12,
         ];
 
         $mesNumero = $meses[$mesNombre] ?? now()->month;
@@ -444,9 +486,15 @@ public function solicitarConstancia(Request $request)
                 $descansos = json_decode($registro->descansos, true) ?? [];
                 $faltas = json_decode($registro->faltas, true) ?? [];
 
-                if (in_array($user->id, $enlistados)) $asistencias_count++;
-                if (in_array($user->id, $descansos)) $descansos_count++;
-                if (in_array($user->id, $faltas)) $faltas_count++;
+                if (in_array($user->id, $enlistados)) {
+                    $asistencias_count++;
+                }
+                if (in_array($user->id, $descansos)) {
+                    $descansos_count++;
+                }
+                if (in_array($user->id, $faltas)) {
+                    $faltas_count++;
+                }
             }
 
             Log::info("Asistencias: $asistencias_count, Descansos: $descansos_count, Faltas: $faltas_count");
@@ -498,10 +546,11 @@ public function solicitarConstancia(Request $request)
                 $nominaNormal += $nominaNormal * 0.20;
                 $nominaNormal += $montoVacaciones;
 
-                if (($sueldoMensual / 2) < 5018.59)
+                if (($sueldoMensual / 2) < 5018.59) {
                     $nominaNormal = $nominaNormal - $isr + 234.2;
-                else
+                } else {
                     $nominaNormal = $nominaNormal - $isr - $imss;
+                }
 
                 $nominaNormal -= $montoDeducciones;
 
@@ -510,10 +559,11 @@ public function solicitarConstancia(Request $request)
                 $nominaTrabajada = $sd * $diasTrabajados;
                 $nominaTrabajada += $montoVacaciones;
 
-                if (($sueldoMensual / 2) < 5018.59)
+                if (($sueldoMensual / 2) < 5018.59) {
                     $nominaNormal = $nominaTrabajada - $isr + 234.2;
-                else
+                } else {
                     $nominaNormal = $nominaTrabajada - $isr;
+                }
 
                 $nominaNormal -= $montoDeducciones;
 
@@ -534,400 +584,433 @@ public function solicitarConstancia(Request $request)
         return view('nominas.destajos', compact('usuarios', 'nominasPorUsuario', 'periodoTexto', 'destajos'));
     }
 
-    public function subidasArchivosForm(){
+    public function subidasArchivosForm()
+    {
         return view('nominas.subidasArchivos');
     }
 
-public function subirArchivosNominas(Request $request)
-{
-    \Log::info('=== INICIO SUBIR ARCHIVOS NOMINAS ===');
-    \Log::info('Memoria al inicio', [
-        'memory_limit' => ini_get('memory_limit'),
-        'usage' => memory_get_usage(true),
-    ]);
-
-    try {
-        // Validación
-        $request->validate([
-            'arch_nomina' => 'nullable|mimes:xlsx,xls,csv|max:10240',
-            'arch_nomina_spyt' => 'nullable|mimes:xlsx,xls,csv|max:10240',
-            'arch_nomina_montana' => 'nullable|mimes:xlsx,xls,csv|max:10240',
-            'arch_destajo' => 'nullable|mimes:xlsx,xls,csv|max:10240',
-            'periodo' => 'required|string',
+    public function subirArchivosNominas(Request $request, AuditLogger $audit)
+    {
+        \Log::info('=== INICIO SUBIR ARCHIVOS NOMINAS ===');
+        \Log::info('Memoria al inicio', [
+            'memory_limit' => ini_get('memory_limit'),
+            'usage' => memory_get_usage(true),
         ]);
 
-        \Log::info('Validación exitosa');
+        try {
+            // Validación
+            $request->validate([
+                'arch_nomina' => 'nullable|mimes:xlsx,xls,csv|max:10240',
+                'arch_nomina_spyt' => 'nullable|mimes:xlsx,xls,csv|max:10240',
+                'arch_nomina_montana' => 'nullable|mimes:xlsx,xls,csv|max:10240',
+                'arch_destajo' => 'nullable|mimes:xlsx,xls,csv|max:10240',
+                'periodo' => 'required|string',
+            ]);
 
-        $periodo = $request->get('periodo');
-        \Log::info('Periodo recibido', ['periodo' => $periodo]);
+            \Log::info('Validación exitosa');
 
-        // Crear directorio si no existe
-        $rutaDirectorio = 'archivos_nominas/' . $periodo;
-        $rutaCompleta = storage_path('app/public/' . $rutaDirectorio);
+            $periodo = $request->get('periodo');
+            \Log::info('Periodo recibido', ['periodo' => $periodo]);
 
-        if (!file_exists($rutaCompleta)) {
-            mkdir($rutaCompleta, 0755, true);
-        }
+            // Crear directorio si no existe
+            $rutaDirectorio = 'archivos_nominas/'.$periodo;
+            $rutaCompleta = storage_path('app/public/'.$rutaDirectorio);
 
-        $rutaArchivoNomina = null;
-        $rutaArchivoNominaSpyt = null;
-        $rutaArchivoNominaMontana = null;
-        $rutaArchivoDestajo = null;
-
-        // === Guardado de archivos ===
-        if ($request->hasFile('arch_nomina') && $request->file('arch_nomina')->isValid()) {
-            $archivo = $request->file('arch_nomina');
-            $nombre = time() . '_nominas.' . $archivo->getClientOriginalExtension();
-            $rutaArchivoNomina = $archivo->storeAs($rutaDirectorio, $nombre, 'public');
-            \Log::info('Archivo nóminas PSC guardado', ['ruta' => $rutaArchivoNomina]);
-        }
-
-        if ($request->hasFile('arch_nomina_spyt') && $request->file('arch_nomina_spyt')->isValid()) {
-            $archivo = $request->file('arch_nomina_spyt');
-            $nombre = time() . '_nominas_spyt.' . $archivo->getClientOriginalExtension();
-            $rutaArchivoNominaSpyt = $archivo->storeAs($rutaDirectorio, $nombre, 'public');
-            \Log::info('Archivo nóminas SPYT guardado', ['ruta' => $rutaArchivoNominaSpyt]);
-        }
-
-        if ($request->hasFile('arch_nomina_montana') && $request->file('arch_nomina_montana')->isValid()) {
-            $archivo = $request->file('arch_nomina_montana');
-            $nombre = time() . '_nominas_montana.' . $archivo->getClientOriginalExtension();
-            $rutaArchivoNominaMontana = $archivo->storeAs($rutaDirectorio, $nombre, 'public');
-            \Log::info('Archivo nóminas Montana guardado', ['ruta' => $rutaArchivoNominaMontana]);
-        }
-
-        if ($request->hasFile('arch_destajo') && $request->file('arch_destajo')->isValid()) {
-            $archivo = $request->file('arch_destajo');
-            $nombre = time() . '_destajos.' . $archivo->getClientOriginalExtension();
-            $rutaArchivoDestajo = $archivo->storeAs($rutaDirectorio, $nombre, 'public');
-            \Log::info('Archivo destajos guardado', ['ruta' => $rutaArchivoDestajo]);
-        }
-
-        // === Cálculo de subtotales ===
-        $subtotalpsc = 0;
-        $subtotalspyt = 0;
-        $subtotalmontana = 0;
-        $subtotalDestajo = 0;
-
-        if ($rutaArchivoNomina) {
-            $subtotalpsc = $this->calcularSubtotalNomina($rutaArchivoNomina, 'nomina');
-            \Log::info('Subtotal PSC calculado', ['subtotal' => $subtotalpsc]);
-            gc_collect_cycles();
-        }
-
-        if ($rutaArchivoNominaSpyt) {
-            $subtotalspyt = $this->calcularSubtotalNomina($rutaArchivoNominaSpyt,'nomina');
-            \Log::info('Subtotal SPYT calculado', ['subtotal' => $subtotalspyt]);
-            gc_collect_cycles();
-        }
-
-        if ($rutaArchivoNominaMontana) {
-            $subtotalmontana = $this->calcularSubtotalNomina($rutaArchivoNominaMontana,'nomina');
-            \Log::info('Subtotal Montana calculado', ['subtotal' => $subtotalmontana]);
-            gc_collect_cycles();
-        }
-
-        if ($rutaArchivoDestajo) {
-            $subtotalDestajo = $this->calcularSubtotalNomina($rutaArchivoDestajo, 'destajo');
-            \Log::info('Subtotal Destajo calculado', ['subtotal' => $subtotalDestajo]);
-            gc_collect_cycles();
-        }
-
-        // === Guardar en base de datos ===
-        $archivoNominaModel = new Archivonomina();
-        $archivoNominaModel->periodo = $periodo . ' ' . now()->format('Y');
-        $archivoNominaModel->arch_nomina = $rutaArchivoNomina;
-        $archivoNominaModel->arch_nomina_spyt = $rutaArchivoNominaSpyt;
-        $archivoNominaModel->arch_nomina_montana = $rutaArchivoNominaMontana;
-        $archivoNominaModel->arch_destajo = $rutaArchivoDestajo;
-        $archivoNominaModel->total_destajos = $subtotalDestajo;
-        $archivoNominaModel->subtotal = $subtotalpsc + $subtotalspyt + $subtotalmontana;
-
-        $archivoNominaModel->save();
-
-        \Log::info('Registro guardado en BD', [
-            'id' => $archivoNominaModel->id,
-            'subtotal_total' => $archivoNominaModel->subtotal
-        ]);
-
-        \Log::info('=== FIN EXITOSO ===', [
-            'memoria_final' => memory_get_usage(true),
-            'memoria_pico' => memory_get_peak_usage(true),
-        ]);
-
-        return redirect()->back()->with('success', 'Archivos subidos y procesados correctamente');
-
-    } catch (\Exception $e) {
-        \Log::error('=== ERROR EN SUBIR ARCHIVOS NOMINAS ===', [
-            'mensaje' => $e->getMessage(),
-            'archivo' => $e->getFile(),
-            'linea' => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-            'memoria_usada' => memory_get_usage(true),
-            'memoria_pico' => memory_get_peak_usage(true),
-        ]);
-
-        return redirect()->back()
-            ->with('error', 'Error al subir los archivos: ' . $e->getMessage())
-            ->withInput();
-    }
-}
-/**
- * Calcular el subtotal de la nómina o destajos según el tipo de archivo
- *
- * @param string $rutaArchivo Ruta relativa en storage
- * @param string $tipo 'nomina' o 'destajo'
- * @return float
- */
-private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
-{
-    try {
-        \Log::info('Calculando subtotal de nómina', [
-            'ruta_db' => $rutaArchivo,
-            'tipo' => $tipo
-        ]);
-
-        $rutaCompleta = storage_path('app/public/' . $rutaArchivo);
-        \Log::info('Ruta completa construida', ['ruta_completa' => $rutaCompleta]);
-
-        if (!file_exists($rutaCompleta)) {
-            \Log::error('Archivo no encontrado', ['ruta_completa' => $rutaCompleta]);
-            return 0;
-        }
-
-        $tipoArchivo = \PhpOffice\PhpSpreadsheet\IOFactory::identify($rutaCompleta);
-        $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader($tipoArchivo);
-        $reader->setReadDataOnly(true);
-        $reader->setLoadAllSheets();
-        $spreadsheet = $reader->load($rutaCompleta);
-
-        $nombresHojas = $spreadsheet->getSheetNames();
-        $totalGeneral = 0;
-
-        // === MANEJO DE DESTAJOS (soporta DOS formatos) ===
-        if ($tipo === 'destajo') {
-            $hojaResumen = null;
-            foreach ($nombresHojas as $nombreHoja) {
-                if (strtoupper(trim($nombreHoja)) === 'RESUMEN') {
-                    $hojaResumen = $spreadsheet->getSheetByName($nombreHoja);
-                    break;
-                }
+            if (! file_exists($rutaCompleta)) {
+                mkdir($rutaCompleta, 0755, true);
             }
 
-            if ($hojaResumen) {
-                \Log::info('Hoja RESUMEN encontrada. Buscando "TOTAL DESTAJO"...');
-                $dimension = $hojaResumen->getHighestRowAndColumn();
-                $maxRow = min((int)$dimension['row'], 100); // Buscar en primeras 100 filas
-                $maxColIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($dimension['column']);
+            $rutaArchivoNomina = null;
+            $rutaArchivoNominaSpyt = null;
+            $rutaArchivoNominaMontana = null;
+            $rutaArchivoDestajo = null;
 
-                for ($row = 1; $row <= $maxRow; $row++) {
-                    for ($colIndex = 1; $colIndex <= $maxColIndex; $colIndex++) {
-                        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-                        $cellValue = $hojaResumen->getCell("{$colLetter}{$row}")->getValue();
+            // === Guardado de archivos ===
+            if ($request->hasFile('arch_nomina') && $request->file('arch_nomina')->isValid()) {
+                $archivo = $request->file('arch_nomina');
+                $nombre = time().'_nominas.'.$archivo->getClientOriginalExtension();
+                $rutaArchivoNomina = $archivo->storeAs($rutaDirectorio, $nombre, 'public');
+                \Log::info('Archivo nóminas PSC guardado', ['ruta' => $rutaArchivoNomina]);
+            }
 
-                        // Verificar si la celda contiene "TOTAL DESTAJO" (case-insensitive)
-                        if (is_string($cellValue) && preg_match('/^\s*TOTAL\s+DESTAJO\s*$/i', $cellValue)) {
-                            $nextColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
-                            $montoCell = $hojaResumen->getCell("{$nextColLetter}{$row}");
-                            $monto = $montoCell->getCalculatedValue();
+            if ($request->hasFile('arch_nomina_spyt') && $request->file('arch_nomina_spyt')->isValid()) {
+                $archivo = $request->file('arch_nomina_spyt');
+                $nombre = time().'_nominas_spyt.'.$archivo->getClientOriginalExtension();
+                $rutaArchivoNominaSpyt = $archivo->storeAs($rutaDirectorio, $nombre, 'public');
+                \Log::info('Archivo nóminas SPYT guardado', ['ruta' => $rutaArchivoNominaSpyt]);
+            }
 
-                            if (is_numeric($monto)) {
-                                $totalGeneral = (float)$monto;
-                                \Log::info('✅ TOTAL DESTAJO encontrado en RESUMEN', [
-                                    'fila' => $row,
-                                    'columna' => $colLetter,
-                                    'monto' => $totalGeneral
-                                ]);
-                                // Liberar recursos y retornar
-                                $spreadsheet->disconnectWorksheets();
-                                unset($spreadsheet, $reader, $hojaResumen);
-                                gc_collect_cycles();
-                                return $totalGeneral;
-                            } else {
-                                \Log::warning('TOTAL DESTAJO encontrado, pero el valor no es numérico', [
-                                    'valor' => $monto
-                                ]);
+            if ($request->hasFile('arch_nomina_montana') && $request->file('arch_nomina_montana')->isValid()) {
+                $archivo = $request->file('arch_nomina_montana');
+                $nombre = time().'_nominas_montana.'.$archivo->getClientOriginalExtension();
+                $rutaArchivoNominaMontana = $archivo->storeAs($rutaDirectorio, $nombre, 'public');
+                \Log::info('Archivo nóminas Montana guardado', ['ruta' => $rutaArchivoNominaMontana]);
+            }
+
+            if ($request->hasFile('arch_destajo') && $request->file('arch_destajo')->isValid()) {
+                $archivo = $request->file('arch_destajo');
+                $nombre = time().'_destajos.'.$archivo->getClientOriginalExtension();
+                $rutaArchivoDestajo = $archivo->storeAs($rutaDirectorio, $nombre, 'public');
+                \Log::info('Archivo destajos guardado', ['ruta' => $rutaArchivoDestajo]);
+            }
+
+            // === Cálculo de subtotales ===
+            $subtotalpsc = 0;
+            $subtotalspyt = 0;
+            $subtotalmontana = 0;
+            $subtotalDestajo = 0;
+
+            if ($rutaArchivoNomina) {
+                $subtotalpsc = $this->calcularSubtotalNomina($rutaArchivoNomina, 'nomina');
+                \Log::info('Subtotal PSC calculado', ['subtotal' => $subtotalpsc]);
+                gc_collect_cycles();
+            }
+
+            if ($rutaArchivoNominaSpyt) {
+                $subtotalspyt = $this->calcularSubtotalNomina($rutaArchivoNominaSpyt, 'nomina');
+                \Log::info('Subtotal SPYT calculado', ['subtotal' => $subtotalspyt]);
+                gc_collect_cycles();
+            }
+
+            if ($rutaArchivoNominaMontana) {
+                $subtotalmontana = $this->calcularSubtotalNomina($rutaArchivoNominaMontana, 'nomina');
+                \Log::info('Subtotal Montana calculado', ['subtotal' => $subtotalmontana]);
+                gc_collect_cycles();
+            }
+
+            if ($rutaArchivoDestajo) {
+                $subtotalDestajo = $this->calcularSubtotalNomina($rutaArchivoDestajo, 'destajo');
+                \Log::info('Subtotal Destajo calculado', ['subtotal' => $subtotalDestajo]);
+                gc_collect_cycles();
+            }
+
+            // === Guardar en base de datos ===
+            $archivoNominaModel = new Archivonomina;
+            $archivoNominaModel->periodo = $periodo.' '.now()->format('Y');
+            $archivoNominaModel->arch_nomina = $rutaArchivoNomina;
+            $archivoNominaModel->arch_nomina_spyt = $rutaArchivoNominaSpyt;
+            $archivoNominaModel->arch_nomina_montana = $rutaArchivoNominaMontana;
+            $archivoNominaModel->arch_destajo = $rutaArchivoDestajo;
+            $archivoNominaModel->total_destajos = $subtotalDestajo;
+            $archivoNominaModel->subtotal = $subtotalpsc + $subtotalspyt + $subtotalmontana;
+
+            $archivoNominaModel->save();
+
+            $audit->record('Nómina', 'Archivos de nómina cargados', $archivoNominaModel, [], $archivoNominaModel->only([
+                'periodo', 'subtotal', 'total_destajos',
+            ]), [
+                'tipos_archivo' => collect([
+                    'nomina_psc' => $rutaArchivoNomina,
+                    'nomina_spyt' => $rutaArchivoNominaSpyt,
+                    'nomina_montana' => $rutaArchivoNominaMontana,
+                    'destajo' => $rutaArchivoDestajo,
+                ])->filter()->keys()->all(),
+            ]);
+
+            \Log::info('Registro guardado en BD', [
+                'id' => $archivoNominaModel->id,
+                'subtotal_total' => $archivoNominaModel->subtotal,
+            ]);
+
+            \Log::info('=== FIN EXITOSO ===', [
+                'memoria_final' => memory_get_usage(true),
+                'memoria_pico' => memory_get_peak_usage(true),
+            ]);
+
+            return redirect()->back()->with('success', 'Archivos subidos y procesados correctamente');
+
+        } catch (\Exception $e) {
+            \Log::error('=== ERROR EN SUBIR ARCHIVOS NOMINAS ===', [
+                'mensaje' => $e->getMessage(),
+                'archivo' => $e->getFile(),
+                'linea' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'memoria_usada' => memory_get_usage(true),
+                'memoria_pico' => memory_get_peak_usage(true),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Error al subir los archivos: '.$e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Calcular el subtotal de la nómina o destajos según el tipo de archivo
+     *
+     * @param  string  $rutaArchivo  Ruta relativa en storage
+     * @param  string  $tipo  'nomina' o 'destajo'
+     * @return float
+     */
+    private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
+    {
+        try {
+            \Log::info('Calculando subtotal de nómina', [
+                'ruta_db' => $rutaArchivo,
+                'tipo' => $tipo,
+            ]);
+
+            $rutaCompleta = storage_path('app/public/'.$rutaArchivo);
+            \Log::info('Ruta completa construida', ['ruta_completa' => $rutaCompleta]);
+
+            if (! file_exists($rutaCompleta)) {
+                \Log::error('Archivo no encontrado', ['ruta_completa' => $rutaCompleta]);
+
+                return 0;
+            }
+
+            $tipoArchivo = \PhpOffice\PhpSpreadsheet\IOFactory::identify($rutaCompleta);
+            $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader($tipoArchivo);
+            $reader->setReadDataOnly(true);
+            $reader->setLoadAllSheets();
+            $spreadsheet = $reader->load($rutaCompleta);
+
+            $nombresHojas = $spreadsheet->getSheetNames();
+            $totalGeneral = 0;
+
+            // === MANEJO DE DESTAJOS (soporta DOS formatos) ===
+            if ($tipo === 'destajo') {
+                $hojaResumen = null;
+                foreach ($nombresHojas as $nombreHoja) {
+                    if (strtoupper(trim($nombreHoja)) === 'RESUMEN') {
+                        $hojaResumen = $spreadsheet->getSheetByName($nombreHoja);
+                        break;
+                    }
+                }
+
+                if ($hojaResumen) {
+                    \Log::info('Hoja RESUMEN encontrada. Buscando "TOTAL DESTAJO"...');
+                    $dimension = $hojaResumen->getHighestRowAndColumn();
+                    $maxRow = min((int) $dimension['row'], 100); // Buscar en primeras 100 filas
+                    $maxColIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($dimension['column']);
+
+                    for ($row = 1; $row <= $maxRow; $row++) {
+                        for ($colIndex = 1; $colIndex <= $maxColIndex; $colIndex++) {
+                            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+                            $cellValue = $hojaResumen->getCell("{$colLetter}{$row}")->getValue();
+
+                            // Verificar si la celda contiene "TOTAL DESTAJO" (case-insensitive)
+                            if (is_string($cellValue) && preg_match('/^\s*TOTAL\s+DESTAJO\s*$/i', $cellValue)) {
+                                $nextColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
+                                $montoCell = $hojaResumen->getCell("{$nextColLetter}{$row}");
+                                $monto = $montoCell->getCalculatedValue();
+
+                                if (is_numeric($monto)) {
+                                    $totalGeneral = (float) $monto;
+                                    \Log::info('✅ TOTAL DESTAJO encontrado en RESUMEN', [
+                                        'fila' => $row,
+                                        'columna' => $colLetter,
+                                        'monto' => $totalGeneral,
+                                    ]);
+                                    // Liberar recursos y retornar
+                                    $spreadsheet->disconnectWorksheets();
+                                    unset($spreadsheet, $reader, $hojaResumen);
+                                    gc_collect_cycles();
+
+                                    return $totalGeneral;
+                                } else {
+                                    \Log::warning('TOTAL DESTAJO encontrado, pero el valor no es numérico', [
+                                        'valor' => $monto,
+                                    ]);
+                                }
                             }
                         }
                     }
+                    \Log::warning('Hoja RESUMEN encontrada, pero no se encontró "TOTAL DESTAJO"');
                 }
-                \Log::warning('Hoja RESUMEN encontrada, pero no se encontró "TOTAL DESTAJO"');
-            }
 
-            // Si no se usó RESUMEN, aplicar lógica original (columna P)
-            \Log::info('Usando lógica original de destajo (columna P)');
-            foreach ($nombresHojas as $nombreHoja) {
-                $worksheet = $spreadsheet->getSheetByName($nombreHoja);
-                $fila = 5;
-                $espaciosBlancoSeguidos = 0;
-                while ($espaciosBlancoSeguidos < 3 && $fila <= 1500) {
-                    $nombreEmpleado = $worksheet->getCell('B' . $fila)->getValue();
-                    $valorP = $worksheet->getCell('P' . $fila)->getCalculatedValue();
-                    if (empty(trim((string)$nombreEmpleado))) {
-                        $espaciosBlancoSeguidos++;
-                    } else {
-                        $espaciosBlancoSeguidos = 0;
-                        if (is_numeric($valorP)) {
-                            $totalGeneral += (float)$valorP;
+                // Si no se usó RESUMEN, aplicar lógica original (columna P)
+                \Log::info('Usando lógica original de destajo (columna P)');
+                foreach ($nombresHojas as $nombreHoja) {
+                    $worksheet = $spreadsheet->getSheetByName($nombreHoja);
+                    $fila = 5;
+                    $espaciosBlancoSeguidos = 0;
+                    while ($espaciosBlancoSeguidos < 3 && $fila <= 1500) {
+                        $nombreEmpleado = $worksheet->getCell('B'.$fila)->getValue();
+                        $valorP = $worksheet->getCell('P'.$fila)->getCalculatedValue();
+                        if (empty(trim((string) $nombreEmpleado))) {
+                            $espaciosBlancoSeguidos++;
+                        } else {
+                            $espaciosBlancoSeguidos = 0;
+                            if (is_numeric($valorP)) {
+                                $totalGeneral += (float) $valorP;
+                            }
+                        }
+                        $fila++;
+                    }
+                }
+            }
+            // === LÓGICA PARA NÓMINA (sin cambios) ===
+            elseif ($tipo === 'nomina') {
+                foreach ($nombresHojas as $nombreHoja) {
+                    $worksheet = $spreadsheet->getSheetByName($nombreHoja);
+                    $dimension = $worksheet->getHighestRowAndColumn();
+
+                    $columnaNeto = null;
+                    $filaEncabezadoEncontrada = null;
+                    for ($filaEncabezado = 7; $filaEncabezado <= 9; $filaEncabezado++) {
+                        for ($col = 'A'; $col <= 'Z'; $col++) {
+                            $celda = $worksheet->getCell("{$col}{$filaEncabezado}")->getValue();
+                            if (! $celda) {
+                                continue;
+                            }
+                            $textoLimpio = strtoupper(trim($celda));
+                            $textoLimpio = preg_replace('/[^A-Z0-9\s]/', ' ', $textoLimpio);
+                            $textoLimpio = preg_replace('/\s+/', ' ', $textoLimpio);
+                            if (str_contains($textoLimpio, 'NETO')) {
+                                $palabrasProhibidas = ['AJUSTE', 'AJUSTES', 'POR PAGAR', 'PAGO', 'DESCUENTO'];
+                                $tieneProhibida = false;
+                                foreach ($palabrasProhibidas as $prohibida) {
+                                    if (str_contains($textoLimpio, $prohibida)) {
+                                        $tieneProhibida = true;
+                                        break;
+                                    }
+                                }
+                                if (! $tieneProhibida) {
+                                    $columnaNeto = $col;
+                                    $filaEncabezadoEncontrada = $filaEncabezado;
+                                    break 2;
+                                }
+                            }
                         }
                     }
-                    $fila++;
-                }
-            }
-        }
-        // === LÓGICA PARA NÓMINA (sin cambios) ===
-        elseif ($tipo === 'nomina') {
-            foreach ($nombresHojas as $nombreHoja) {
-                $worksheet = $spreadsheet->getSheetByName($nombreHoja);
-                $dimension = $worksheet->getHighestRowAndColumn();
 
-                $columnaNeto = null;
-                $filaEncabezadoEncontrada = null;
-                for ($filaEncabezado = 7; $filaEncabezado <= 9; $filaEncabezado++) {
-                    for ($col = 'A'; $col <= 'Z'; $col++) {
-                        $celda = $worksheet->getCell("{$col}{$filaEncabezado}")->getValue();
-                        if (!$celda) continue;
-                        $textoLimpio = strtoupper(trim($celda));
-                        $textoLimpio = preg_replace('/[^A-Z0-9\s]/', ' ', $textoLimpio);
-                        $textoLimpio = preg_replace('/\s+/', ' ', $textoLimpio);
-                        if (str_contains($textoLimpio, 'NETO')) {
-                            $palabrasProhibidas = ['AJUSTE', 'AJUSTES', 'POR PAGAR', 'PAGO', 'DESCUENTO'];
-                            $tieneProhibida = false;
-                            foreach ($palabrasProhibidas as $prohibida) {
-                                if (str_contains($textoLimpio, $prohibida)) {
-                                    $tieneProhibida = true;
+                    if (! $columnaNeto) {
+                        continue;
+                    }
+
+                    $ultimoValorValido = 0;
+                    $ultimaFilaConDatos = (int) $dimension['row'];
+                    $fin = min($ultimaFilaConDatos, 1500);
+                    $inicio = $filaEncabezadoEncontrada + 1;
+
+                    $buscarEnColumna = function ($col) use ($worksheet, $inicio, $fin) {
+                        $ultimoValor = 0;
+                        for ($fila = $inicio; $fila <= $fin; $fila++) {
+                            $valor = $worksheet->getCell("{$col}{$fila}")->getCalculatedValue();
+                            if (is_numeric($valor) && ! empty($valor)) {
+                                $ultimoValor = (float) $valor;
+                            }
+                        }
+
+                        return $ultimoValor;
+                    };
+
+                    $ultimoValorValido = $buscarEnColumna($columnaNeto);
+
+                    if ($ultimoValorValido == 0) {
+                        $colIndex = array_search($columnaNeto, range('A', 'Z'));
+                        if ($colIndex !== false) {
+                            for ($i = $colIndex + 1; $i < 26; $i++) {
+                                $colAdyacente = chr(65 + $i);
+                                $valor = $buscarEnColumna($colAdyacente);
+                                if ($valor > 0) {
+                                    $ultimoValorValido = $valor;
                                     break;
                                 }
                             }
-                            if (!$tieneProhibida) {
-                                $columnaNeto = $col;
-                                $filaEncabezadoEncontrada = $filaEncabezado;
-                                break 2;
-                            }
                         }
                     }
+
+                    $totalGeneral += $ultimoValorValido;
                 }
-
-                if (!$columnaNeto) continue;
-
-                $ultimoValorValido = 0;
-                $ultimaFilaConDatos = (int)$dimension['row'];
-                $fin = min($ultimaFilaConDatos, 1500);
-                $inicio = $filaEncabezadoEncontrada + 1;
-
-                $buscarEnColumna = function ($col) use ($worksheet, $inicio, $fin) {
-                    $ultimoValor = 0;
-                    for ($fila = $inicio; $fila <= $fin; $fila++) {
-                        $valor = $worksheet->getCell("{$col}{$fila}")->getCalculatedValue();
-                        if (is_numeric($valor) && !empty($valor)) {
-                            $ultimoValor = (float)$valor;
-                        }
-                    }
-                    return $ultimoValor;
-                };
-
-                $ultimoValorValido = $buscarEnColumna($columnaNeto);
-
-                if ($ultimoValorValido == 0) {
-                    $colIndex = array_search($columnaNeto, range('A', 'Z'));
-                    if ($colIndex !== false) {
-                        for ($i = $colIndex + 1; $i < 26; $i++) {
-                            $colAdyacente = chr(65 + $i);
-                            $valor = $buscarEnColumna($colAdyacente);
-                            if ($valor > 0) {
-                                $ultimoValorValido = $valor;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                $totalGeneral += $ultimoValorValido;
             }
-        }
 
-        \Log::info('Cálculo completado', [
-            'total_general' => $totalGeneral,
-            'tipo' => $tipo,
-            'archivo' => $rutaArchivo
-        ]);
+            \Log::info('Cálculo completado', [
+                'total_general' => $totalGeneral,
+                'tipo' => $tipo,
+                'archivo' => $rutaArchivo,
+            ]);
 
-        $spreadsheet->disconnectWorksheets();
-        unset($spreadsheet, $reader);
-        gc_collect_cycles();
-
-        return $totalGeneral;
-
-    } catch (\Exception $e) {
-        \Log::error('Error al calcular subtotal', [
-            'mensaje' => $e->getMessage(),
-            'archivo' => $rutaArchivo,
-            'linea' => $e->getLine(),
-            'tipo' => $tipo,
-        ]);
-
-        if (isset($spreadsheet)) {
             $spreadsheet->disconnectWorksheets();
-            unset($spreadsheet);
+            unset($spreadsheet, $reader);
+            gc_collect_cycles();
+
+            return $totalGeneral;
+
+        } catch (\Exception $e) {
+            \Log::error('Error al calcular subtotal', [
+                'mensaje' => $e->getMessage(),
+                'archivo' => $rutaArchivo,
+                'linea' => $e->getLine(),
+                'tipo' => $tipo,
+            ]);
+
+            if (isset($spreadsheet)) {
+                $spreadsheet->disconnectWorksheets();
+                unset($spreadsheet);
+            }
+            gc_collect_cycles();
+
+            return 0;
         }
-        gc_collect_cycles();
-        return 0;
     }
-}
-    public function registros(){
+
+    public function registros()
+    {
         return view('nominas.registros');
     }
 
-    public function guardarFiniquitoManual(Request $request, $id, FiniquitoCalculator $calculator)
-{
-    $request->validate([
-        'finiquito_archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120', // 5MB max
-    ]);
+    public function guardarFiniquitoManual(Request $request, $id, FiniquitoCalculator $calculator, AuditLogger $audit)
+    {
+        $request->validate([
+            'finiquito_archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120', // 5MB max
+        ]);
 
-    $solicitud = SolicitudBajas::with('user.solicitudAlta')->findOrFail($id);
-    Gate::authorize('processFiniquito', $solicitud);
+        $solicitud = SolicitudBajas::with('user.solicitudAlta')->findOrFail($id);
+        Gate::authorize('processFiniquito', $solicitud);
 
-    if (!$solicitud->arch_renuncia) {
-        return redirect()->back()->with('error', 'Falta la renuncia firmada.');
-    }
-
-    if ($request->hasFile('finiquito_archivo')) {
-        $directorio = 'finiquitos/' . $id;
-        Storage::disk('local')->makeDirectory($directorio);
-
-        $extension = $request->file('finiquito_archivo')->getClientOriginalExtension();
-        $nombreArchivo = 'finiquito_' . date('Ymd_His') . '.' . $extension;
-        $rutaCompleta = $directorio . '/' . $nombreArchivo;
-
-        $rutaArchivo = $request->file('finiquito_archivo')->storeAs($directorio, $nombreArchivo, 'local');
-        $rutaAnterior = $solicitud->calculo_finiquito;
-        try {
-            $calculo = $calculator->calculate($solicitud);
-        } catch (\DomainException $e) {
-            return redirect()->back()->with('error', $e->getMessage());
+        if (! $solicitud->arch_renuncia) {
+            return redirect()->back()->with('error', 'Falta la renuncia firmada.');
         }
 
-        try {
-            DB::transaction(function () use ($solicitud, $rutaArchivo, $calculo) {
-                $solicitud->update([
-                    'calculo_finiquito' => 'private:' . $rutaArchivo,
-                    'observaciones' => 'Finiquito enviado a RH.'
-                ]);
-                $this->persistCalculation($solicitud, $calculo);
-            });
-        } catch (\Throwable $e) {
-            Storage::disk('local')->delete($rutaArchivo);
-            Log::error('Error al guardar finiquito manual.', ['exception' => $e]);
-            return redirect()->back()->with('error', 'No fue posible guardar el finiquito.');
+        if ($request->hasFile('finiquito_archivo')) {
+            $directorio = 'finiquitos/'.$id;
+            Storage::disk('local')->makeDirectory($directorio);
+
+            $extension = $request->file('finiquito_archivo')->getClientOriginalExtension();
+            $nombreArchivo = 'finiquito_'.date('Ymd_His').'.'.$extension;
+            $rutaCompleta = $directorio.'/'.$nombreArchivo;
+
+            $rutaArchivo = $request->file('finiquito_archivo')->storeAs($directorio, $nombreArchivo, 'local');
+            $rutaAnterior = $solicitud->calculo_finiquito;
+            $before = $solicitud->only(['calculo_finiquito', 'observaciones']);
+            try {
+                $calculo = $calculator->calculate($solicitud);
+            } catch (\DomainException $e) {
+                return redirect()->back()->with('error', $e->getMessage());
+            }
+
+            try {
+                DB::transaction(function () use ($solicitud, $rutaArchivo, $calculo, $audit, $before) {
+                    $solicitud->update([
+                        'calculo_finiquito' => 'private:'.$rutaArchivo,
+                        'observaciones' => 'Finiquito enviado a RH.',
+                    ]);
+                    $this->persistCalculation($solicitud, $calculo);
+                    $finiquito = Finiquito::where('baja_id', $solicitud->id)->firstOrFail();
+                    $audit->record('Finiquitos', 'Finiquito manual guardado', $finiquito, $before, [
+                        'calculo_finiquito' => $solicitud->calculo_finiquito,
+                        'observaciones' => $solicitud->observaciones,
+                        'monto' => $finiquito->monto,
+                        'salario_diario' => $finiquito->salario_diario,
+                        'version_formula' => $finiquito->version_formula,
+                    ], ['solicitud_baja_id' => $solicitud->id]);
+                });
+            } catch (\Throwable $e) {
+                Storage::disk('local')->delete($rutaArchivo);
+                Log::error('Error al guardar finiquito manual.', ['exception' => $e]);
+
+                return redirect()->back()->with('error', 'No fue posible guardar el finiquito.');
+            }
+
+            $this->deletePrivateFiniquito($rutaAnterior);
+
+            return redirect()->back()->with('success', 'Finiquito guardado correctamente.');
         }
 
-        $this->deletePrivateFiniquito($rutaAnterior);
-
-        return redirect()->back()->with('success', 'Finiquito guardado correctamente.');
+        return redirect()->back()->with('error', 'No se pudo guardar el archivo.');
     }
-
-    return redirect()->back()->with('error', 'No se pudo guardar el archivo.');
-}
 
     public function descargarFiniquito(SolicitudBajas $solicitud)
     {
@@ -938,11 +1021,13 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
         if (str_starts_with($path, 'private:')) {
             $path = substr($path, 8);
             abort_unless(Storage::disk('local')->exists($path), 404);
+
             return response()->file(Storage::disk('local')->path($path));
         }
 
         $path = ltrim($path, '/');
         abort_unless(Storage::disk('public')->exists($path), 404);
+
         return response()->file(Storage::disk('public')->path($path));
     }
 
@@ -968,11 +1053,12 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
         }
     }
 
-    public function formularioSemanal(){
+    public function formularioSemanal()
+    {
         return view('nominas.semanal');
     }
 
-    public function guardarSemanal(Request $request)
+    public function guardarSemanal(Request $request, AuditLogger $audit)
     {
         try {
             $request->validate([
@@ -988,23 +1074,27 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
             $rutaDirectorio = "archivos_pagos_semanales/{$anio}/mes_{$mes}_semana_{$semana}";
             $rutaCompleta = storage_path("app/public/{$rutaDirectorio}");
 
-            if (!file_exists($rutaCompleta)) {
+            if (! file_exists($rutaCompleta)) {
                 mkdir($rutaCompleta, 0755, true);
             }
 
             $archivo = $request->file('archivo_semanal');
-            $nombre = time() . '_pago_semanal.' . $archivo->getClientOriginalExtension();
+            $nombre = time().'_pago_semanal.'.$archivo->getClientOriginalExtension();
             $rutaGuardada = $archivo->storeAs($rutaDirectorio, $nombre, 'public');
 
             $total = $this->calcularSubtotalNomina($rutaGuardada, 'nomina');
 
-            ArchivoPagoSemanal::create([
+            $pago = ArchivoPagoSemanal::create([
                 'mes' => $mes,
                 'semana' => $semana,
                 'anio' => $anio,
                 'archivo_semanal' => $rutaGuardada,
                 'total_semanal' => $total,
             ]);
+
+            $audit->record('Nómina', 'Pago semanal cargado', $pago, [], $pago->only([
+                'mes', 'semana', 'anio', 'total_semanal',
+            ]), ['tipo_archivo' => 'pago_semanal']);
 
             return redirect()->back()->with('success', 'Registro semanal subido y procesado correctamente.');
 
@@ -1013,11 +1103,13 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
                 'mensaje' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return redirect()->back()->with('error', 'Error al subir el archivo: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Error al subir el archivo: '.$e->getMessage());
         }
     }
 
-    public function historialDeducciones(){
+    public function historialDeducciones()
+    {
         return view('nominas.historialDeducciones');
     }
 
@@ -1041,11 +1133,14 @@ private function calcularSubtotalNomina($rutaArchivo, $tipo = 'nomina')
         $fechaFin = $validated['fecha_fin'];
 
         $export = new DestajosSpreadsheetExport($punto, $empresa, $fechaInicio, $fechaFin);
+
         return $export->generateFile();
     }
 
-    public function historialFiniquitos(){
+    public function historialFiniquitos()
+    {
         Gate::authorize('viewFiniquitos', SolicitudBajas::class);
+
         return view('nominas.historialFiniquitos');
     }
 }

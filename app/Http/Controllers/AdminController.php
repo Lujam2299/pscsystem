@@ -199,7 +199,7 @@ class AdminController extends Controller
         return view('admi.solicitudesVacaciones', compact('vacaciones'));
     }
 
-    public function registrarNominas()
+    public function registrarNominas(AuditLogger $audit)
     {
         $hoy = now();
         $anio = $hoy->year;
@@ -231,7 +231,12 @@ class AdminController extends Controller
             $anioPeriodo = $anio;
         }
 
+        $periodoStr = "{$quincena} {$nombreMes} {$anioPeriodo}";
         $usuarios = User::where('estatus', 'Activo')->get();
+        $nominasCreadas = 0;
+        $nominasActualizadas = 0;
+        $deduccionesAplicadas = 0;
+        $totalNomina = 0.0;
 
         foreach ($usuarios as $user) {
             $sueldoMensualTexto = $user->solicitudAlta->sueldo_mensual ?? '';
@@ -353,24 +358,34 @@ class AdminController extends Controller
                 }
 
                 $deduccion->save();
+                $deduccionesAplicadas++;
             }
 
             Log::info("📉 Total deducciones aplicadas a {$user->name}: {$montoDeducciones}");
 
             $neto -= $montoDeducciones;
 
-            $periodoStr = "{$quincena} {$nombreMes} {$anioPeriodo}";
-
-            Nomina::updateOrCreate(
+            $nomina = Nomina::updateOrCreate(
                 ['user_id' => $user->id, 'periodo' => $periodoStr],
                 ['monto' => round(max(0, $neto), 2)]
             );
+            $nomina->wasRecentlyCreated ? $nominasCreadas++ : $nominasActualizadas++;
+            $totalNomina += (float) $nomina->monto;
         }
+
+        $audit->record('Nómina', 'Proceso masivo de nómina ejecutado', null, [], [], [
+            'periodo' => $periodoStr,
+            'usuarios_procesados' => $usuarios->count(),
+            'nominas_creadas' => $nominasCreadas,
+            'nominas_actualizadas' => $nominasActualizadas,
+            'deducciones_aplicadas' => $deduccionesAplicadas,
+            'total_nomina' => round($totalNomina, 2),
+        ]);
 
         return redirect()->route('dashboard')->with('success', 'Nóminas del último periodo generadas correctamente.');
     }
 
-    public function registrarFiniquitos(\App\Services\FiniquitoCalculator $calculator)
+    public function registrarFiniquitos(\App\Services\FiniquitoCalculator $calculator, AuditLogger $audit)
     {
         \Illuminate\Support\Facades\Gate::authorize('viewFiniquitos', SolicitudBajas::class);
 
@@ -378,15 +393,22 @@ class AdminController extends Controller
             ->where('estatus', 'Aceptada')
             ->where('por', 'Renuncia')
             ->get();
+        $generados = 0;
+        $omitidosExistentes = 0;
+        $omitidosInvalidos = 0;
+        $totalGenerado = 0.0;
 
         foreach ($solicitudes as $solicitud) {
             if (Finiquito::where('baja_id', $solicitud->id)->exists()) {
+                $omitidosExistentes++;
+
                 continue;
             }
 
             try {
                 $calculo = $calculator->calculate($solicitud);
             } catch (\DomainException $e) {
+                $omitidosInvalidos++;
                 Log::warning('No fue posible calcular un finiquito.', [
                     'solicitud_id' => $solicitud->id,
                     'motivo' => $e->getMessage(),
@@ -395,7 +417,7 @@ class AdminController extends Controller
                 continue;
             }
 
-            Finiquito::create([
+            $finiquito = Finiquito::create([
                 'baja_id' => $solicitud->id,
                 'monto' => $calculo['total'],
                 'salario_diario' => $calculo['employee']['daily_salary'],
@@ -404,7 +426,17 @@ class AdminController extends Controller
                 'calculado_por' => auth()->id(),
                 'calculado_en' => now(),
             ]);
+            $generados++;
+            $totalGenerado += (float) $finiquito->monto;
         }
+
+        $audit->record('Finiquitos', 'Generación masiva de finiquitos ejecutada', null, [], [], [
+            'solicitudes_revisadas' => $solicitudes->count(),
+            'finiquitos_generados' => $generados,
+            'omitidos_existentes' => $omitidosExistentes,
+            'omitidos_invalidos' => $omitidosInvalidos,
+            'total_generado' => round($totalGenerado, 2),
+        ]);
 
         return response()->json(['status' => 'ok', 'mensaje' => 'Finiquitos generados correctamente']);
     }
