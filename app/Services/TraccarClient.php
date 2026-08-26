@@ -96,6 +96,43 @@ class TraccarClient
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function geofences(): array
+    {
+        return $this->request()
+            ->get($this->endpoint('geofences'))
+            ->throw()
+            ->json();
+    }
+
+    /**
+     * @param array<int, int> $deviceIds
+     * @return array<int, array<string, mixed>>
+     */
+    public function recentEvents(array $deviceIds, string $from, string $to): array
+    {
+        $deviceIds = array_values(array_unique(array_filter(array_map('intval', $deviceIds))));
+        if ($deviceIds === []) {
+            return [];
+        }
+
+        $query = array_merge(
+            array_map(fn (int $deviceId) => 'deviceId='.rawurlencode((string) $deviceId), $deviceIds),
+            [
+                'from='.rawurlencode($from),
+                'to='.rawurlencode($to),
+            ],
+        );
+
+        return $this->request()
+            ->timeout(max(15, (int) config('services.traccar.timeout', 5)))
+            ->get($this->endpoint('reports/events').'?'.implode('&', $query))
+            ->throw()
+            ->json();
+    }
+
+    /**
      * Generate a short-lived token for the browser WebSocket connection.
      */
     public function generateSocketToken(): string

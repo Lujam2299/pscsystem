@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GpsAlert;
 use App\Services\TraccarClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -133,6 +135,144 @@ class TraccarMonitoringController extends Controller
                 'message' => 'La dirección no está disponible para esta posición.',
             ], 404);
         }
+    }
+
+    public function geofences(TraccarClient $traccar): JsonResponse
+    {
+        try {
+            return response()->json([
+                'geofences' => $traccar->geofences(),
+            ]);
+        } catch (Throwable $exception) {
+            Log::warning('No fue posible obtener las geocercas de Traccar.', [
+                'exception' => $exception::class,
+            ]);
+
+            return response()->json([
+                'message' => 'No fue posible consultar las geocercas.',
+            ], 502);
+        }
+    }
+
+    public function alerts(Request $request, TraccarClient $traccar): JsonResponse
+    {
+        $validated = $request->validate([
+            'priority' => ['nullable', 'in:critical,high,medium,info'],
+            'type' => ['nullable', 'string', 'max:80'],
+            'device_id' => ['nullable', 'integer', 'min:1'],
+            'read' => ['nullable', 'in:read,unread'],
+        ]);
+
+        try {
+            $devices = $traccar->devices();
+            $deviceIds = collect($devices)->pluck('id')->filter()->map(fn ($id) => (int) $id)->all();
+            $from = now()->subDay()->utc()->toIso8601String();
+            $to = now()->utc()->toIso8601String();
+
+            foreach ($traccar->recentEvents($deviceIds, $from, $to) as $event) {
+                if (empty($event['id']) || empty($event['deviceId']) || empty($event['type'])) {
+                    continue;
+                }
+
+                GpsAlert::updateOrCreate(
+                    ['traccar_event_id' => (int) $event['id']],
+                    [
+                        'device_id' => (int) $event['deviceId'],
+                        'position_id' => isset($event['positionId']) ? (int) $event['positionId'] : null,
+                        'geofence_id' => isset($event['geofenceId']) ? (int) $event['geofenceId'] : null,
+                        'type' => (string) $event['type'],
+                        'priority' => $this->alertPriority((string) $event['type'], $event['attributes'] ?? []),
+                        'event_time' => $event['eventTime'] ?? now(),
+                        'attributes' => $event['attributes'] ?? [],
+                    ],
+                );
+            }
+        } catch (Throwable $exception) {
+            Log::info('No fue posible sincronizar eventos recientes de Traccar; se usarán los eventos locales.', [
+                'exception' => $exception::class,
+            ]);
+        }
+
+        $query = GpsAlert::query()
+            ->where('event_time', '>=', now()->subDay())
+            ->addSelect([
+                'is_read' => DB::table('gps_alert_reads')
+                    ->selectRaw('1')
+                    ->whereColumn('gps_alert_reads.gps_alert_id', 'gps_alerts.id')
+                    ->where('gps_alert_reads.user_id', $request->user()->id)
+                    ->limit(1),
+            ])
+            ->when($validated['priority'] ?? null, fn ($builder, $priority) => $builder->where('priority', $priority))
+            ->when($validated['type'] ?? null, fn ($builder, $type) => $builder->where('type', $type))
+            ->when($validated['device_id'] ?? null, fn ($builder, $deviceId) => $builder->where('device_id', $deviceId));
+
+        if (($validated['read'] ?? null) === 'read') {
+            $query->whereExists(fn ($readQuery) => $readQuery
+                ->selectRaw('1')
+                ->from('gps_alert_reads')
+                ->whereColumn('gps_alert_reads.gps_alert_id', 'gps_alerts.id')
+                ->where('gps_alert_reads.user_id', $request->user()->id));
+        } elseif (($validated['read'] ?? null) === 'unread') {
+            $query->whereNotExists(fn ($readQuery) => $readQuery
+                ->selectRaw('1')
+                ->from('gps_alert_reads')
+                ->whereColumn('gps_alert_reads.gps_alert_id', 'gps_alerts.id')
+                ->where('gps_alert_reads.user_id', $request->user()->id));
+        }
+
+        $alerts = $query->latest('event_time')->limit(250)->get();
+
+        return response()->json([
+            'alerts' => $alerts,
+            'unread_count' => GpsAlert::query()
+                ->where('event_time', '>=', now()->subDay())
+                ->whereNotExists(fn ($readQuery) => $readQuery
+                    ->selectRaw('1')
+                    ->from('gps_alert_reads')
+                    ->whereColumn('gps_alert_reads.gps_alert_id', 'gps_alerts.id')
+                    ->where('gps_alert_reads.user_id', $request->user()->id))
+                ->count(),
+        ]);
+    }
+
+    public function readAlerts(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['nullable', 'array', 'max:250'],
+            'ids.*' => ['integer', 'exists:gps_alerts,id'],
+            'all' => ['nullable', 'boolean'],
+        ]);
+
+        $alertIds = !empty($validated['all'])
+            ? GpsAlert::where('event_time', '>=', now()->subDay())->pluck('id')->all()
+            : ($validated['ids'] ?? []);
+
+        $now = now();
+        $rows = collect($alertIds)->unique()->map(fn ($alertId) => [
+            'gps_alert_id' => (int) $alertId,
+            'user_id' => $request->user()->id,
+            'read_at' => $now,
+        ])->all();
+
+        if ($rows !== []) {
+            DB::table('gps_alert_reads')->insertOrIgnore($rows);
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    private function alertPriority(string $type, array $attributes): string
+    {
+        $alarm = strtolower((string) ($attributes['alarm'] ?? ''));
+        if ($type === 'alarm' && in_array($alarm, ['sos', 'panic', 'tampering', 'removing'], true)) {
+            return 'critical';
+        }
+
+        return match ($type) {
+            'deviceOffline', 'overspeed' => 'high',
+            'alarm', 'geofenceEnter', 'geofenceExit', 'deviceUnknown' => 'medium',
+            default => 'info',
+        };
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\GpsAlert;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -31,10 +32,33 @@ class TraccarMonitoringControllerTest extends TestCase
             $table->boolean('leida')->default(false);
             $table->timestamps();
         });
+
+        Schema::create('gps_alerts', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('traccar_event_id')->unique();
+            $table->unsignedBigInteger('device_id')->index();
+            $table->unsignedBigInteger('position_id')->nullable();
+            $table->unsignedBigInteger('geofence_id')->nullable();
+            $table->string('type');
+            $table->string('priority')->default('info');
+            $table->timestampTz('event_time');
+            $table->json('attributes')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('gps_alert_reads', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('gps_alert_id');
+            $table->unsignedBigInteger('user_id');
+            $table->timestampTz('read_at');
+            $table->unique(['gps_alert_id', 'user_id']);
+        });
     }
 
     protected function tearDown(): void
     {
+        Schema::dropIfExists('gps_alert_reads');
+        Schema::dropIfExists('gps_alerts');
         Schema::dropIfExists('alertas');
 
         parent::tearDown();
@@ -139,6 +163,75 @@ class TraccarMonitoringControllerTest extends TestCase
                 'message' => 'No fue posible consultar las unidades GPS en este momento.',
             ])
             ->assertJsonMissing(['token' => 'permanent-secret']);
+    }
+
+    public function test_monitoring_role_can_fetch_geofences(): void
+    {
+        Http::fake([
+            'https://traccar.example.test/api/geofences' => Http::response([
+                ['id' => 7, 'name' => 'Base principal', 'area' => 'CIRCLE (25.68 -100.31, 500)'],
+            ]),
+        ]);
+
+        $this->actingAs($this->userWithRole('MONITORISTA'))
+            ->getJson(route('monitoreo.unidades-gps.geofences'))
+            ->assertOk()
+            ->assertJsonPath('geofences.0.id', 7)
+            ->assertJsonPath('geofences.0.name', 'Base principal');
+    }
+
+    public function test_recent_gps_events_are_deduplicated_and_classified(): void
+    {
+        Http::fake([
+            'https://traccar.example.test/api/devices' => Http::response([
+                ['id' => 10, 'name' => 'Unidad 10', 'status' => 'online'],
+            ]),
+            'https://traccar.example.test/api/reports/events*' => Http::response([
+                [
+                    'id' => 501,
+                    'deviceId' => 10,
+                    'positionId' => 20,
+                    'type' => 'alarm',
+                    'eventTime' => now()->utc()->toIso8601String(),
+                    'attributes' => ['alarm' => 'sos'],
+                ],
+            ]),
+        ]);
+
+        $user = $this->userWithRole('MONITORISTA');
+        $this->actingAs($user)
+            ->getJson(route('monitoreo.unidades-gps.alerts'))
+            ->assertOk()
+            ->assertJsonPath('alerts.0.traccar_event_id', 501)
+            ->assertJsonPath('alerts.0.priority', 'critical')
+            ->assertJsonPath('unread_count', 1);
+
+        $this->actingAs($user)->getJson(route('monitoreo.unidades-gps.alerts'))->assertOk();
+
+        $this->assertSame(1, GpsAlert::where('traccar_event_id', 501)->count());
+    }
+
+    public function test_monitoring_user_can_mark_a_gps_alert_as_read(): void
+    {
+        $alert = GpsAlert::create([
+            'traccar_event_id' => 900,
+            'device_id' => 10,
+            'type' => 'overspeed',
+            'priority' => 'high',
+            'event_time' => now(),
+            'attributes' => [],
+        ]);
+        $user = $this->userWithRole('MONITORISTA');
+
+        $this->actingAs($user)
+            ->postJson(route('monitoreo.unidades-gps.alerts.read'), ['ids' => [$alert->id]])
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertDatabaseHas('gps_alert_reads', [
+            'gps_alert_id' => $alert->id,
+            'user_id' => $user->id,
+        ]);
     }
 
     private function userWithRole(string $role): User

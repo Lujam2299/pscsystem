@@ -294,6 +294,15 @@ Route::middleware('auth')->group(function () {
             Route::get('/address', [TraccarMonitoringController::class, 'address'])
                 ->middleware('throttle:30,1')
                 ->name('address');
+            Route::get('/geofences', [TraccarMonitoringController::class, 'geofences'])
+                ->middleware('throttle:30,1')
+                ->name('geofences');
+            Route::get('/alerts', [TraccarMonitoringController::class, 'alerts'])
+                ->middleware('throttle:10,1')
+                ->name('alerts');
+            Route::post('/alerts/read', [TraccarMonitoringController::class, 'readAlerts'])
+                ->middleware('throttle:30,1')
+                ->name('alerts.read');
         });
     Route::get('/vehiculos', function () {
         return view('vehiculos.crud');

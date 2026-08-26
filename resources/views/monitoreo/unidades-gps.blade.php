@@ -183,6 +183,20 @@
 
                 <div id="gps-error" class="hidden p-4 text-sm text-red-800 border border-red-200 rounded-xl bg-red-50 dark:border-red-900 dark:bg-red-900/20 dark:text-red-200" role="alert"></div>
 
+                <div class="flex flex-col gap-3 p-4 bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-800 lg:flex-row lg:items-end">
+                    <label class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        <input id="gps-geofence-toggle" type="checkbox" checked class="text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                        Mostrar geocercas
+                    </label>
+                    <label class="flex-1 text-sm font-medium text-gray-700 dark:text-gray-200">
+                        Geocerca destacada
+                        <select id="gps-geofence-select" class="w-full mt-1 border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                            <option value="">Todas las geocercas</option>
+                        </select>
+                    </label>
+                    <p id="gps-geofence-units" class="text-sm text-gray-500 dark:text-gray-400">Cargando geocercas…</p>
+                </div>
+
                 <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
                     <div id="gps-map-panel" class="relative overflow-hidden bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900">
                         <div id="traccar-map" aria-label="Mapa de unidades GPS"></div>
@@ -203,6 +217,38 @@
                         </div>
                     </aside>
                 </div>
+
+                <section class="overflow-hidden bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-800">
+                    <div class="flex flex-col gap-3 px-5 py-4 border-b border-gray-200 dark:border-gray-700 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-lg font-bold text-gray-900 dark:text-white">Centro de alertas GPS</h2>
+                                <span id="gps-alert-unread" class="hidden px-2 py-1 text-xs font-bold text-white bg-red-600 rounded-full">0</span>
+                            </div>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Eventos de las últimas 24 horas</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                                <input id="gps-alert-sound" type="checkbox" class="text-red-600 border-gray-300 rounded focus:ring-red-500">
+                                Sonido para alertas críticas
+                            </label>
+                            <button id="gps-alert-read-all" type="button" class="px-3 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">Marcar todas como leídas</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 gap-3 p-4 border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40 md:grid-cols-3">
+                        <select id="gps-alert-priority" class="border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                            <option value="">Todas las prioridades</option>
+                            <option value="critical">Críticas</option><option value="high">Altas</option><option value="medium">Medias</option><option value="info">Informativas</option>
+                        </select>
+                        <select id="gps-alert-read-filter" class="border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                            <option value="">Leídas y pendientes</option><option value="unread">Pendientes</option><option value="read">Leídas</option>
+                        </select>
+                        <input id="gps-alert-search" type="search" placeholder="Buscar unidad o evento" class="border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                    </div>
+                    <div id="gps-alert-list" class="overflow-y-auto divide-y divide-gray-100 max-h-96 dark:divide-gray-700">
+                        <p class="p-6 text-sm text-center text-gray-500 dark:text-gray-400">Cargando alertas…</p>
+                    </div>
+                </section>
 
                 <section id="gps-detail" class="hidden overflow-hidden bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-800" aria-live="polite">
                     <div class="flex flex-col gap-3 px-5 py-4 border-b border-gray-200 dark:border-gray-700 sm:flex-row sm:items-center sm:justify-between">
@@ -288,6 +334,9 @@
                     data: @json(route('monitoreo.unidades-gps.data')),
                     history: @json(route('monitoreo.unidades-gps.history')),
                     address: @json(route('monitoreo.unidades-gps.address')),
+                    geofences: @json(route('monitoreo.unidades-gps.geofences')),
+                    alerts: @json(route('monitoreo.unidades-gps.alerts')),
+                    readAlerts: @json(route('monitoreo.unidades-gps.alerts.read')),
                     socketToken: @json(route('monitoreo.unidades-gps.socket-token')),
                     websocket: @json($websocketUrl),
                 };
@@ -298,6 +347,8 @@
                 const markers = new Map();
                 const recentEvents = new Map();
                 const addresses = new Map();
+                const gpsAlerts = new Map();
+                const geofences = new Map();
                 const markerCluster = L.markerClusterGroup({
                     disableClusteringAtZoom: 15,
                     maxClusterRadius: 48,
@@ -306,6 +357,7 @@
                 });
                 const focusLayer = L.layerGroup();
                 const historyLayer = L.layerGroup();
+                const geofenceLayer = L.layerGroup();
                 let socket = null;
                 let reconnectTimer = null;
                 let reconnectAttempts = 0;
@@ -316,6 +368,9 @@
                 let playbackIndex = 0;
                 let playbackTimer = null;
                 let playbackMarker = null;
+                let alertRefreshTimer = null;
+                let alertPollTimer = null;
+                let lastCriticalAlertId = null;
 
                 const map = L.map('traccar-map', {
                     center: [25.6866, -100.3161],
@@ -329,6 +384,7 @@
                 markerCluster.addTo(map);
                 focusLayer.addTo(map);
                 historyLayer.addTo(map);
+                geofenceLayer.addTo(map);
 
                 const elements = {
                     connectionDot: document.getElementById('gps-connection-dot'),
@@ -361,6 +417,16 @@
                     ignitionFilter: document.getElementById('gps-ignition-filter'),
                     labelMode: document.getElementById('gps-label-mode'),
                     alertFilter: document.getElementById('gps-alert-filter'),
+                    alertList: document.getElementById('gps-alert-list'),
+                    alertPriority: document.getElementById('gps-alert-priority'),
+                    alertReadFilter: document.getElementById('gps-alert-read-filter'),
+                    alertSearch: document.getElementById('gps-alert-search'),
+                    alertSound: document.getElementById('gps-alert-sound'),
+                    alertReadAll: document.getElementById('gps-alert-read-all'),
+                    alertUnread: document.getElementById('gps-alert-unread'),
+                    geofenceToggle: document.getElementById('gps-geofence-toggle'),
+                    geofenceSelect: document.getElementById('gps-geofence-select'),
+                    geofenceUnits: document.getElementById('gps-geofence-units'),
                     historyForm: document.getElementById('gps-history-form'),
                     historyFrom: document.getElementById('gps-history-from'),
                     historyTo: document.getElementById('gps-history-to'),
@@ -812,6 +878,182 @@
                     map.fitBounds(L.featureGroup(layers).getBounds(), { padding: [35, 35], maxZoom: 16 });
                 };
 
+                const pointInPolygon = (latitude, longitude, points) => {
+                    let inside = false;
+                    for (let current = 0, previous = points.length - 1; current < points.length; previous = current++) {
+                        const [currentLat, currentLng] = points[current];
+                        const [previousLat, previousLng] = points[previous];
+                        const intersects = ((currentLng > longitude) !== (previousLng > longitude))
+                            && (latitude < (previousLat - currentLat) * (longitude - currentLng) / ((previousLng - currentLng) || Number.EPSILON) + currentLat);
+                        if (intersects) inside = !inside;
+                    }
+                    return inside;
+                };
+
+                const parseCoordinatePairs = (value) => value.split(',').map((pair) => {
+                    const [latitude, longitude] = pair.trim().split(/\s+/).map(Number);
+                    return [latitude, longitude];
+                }).filter(([latitude, longitude]) => Number.isFinite(latitude) && Number.isFinite(longitude));
+
+                const createGeofenceShape = (geofence) => {
+                    const area = String(geofence.area || '').trim();
+                    const circle = area.match(/^CIRCLE\s*\(\s*(-?[\d.]+)\s+(-?[\d.]+)\s*,\s*([\d.]+)\s*\)$/i);
+                    const style = { color: '#7c3aed', fillColor: '#8b5cf6', fillOpacity: .12, weight: 2 };
+                    if (circle) {
+                        const center = [Number(circle[1]), Number(circle[2])];
+                        const radius = Number(circle[3]);
+                        return {
+                            layer: L.circle(center, { ...style, radius }),
+                            contains: (latitude, longitude) => map.distance(center, [latitude, longitude]) <= radius,
+                        };
+                    }
+
+                    const polygon = area.match(/^POLYGON\s*\(\((.+)\)\)$/i);
+                    if (polygon) {
+                        const points = parseCoordinatePairs(polygon[1]);
+                        return {
+                            layer: L.polygon(points, style),
+                            contains: (latitude, longitude) => pointInPolygon(latitude, longitude, points),
+                        };
+                    }
+
+                    const line = area.match(/^LINESTRING\s*\((.+)\)$/i);
+                    if (line) {
+                        return { layer: L.polyline(parseCoordinatePairs(line[1]), { color: '#7c3aed', weight: 4 }), contains: () => false };
+                    }
+                    return null;
+                };
+
+                const renderGeofenceUnits = () => {
+                    const selected = geofences.get(elements.geofenceSelect.value);
+                    if (!selected) {
+                        elements.geofenceUnits.textContent = `${geofences.size} geocerca${geofences.size === 1 ? '' : 's'} disponible${geofences.size === 1 ? '' : 's'}`;
+                        return;
+                    }
+                    const inside = [...devices.values()].filter((device) => {
+                        const position = positions.get(String(device.id));
+                        const latitude = Number(position?.latitude);
+                        const longitude = Number(position?.longitude);
+                        return Number.isFinite(latitude) && Number.isFinite(longitude) && selected.contains(latitude, longitude);
+                    });
+                    elements.geofenceUnits.textContent = `${inside.length} unidad${inside.length === 1 ? '' : 'es'} dentro de ${selected.data.name}`;
+                };
+
+                const selectGeofence = (geofenceId, fit = true) => {
+                    const selectedId = String(geofenceId || '');
+                    elements.geofenceSelect.value = selectedId;
+                    geofences.forEach((entry, id) => {
+                        if (!entry.layer.setStyle) return;
+                        entry.layer.setStyle(id === selectedId
+                            ? { color: '#dc2626', fillColor: '#ef4444', fillOpacity: .2, weight: 4 }
+                            : { color: '#7c3aed', fillColor: '#8b5cf6', fillOpacity: .12, weight: 2 });
+                    });
+                    const selected = geofences.get(selectedId);
+                    if (fit && selected?.layer.getBounds) map.fitBounds(selected.layer.getBounds(), { padding: [35, 35], maxZoom: 16 });
+                    renderGeofenceUnits();
+                };
+
+                const loadGeofences = async () => {
+                    try {
+                        const response = await fetch(endpoints.geofences, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+                        const payload = await response.json();
+                        if (!response.ok) throw new Error(payload.message || 'No fue posible consultar las geocercas.');
+                        geofenceLayer.clearLayers();
+                        geofences.clear();
+                        elements.geofenceSelect.innerHTML = '<option value="">Todas las geocercas</option>';
+                        (payload.geofences || []).forEach((geofence) => {
+                            const shape = createGeofenceShape(geofence);
+                            if (!shape || geofence.id === undefined) return;
+                            const id = String(geofence.id);
+                            shape.layer.bindTooltip(escapeHtml(geofence.name || `Geocerca ${id}`));
+                            shape.layer.addTo(geofenceLayer);
+                            geofences.set(id, { ...shape, data: geofence });
+                            elements.geofenceSelect.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(id)}">${escapeHtml(geofence.name || `Geocerca ${id}`)}</option>`);
+                        });
+                        renderGeofenceUnits();
+                    } catch (error) {
+                        elements.geofenceUnits.textContent = error.message || 'Geocercas no disponibles';
+                    }
+                };
+
+                const priorityLabel = (priority) => ({ critical: 'Crítica', high: 'Alta', medium: 'Media', info: 'Informativa' })[priority] || 'Informativa';
+                const priorityClasses = (priority) => ({
+                    critical: 'border-red-500 bg-red-50 dark:bg-red-900/20',
+                    high: 'border-orange-500 bg-orange-50 dark:bg-orange-900/20',
+                    medium: 'border-amber-500 bg-amber-50 dark:bg-amber-900/20',
+                    info: 'border-blue-400 bg-blue-50 dark:bg-blue-900/20',
+                })[priority] || 'border-gray-300 bg-gray-50';
+
+                const playCriticalSound = () => {
+                    if (!elements.alertSound.checked) return;
+                    try {
+                        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                        const context = new AudioContextClass();
+                        const oscillator = context.createOscillator();
+                        const gain = context.createGain();
+                        oscillator.frequency.value = 880;
+                        gain.gain.setValueAtTime(.12, context.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(.001, context.currentTime + .45);
+                        oscillator.connect(gain).connect(context.destination);
+                        oscillator.start();
+                        oscillator.stop(context.currentTime + .45);
+                    } catch (error) {
+                        elements.alertSound.checked = false;
+                    }
+                };
+
+                const renderAlerts = () => {
+                    const query = elements.alertSearch.value.trim().toLocaleLowerCase('es-MX');
+                    const alerts = [...gpsAlerts.values()].filter((alert) => {
+                        const device = devices.get(String(alert.device_id));
+                        return query === '' || `${device?.name || ''} ${eventLabel(alert.type)} ${alert.attributes?.alarm || ''}`.toLocaleLowerCase('es-MX').includes(query);
+                    });
+                    if (alerts.length === 0) {
+                        elements.alertList.innerHTML = '<p class="p-6 text-sm text-center text-gray-500 dark:text-gray-400">No hay alertas que coincidan con los filtros.</p>';
+                        return;
+                    }
+                    elements.alertList.innerHTML = alerts.map((alert) => {
+                        const device = devices.get(String(alert.device_id));
+                        const geofence = geofences.get(String(alert.geofence_id));
+                        return `<button type="button" data-gps-alert-id="${escapeHtml(alert.id)}" data-device-id="${escapeHtml(alert.device_id)}" data-geofence-id="${escapeHtml(alert.geofence_id || '')}" class="w-full p-4 text-left border-l-4 ${priorityClasses(alert.priority)} ${alert.is_read ? 'opacity-65' : ''}">
+                            <div class="flex items-start justify-between gap-3"><div><p class="font-bold text-gray-900 dark:text-white">${escapeHtml(eventLabel(alert.type))}</p><p class="mt-1 text-sm text-gray-600 dark:text-gray-300">${escapeHtml(device?.name || `Unidad ${alert.device_id}`)}${geofence ? ` · ${escapeHtml(geofence.data.name)}` : ''}</p></div><span class="text-xs font-bold uppercase text-gray-600 dark:text-gray-300">${escapeHtml(priorityLabel(alert.priority))}</span></div>
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">${escapeHtml(formatDate(alert.event_time))}${alert.is_read ? ' · Leída' : ' · Pendiente'}</p>
+                        </button>`;
+                    }).join('');
+                };
+
+                const loadAlerts = async () => {
+                    const url = new URL(endpoints.alerts, window.location.origin);
+                    if (elements.alertPriority.value) url.searchParams.set('priority', elements.alertPriority.value);
+                    if (elements.alertReadFilter.value) url.searchParams.set('read', elements.alertReadFilter.value);
+                    const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+                    const payload = await response.json();
+                    if (!response.ok) throw new Error(payload.message || 'No fue posible consultar las alertas.');
+                    gpsAlerts.clear();
+                    (payload.alerts || []).forEach((alert) => {
+                        gpsAlerts.set(String(alert.id), alert);
+                        const timestamp = new Date(alert.event_time).getTime();
+                        if (Number.isFinite(timestamp)) recentEvents.set(String(alert.device_id), timestamp);
+                    });
+                    elements.alertUnread.textContent = payload.unread_count || 0;
+                    elements.alertUnread.classList.toggle('hidden', !payload.unread_count);
+                    const newestCritical = (payload.alerts || []).find((alert) => alert.priority === 'critical' && !alert.is_read);
+                    if (lastCriticalAlertId !== null && newestCritical && String(newestCritical.id) !== lastCriticalAlertId) playCriticalSound();
+                    lastCriticalAlertId = newestCritical ? String(newestCritical.id) : lastCriticalAlertId;
+                    renderAlerts();
+                };
+
+                const markAlertsRead = async (ids = [], all = false) => {
+                    const response = await fetch(endpoints.readAlerts, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                        body: JSON.stringify(all ? { all: true } : { ids }),
+                    });
+                    if (!response.ok) throw new Error('No fue posible actualizar la alerta.');
+                    await loadAlerts();
+                };
+
                 const mergeDevices = (items) => {
                     (Array.isArray(items) ? items : []).forEach((device) => {
                         if (device?.id === undefined) return;
@@ -828,6 +1070,7 @@
                         positions.set(key, position);
                         updateMarker(key);
                     });
+                    renderGeofenceUnits();
                 };
 
                 const mergeEvents = (items) => {
@@ -836,6 +1079,10 @@
                         const timestamp = new Date(event.eventTime || event.serverTime || Date.now()).getTime();
                         if (Number.isFinite(timestamp)) recentEvents.set(String(event.deviceId), timestamp);
                     });
+                    if (Array.isArray(items) && items.length > 0) {
+                        if (alertRefreshTimer) clearTimeout(alertRefreshTimer);
+                        alertRefreshTimer = setTimeout(() => loadAlerts().catch(() => {}), 1500);
+                    }
                 };
 
                 const distanceBetween = (left, right) => {
@@ -1045,6 +1292,7 @@
                         mergeDevices(payload.devices);
                         mergePositions(payload.positions);
                         render();
+                        renderAlerts();
                         elements.lastUpdate.textContent = `Actualizado: ${formatDate(payload.fetched_at)}`;
                         if (fit) setTimeout(fitVisibleMarkers, 100);
                     } catch (error) {
@@ -1131,6 +1379,27 @@
                 elements.statusFilter.addEventListener('change', render);
                 elements.ignitionFilter.addEventListener('change', render);
                 elements.alertFilter.addEventListener('change', render);
+                elements.geofenceToggle.addEventListener('change', () => {
+                    if (elements.geofenceToggle.checked) {
+                        if (!map.hasLayer(geofenceLayer)) geofenceLayer.addTo(map);
+                    } else if (map.hasLayer(geofenceLayer)) {
+                        map.removeLayer(geofenceLayer);
+                    }
+                });
+                elements.geofenceSelect.addEventListener('change', () => selectGeofence(elements.geofenceSelect.value));
+                elements.alertPriority.addEventListener('change', () => loadAlerts().catch((error) => showError(error.message)));
+                elements.alertReadFilter.addEventListener('change', () => loadAlerts().catch((error) => showError(error.message)));
+                elements.alertSearch.addEventListener('input', renderAlerts);
+                elements.alertReadAll.addEventListener('click', () => markAlertsRead([], true).catch((error) => showError(error.message)));
+                elements.alertList.addEventListener('click', (event) => {
+                    const button = event.target.closest('[data-gps-alert-id]');
+                    if (!button) return;
+                    const alertId = Number(button.dataset.gpsAlertId);
+                    const deviceId = button.dataset.deviceId;
+                    if (deviceId && devices.has(String(deviceId))) selectDevice(deviceId);
+                    if (button.dataset.geofenceId) selectGeofence(button.dataset.geofenceId, false);
+                    markAlertsRead([alertId]).catch((error) => showError(error.message));
+                });
                 elements.labelMode.addEventListener('change', () => {
                     devices.forEach((device) => updateMarker(device.id));
                     render();
@@ -1212,6 +1481,8 @@
                 window.addEventListener('pagehide', () => {
                     closingPage = true;
                     if (reconnectTimer) clearTimeout(reconnectTimer);
+                    if (alertRefreshTimer) clearTimeout(alertRefreshTimer);
+                    if (alertPollTimer) clearInterval(alertPollTimer);
                     stopPlayback();
                     socket?.close();
                 });
@@ -1223,6 +1494,11 @@
                 elements.historyTo.value = localDateTimeValue(historyEnd);
 
                 loadData({ fit: true }).finally(connectSocket);
+                loadGeofences();
+                loadAlerts().catch((error) => {
+                    elements.alertList.innerHTML = `<p class="p-6 text-sm text-center text-red-600 dark:text-red-300">${escapeHtml(error.message)}</p>`;
+                });
+                alertPollTimer = setInterval(() => loadAlerts().catch(() => {}), 60000);
             });
         </script>
     @endpush
