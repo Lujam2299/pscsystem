@@ -146,6 +146,10 @@ final class Permission
 
     public const MAP_VIEW = 'map.view';
 
+    public const INSPECTIONS_VIEW = 'inspections.view';
+
+    public const INSPECTIONS_MANAGE = 'inspections.manage';
+
     /** @return list<string> */
     public static function all(): array
     {

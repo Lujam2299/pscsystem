@@ -323,6 +323,12 @@ Route::middleware('auth')->group(function () {
         return view('vehiculos.detalle', ['id' => $id]);
     })->name('vehiculos.detalle');
 
+    // Inspecciones manuales de entrega, recepción y cambio de turno.
+    Route::get('/inspecciones', \App\Livewire\InspeccionesUnidades::class)->name('inspecciones.index');
+    Route::get('/inspecciones/{inspeccion}', \App\Livewire\InspeccionDetalle::class)->name('inspecciones.detalle');
+    Route::get('/inspecciones-evidencias/{evidencia}', [\App\Http\Controllers\InspeccionEvidenciaController::class, 'show'])
+        ->name('inspecciones.evidencias.show');
+
     // Servicios CRUD (Livewire)
     Route::get('/servicios', \App\Livewire\ServiciosCrud::class)->name('servicios.index');
     // Detalle de Servicio (Livewire)

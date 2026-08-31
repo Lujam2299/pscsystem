@@ -129,6 +129,41 @@
     </div>
   </div>
   @endif
+  <!-- Sección: historial reciente de inspecciones -->
+  <div class="max-w-5xl p-6 mx-auto mt-8 bg-white border border-gray-200 shadow-md rounded-xl dark:bg-gray-800 dark:border-gray-700">
+    <div class="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div class="flex items-center gap-2 font-bold text-blue-700 dark:text-blue-300">
+          <i class="text-lg ti ti-clipboard-check"></i> Inspecciones recientes
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Últimos registros de entrega, recepción o revisión.</p>
+      </div>
+      @can(\App\Support\Authorization\Permission::INSPECTIONS_VIEW)
+        <a href="{{ route('inspecciones.index', ['unidad' => $unidad->id]) }}" class="text-sm font-semibold text-blue-600 hover:text-blue-800">Ver todas</a>
+      @endcan
+    </div>
+
+    @can(\App\Support\Authorization\Permission::INSPECTIONS_VIEW)
+      <div class="space-y-3">
+        @forelse($unidad->inspecciones as $inspeccion)
+          <a href="{{ route('inspecciones.detalle', $inspeccion) }}"
+            class="flex flex-col gap-2 p-3 border border-gray-200 rounded-lg hover:bg-blue-50 dark:border-gray-700 dark:hover:bg-gray-700 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <span class="font-semibold text-gray-900 dark:text-white">{{ $inspeccion->fecha_inspeccion->format('d/m/Y H:i') }}</span>
+              <span class="ml-2 text-sm text-gray-500 dark:text-gray-400">{{ str($inspeccion->tipo)->replace('_', ' ')->title() }}</span>
+            </div>
+            <div class="text-sm text-gray-600 dark:text-gray-300">
+              {{ str($inspeccion->resultado)->replace('_', ' ')->title() }} · {{ $inspeccion->evidencias_count }} evidencia(s)
+            </div>
+          </a>
+        @empty
+          <p class="py-4 text-sm text-center text-gray-500 dark:text-gray-400">Esta unidad todavía no tiene inspecciones registradas.</p>
+        @endforelse
+      </div>
+    @else
+      <p class="text-sm text-gray-500 dark:text-gray-400">No tienes permiso para consultar las inspecciones.</p>
+    @endcan
+  </div>
   <!-- Botones de acción -->
   <div class="flex justify-end max-w-5xl gap-4 mx-auto mt-8">
     <a href="{{ route('vehiculos.index', ['editar' => $unidad->id, 'return' => 'detalle']) }}"

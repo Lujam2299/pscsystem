@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Unidades;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Servicio extends Model
 {
@@ -25,6 +25,11 @@ class Servicio extends Model
     public function unidad()
     {
         return $this->belongsTo(Unidades::class, 'unidad_id');
+    }
+
+    public function inspeccionesOrigen(): HasMany
+    {
+        return $this->hasMany(InspeccionUnidad::class, 'servicio_id');
     }
     // Relación con siniestro se agregará posteriormente
 }

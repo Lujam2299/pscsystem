@@ -50,6 +50,13 @@
             'desc' => 'Mantenimiento preventivo y correctivo'
         ],
         [
+            'titulo' => 'Inspecciones de Unidades',
+            'ruta' => route('inspecciones.index'),
+            'icono' => 'clipboard-check',
+            'theme' => 'teal',
+            'desc' => 'Entregas, recepciones y evidencia fotográfica'
+        ],
+        [
             'titulo' => 'Compras',
             'ruta' => route('compras.index'),
             'icono' => 'shopping-cart',

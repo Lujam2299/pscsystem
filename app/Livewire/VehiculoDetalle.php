@@ -13,7 +13,9 @@ class VehiculoDetalle extends Component
   public function mount($id)
   {
     $this->unidadId = $id;
-    $this->unidad   = Unidades::findOrFail($id);
+    $this->unidad   = Unidades::with(['inspecciones' => function ($query) {
+      $query->withCount('evidencias')->latest('fecha_inspeccion')->limit(10);
+    }])->findOrFail($id);
   }
 
   public function render()

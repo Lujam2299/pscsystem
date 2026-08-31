@@ -33,11 +33,17 @@ class Unidades extends Model
         return $this->hasOne(Placa::class, 'unidad_id')->whereNull('fecha_baja')->latest('fecha_asignacion');
     }
 
+    public function inspecciones(): HasMany
+    {
+        return $this->hasMany(InspeccionUnidad::class, 'unidad_id');
+    }
+
     // Accesor para obtener si la unidad está activa
     public function getIsActivoAttribute()
     {
-        $valor   = strtolower(trim($this->estado_vehiculo));
+        $valor = strtolower(trim($this->estado_vehiculo));
         $activos = ['activo', 'activa', 'en servicio', 'en uso', 'disponible', 'operando', 'operativa'];
+
         return in_array($valor, $activos);
     }
 }

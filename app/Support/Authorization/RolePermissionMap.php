@@ -92,7 +92,11 @@ final class RolePermissionMap
                 Permission::ACCOUNTING_EXPORT,
                 Permission::TEMPORARY_WORKERS_MANAGE,
             ],
-            RoleNormalizer::MONITORING => [Permission::MAP_VIEW],
+            RoleNormalizer::MONITORING => [
+                Permission::MAP_VIEW,
+                Permission::INSPECTIONS_VIEW,
+                Permission::INSPECTIONS_MANAGE,
+            ],
             RoleNormalizer::LEGAL => [Permission::TERMINATIONS_VIEW],
             RoleNormalizer::SUPERVISOR => [Permission::SUPERVISORS_ACCESS],
             RoleNormalizer::CUSTODIAN => [Permission::CUSTODIANS_ACCESS],
