@@ -2,34 +2,36 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
 use App\Models\Unidades;
+use Livewire\Component;
 
 class VehiculoDetalle extends Component
 {
-  public $unidadId;
-  public $unidad;
+    public $unidadId;
 
-  public function mount($id)
-  {
-    $this->unidadId = $id;
-    $this->unidad   = Unidades::with(['inspecciones' => function ($query) {
-      $query->withCount('evidencias')->latest('fecha_inspeccion')->limit(10);
-    }])->findOrFail($id);
-  }
+    public $unidad;
 
-  public function render()
-  {
-    // Solo lectura: no hay recarga ni cambios de estado
-    // Se consulta el historial de placas una sola vez
-    if (!isset($this->unidad->placas_historial)) {
-      $placas_historial               = \App\Models\Placa::where('unidad_id', $this->unidad->id)
-        ->orderByDesc('created_at')
-        ->get();
-      $this->unidad->placas_historial = $placas_historial;
+    public function mount($id)
+    {
+        $this->unidadId = $id;
+        $this->unidad = Unidades::with(['inspecciones' => function ($query) {
+            $query->withCount('evidencias')->latest('fecha_inspeccion')->limit(10);
+        }])->findOrFail($id);
     }
-    return view('livewire.vehiculo-detalle', [
-      'unidad' => $this->unidad,
-    ]);
-  }
+
+    public function render()
+    {
+        // Solo lectura: no hay recarga ni cambios de estado
+        // Se consulta el historial de placas una sola vez
+        if (! isset($this->unidad->placas_historial)) {
+            $placas_historial = \App\Models\Placa::where('unidad_id', $this->unidad->id)
+                ->orderByDesc('created_at')
+                ->get();
+            $this->unidad->placas_historial = $placas_historial;
+        }
+
+        return view('livewire.vehiculo-detalle', [
+            'unidad' => $this->unidad,
+        ]);
+    }
 }
