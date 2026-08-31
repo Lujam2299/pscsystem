@@ -150,6 +150,10 @@ final class Permission
 
     public const INSPECTIONS_MANAGE = 'inspections.manage';
 
+    public const INSPECTION_INBOX_VIEW = 'inspection-inbox.view';
+
+    public const INSPECTION_INBOX_MANAGE = 'inspection-inbox.manage';
+
     /** @return list<string> */
     public static function all(): array
     {

@@ -97,6 +97,7 @@ return [
     'monitoreo.unidades-gps.*' => Permission::MAP_VIEW,
     'monitoreo.deducciones' => Permission::MAP_VIEW,
     'vehiculos.*' => Permission::MAP_VIEW,
+    'inspecciones.recepcion.*' => Permission::INSPECTION_INBOX_VIEW,
     'inspecciones.evidencias.*' => Permission::INSPECTIONS_VIEW,
     'inspecciones.*' => Permission::INSPECTIONS_VIEW,
     'servicios.*' => Permission::MAP_VIEW,

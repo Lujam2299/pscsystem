@@ -17,6 +17,7 @@ use App\Http\Controllers\GraficosController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\IncapacidadController;
 use App\Http\Controllers\IncapacidadReporteController;
+use App\Http\Controllers\InspeccionMensajeArchivoController;
 use App\Http\Controllers\JuridicoController;
 use App\Http\Controllers\MonitoreoController;
 use App\Http\Controllers\NominasController;
@@ -328,6 +329,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/inspecciones/{inspeccion}', \App\Livewire\InspeccionDetalle::class)->name('inspecciones.detalle');
     Route::get('/inspecciones-evidencias/{evidencia}', [\App\Http\Controllers\InspeccionEvidenciaController::class, 'show'])
         ->name('inspecciones.evidencias.show');
+    Route::get('/inspecciones-recepcion', \App\Livewire\InspeccionRecepcionBandeja::class)
+        ->name('inspecciones.recepcion.index');
+    Route::get('/inspecciones-recepcion/{caso}', \App\Livewire\InspeccionRevisionDetalle::class)
+        ->name('inspecciones.recepcion.detalle');
+    Route::get('/inspecciones-recepcion-archivos/{archivo}', [InspeccionMensajeArchivoController::class, 'show'])
+        ->name('inspecciones.recepcion.archivos.show');
 
     // Servicios CRUD (Livewire)
     Route::get('/servicios', \App\Livewire\ServiciosCrud::class)->name('servicios.index');

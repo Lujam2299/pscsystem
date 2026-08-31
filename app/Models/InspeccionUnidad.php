@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class InspeccionUnidad extends Model
 {
@@ -39,6 +40,11 @@ class InspeccionUnidad extends Model
     public function evidencias(): HasMany
     {
         return $this->hasMany(InspeccionEvidencia::class, 'inspeccion_id')->orderBy('orden');
+    }
+
+    public function casoRecepcion(): HasOne
+    {
+        return $this->hasOne(InspeccionRevisionCaso::class, 'inspeccion_id');
     }
 
     public function servicio(): BelongsTo

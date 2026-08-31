@@ -96,6 +96,8 @@ final class RolePermissionMap
                 Permission::MAP_VIEW,
                 Permission::INSPECTIONS_VIEW,
                 Permission::INSPECTIONS_MANAGE,
+                Permission::INSPECTION_INBOX_VIEW,
+                Permission::INSPECTION_INBOX_MANAGE,
             ],
             RoleNormalizer::LEGAL => [Permission::TERMINATIONS_VIEW],
             RoleNormalizer::SUPERVISOR => [Permission::SUPERVISORS_ACCESS],

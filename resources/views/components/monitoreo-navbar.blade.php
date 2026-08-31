@@ -57,6 +57,13 @@
             'desc' => 'Entregas, recepciones y evidencia fotográfica'
         ],
         [
+            'titulo' => 'Evidencias Recibidas',
+            'ruta' => route('inspecciones.recepcion.index'),
+            'icono' => 'inbox',
+            'theme' => 'cyan',
+            'desc' => 'Revisión humana antes de crear inspecciones'
+        ],
+        [
             'titulo' => 'Compras',
             'ruta' => route('compras.index'),
             'icono' => 'shopping-cart',
