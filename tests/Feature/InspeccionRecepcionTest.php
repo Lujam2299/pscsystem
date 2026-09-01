@@ -255,6 +255,8 @@ class InspeccionRecepcionTest extends TestCase
 
     public function test_weekly_report_only_includes_validated_inspections(): void
     {
+        Storage::fake('local');
+
         $user = User::factory()->create(['rol' => 'Monitorista']);
         $unidad = Unidades::create(['placas' => '28S555', 'marca' => 'Toyota', 'modelo' => '2023']);
         $inspeccion = InspeccionUnidad::create([
@@ -275,6 +277,7 @@ class InspeccionRecepcionTest extends TestCase
             'orden' => 1,
             'clasificacion' => 'general',
         ]);
+        Storage::disk('local')->put('monitoreo/inspecciones/1/evidencia.jpg', UploadedFile::fake()->image('evidencia.jpg')->getContent());
 
         $confirmado = InspeccionRevisionCaso::create([
             'estado' => 'confirmado',
@@ -314,7 +317,7 @@ class InspeccionRecepcionTest extends TestCase
             'origen' => 'manual',
             'estado' => 'validada',
         ]);
-        InspeccionUnidad::create([
+        $noValidada = InspeccionUnidad::create([
             'unidad_id' => $unidadDirecta->id,
             'fecha_inspeccion' => '2026-08-26 09:00:00',
             'tipo' => 'revision',
@@ -344,5 +347,16 @@ class InspeccionRecepcionTest extends TestCase
         $this->get(route('inspecciones.reportes.semanal.xlsx', ['semana' => '2026-08-24']))
             ->assertOk()
             ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $this->get(route('inspecciones.reportes.semanal.pdf.ejecutivo', ['semana' => '2026-08-24']))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+        $this->get(route('inspecciones.reportes.semanal.pdf.incidencias', ['semana' => '2026-08-24']))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+        $this->get(route('inspecciones.reportes.expediente.pdf', $inspeccion))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+        $this->get(route('inspecciones.reportes.expediente.pdf', $noValidada))
+            ->assertNotFound();
     }
 }

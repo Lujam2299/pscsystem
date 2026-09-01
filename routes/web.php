@@ -18,6 +18,7 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\IncapacidadController;
 use App\Http\Controllers\IncapacidadReporteController;
 use App\Http\Controllers\InspeccionMensajeArchivoController;
+use App\Http\Controllers\InspeccionReportePdfController;
 use App\Http\Controllers\InspeccionReporteSemanalController;
 use App\Http\Controllers\JuridicoController;
 use App\Http\Controllers\MonitoreoController;
@@ -340,6 +341,12 @@ Route::middleware('auth')->group(function () {
         ->name('inspecciones.reportes.semanal');
     Route::get('/inspecciones-reportes/semanal.xlsx', [InspeccionReporteSemanalController::class, 'xlsx'])
         ->name('inspecciones.reportes.semanal.xlsx');
+    Route::get('/inspecciones-reportes/semanal-ejecutivo.pdf', [InspeccionReportePdfController::class, 'ejecutivo'])
+        ->name('inspecciones.reportes.semanal.pdf.ejecutivo');
+    Route::get('/inspecciones-reportes/semanal-incidencias.pdf', [InspeccionReportePdfController::class, 'incidencias'])
+        ->name('inspecciones.reportes.semanal.pdf.incidencias');
+    Route::get('/inspecciones/{inspeccion}/expediente.pdf', [InspeccionReportePdfController::class, 'expediente'])
+        ->name('inspecciones.reportes.expediente.pdf');
 
     // Servicios CRUD (Livewire)
     Route::get('/servicios', \App\Livewire\ServiciosCrud::class)->name('servicios.index');

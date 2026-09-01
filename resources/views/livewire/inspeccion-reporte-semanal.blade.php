@@ -24,9 +24,26 @@
                 </button>
             </div>
 
-            <a href="{{ route('inspecciones.reportes.semanal.xlsx', ['semana' => $reporte['inicio']->toDateString()]) }}" class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">
-                <i class="mr-2 ti ti-file-spreadsheet"></i> Descargar Excel
-            </a>
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ route('inspecciones.reportes.semanal.xlsx', ['semana' => $reporte['inicio']->toDateString()]) }}" class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">
+                    <i class="mr-2 ti ti-file-spreadsheet"></i> Descargar Excel
+                </a>
+                <details class="relative">
+                    <summary class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg cursor-pointer hover:bg-red-700">
+                        <i class="mr-2 ti ti-file-type-pdf"></i> Descargar PDF
+                    </summary>
+                    <div class="absolute right-0 z-20 w-64 p-2 mt-2 bg-white border border-gray-200 shadow-xl rounded-xl dark:bg-gray-800 dark:border-gray-700">
+                        <a href="{{ route('inspecciones.reportes.semanal.pdf.ejecutivo', ['semana' => $reporte['inicio']->toDateString()]) }}" class="block px-3 py-2 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700">
+                            Ejecutivo semanal
+                            <span class="block mt-1 text-xs font-normal text-gray-500">Resumen y tabla, sin fotografías.</span>
+                        </a>
+                        <a href="{{ route('inspecciones.reportes.semanal.pdf.incidencias', ['semana' => $reporte['inicio']->toDateString()]) }}" class="block px-3 py-2 mt-1 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700">
+                            Incidencias semanales
+                            <span class="block mt-1 text-xs font-normal text-gray-500">Una fotografía por inspección con incidencia.</span>
+                        </a>
+                    </div>
+                </details>
+            </div>
         </div>
 
         <div class="p-4 text-center border border-teal-200 bg-teal-50 rounded-2xl dark:border-teal-900 dark:bg-teal-950">
@@ -84,6 +101,8 @@
                                         <span class="mx-1 text-gray-300">·</span>
                                     @endif
                                     <a href="{{ route('inspecciones.detalle', $inspeccion['inspeccion_id']) }}" class="font-semibold text-blue-700 hover:underline">Inspección</a>
+                                    <span class="mx-1 text-gray-300">·</span>
+                                    <a href="{{ route('inspecciones.reportes.expediente.pdf', $inspeccion['inspeccion_id']) }}" class="font-semibold text-red-700 hover:underline">Expediente PDF</a>
                                 </td>
                             </tr>
                         @empty

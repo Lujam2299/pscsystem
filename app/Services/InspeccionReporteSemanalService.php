@@ -62,6 +62,7 @@ class InspeccionReporteSemanalService
                 'evidencias' => (int) $inspeccion->evidencias_count,
                 'inspeccion_id' => $inspeccion->id,
                 'resultado' => $inspeccion->resultado ?: 'Sin resultado',
+                'observaciones' => $inspeccion->observaciones,
                 'validada_at' => $inspeccion->casoRecepcion?->confirmed_at ?? $inspeccion->updated_at,
                 'revisor' => $inspeccion->revisor?->name ?: 'Sin identificar',
             ]);
