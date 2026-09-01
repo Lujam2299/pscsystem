@@ -253,7 +253,7 @@ class InspeccionRecepcionTest extends TestCase
         Storage::disk('local')->assertExists($archivo->path);
     }
 
-    public function test_weekly_report_only_includes_confirmed_cases_by_first_evidence_date(): void
+    public function test_weekly_report_only_includes_validated_inspections(): void
     {
         $user = User::factory()->create(['rol' => 'Monitorista']);
         $unidad = Unidades::create(['placas' => '28S555', 'marca' => 'Toyota', 'modelo' => '2023']);
@@ -263,7 +263,7 @@ class InspeccionRecepcionTest extends TestCase
             'tipo' => 'revision',
             'resultado' => 'sin_novedad',
             'origen' => 'bandeja_revision',
-            'estado' => 'confirmada',
+            'estado' => 'validada',
         ]);
         $inspeccion->evidencias()->create([
             'disk' => 'local',
@@ -305,21 +305,40 @@ class InspeccionRecepcionTest extends TestCase
             'incluido' => true,
         ]);
 
+        $unidadDirecta = Unidades::create(['placas' => 'PM7547C', 'marca' => 'Nissan', 'modelo' => '2022']);
+        InspeccionUnidad::create([
+            'unidad_id' => $unidadDirecta->id,
+            'fecha_inspeccion' => '2026-08-25 09:00:00',
+            'tipo' => 'revision',
+            'resultado' => 'con_observaciones',
+            'origen' => 'manual',
+            'estado' => 'validada',
+        ]);
+        InspeccionUnidad::create([
+            'unidad_id' => $unidadDirecta->id,
+            'fecha_inspeccion' => '2026-08-26 09:00:00',
+            'tipo' => 'revision',
+            'resultado' => 'sin_novedad',
+            'origen' => 'manual',
+            'estado' => 'pendiente',
+        ]);
+
         $reporte = app(InspeccionReporteSemanalService::class)->generar('2026-08-26');
 
         $this->assertSame('2026-08-24', $reporte['inicio']->toDateString());
         $this->assertSame('2026-08-30', $reporte['fin']->toDateString());
-        $this->assertSame(1, $reporte['total_casos']);
+        $this->assertSame(2, $reporte['total_inspecciones']);
         $this->assertSame(1, $reporte['total_evidencias']);
-        $this->assertSame(1, $reporte['total_unidades']);
-        $this->assertSame($confirmado->id, $reporte['casos']->sole()['caso_id']);
-        $this->assertSame('28S555', $reporte['casos']->sole()['placa']);
+        $this->assertSame(2, $reporte['total_unidades']);
+        $this->assertEqualsCanonicalizing(['28S555', 'PM7547C'], $reporte['inspecciones']->pluck('placa')->all());
+        $this->assertSame($confirmado->id, $reporte['inspecciones']->firstWhere('placa', '28S555')['caso_id']);
+        $this->assertNull($reporte['inspecciones']->firstWhere('placa', 'PM7547C')['caso_id']);
 
         $this->actingAs($user);
         Livewire::test(InspeccionReporteSemanal::class)
             ->set('semana', '2026-08-24')
             ->assertSee('28S555')
-            ->assertSee('1')
+            ->assertSee('PM7547C')
             ->assertDontSee('Pendiente');
 
         $this->get(route('inspecciones.reportes.semanal.xlsx', ['semana' => '2026-08-24']))

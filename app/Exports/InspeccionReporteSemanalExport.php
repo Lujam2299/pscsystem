@@ -14,23 +14,23 @@ class InspeccionReporteSemanalExport
     {
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Casos confirmados');
+        $sheet->setTitle('Inspecciones validadas');
         $sheet->fromArray([
-            'Caso', 'Primera evidencia', 'Placa', 'Vehículo', 'Evidencias',
-            'Inspección', 'Resultado', 'Confirmado el', 'Revisor',
+            'Caso', 'Fecha del reporte', 'Placa', 'Vehículo', 'Evidencias',
+            'Inspección', 'Resultado', 'Validada el', 'Revisor',
         ], null, 'A1');
 
-        foreach ($reporte['casos'] as $index => $caso) {
+        foreach ($reporte['inspecciones'] as $index => $inspeccion) {
             $sheet->fromArray([
-                $caso['caso_id'],
-                $caso['primera_evidencia_at']->format('d/m/Y H:i'),
-                $caso['placa'],
-                $caso['vehiculo'],
-                $caso['evidencias'],
-                $caso['inspeccion_id'],
-                str($caso['resultado'])->replace('_', ' ')->title()->toString(),
-                $caso['confirmado_at']?->format('d/m/Y H:i'),
-                $caso['revisor'],
+                $inspeccion['caso_id'],
+                $inspeccion['fecha_reporte']->format('d/m/Y H:i'),
+                $inspeccion['placa'],
+                $inspeccion['vehiculo'],
+                $inspeccion['evidencias'],
+                $inspeccion['inspeccion_id'],
+                str($inspeccion['resultado'])->replace('_', ' ')->title()->toString(),
+                $inspeccion['validada_at']?->format('d/m/Y H:i'),
+                $inspeccion['revisor'],
             ], null, 'A'.($index + 2));
         }
 

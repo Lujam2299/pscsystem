@@ -68,7 +68,7 @@
             'ruta' => route('inspecciones.reportes.semanal'),
             'icono' => 'report-analytics',
             'theme' => 'emerald',
-            'desc' => 'Casos confirmados por semana natural'
+            'desc' => 'Inspecciones validadas por semana natural'
         ],
         [
             'titulo' => 'Compras',
