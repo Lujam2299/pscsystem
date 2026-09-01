@@ -39,4 +39,9 @@ class InspeccionRevisionCaso extends Model
     {
         return $this->belongsTo(InspeccionUnidad::class, 'inspeccion_id');
     }
+
+    public function revisor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
 }

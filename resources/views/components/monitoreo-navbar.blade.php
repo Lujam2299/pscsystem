@@ -64,6 +64,13 @@
             'desc' => 'Revisión humana antes de crear inspecciones'
         ],
         [
+            'titulo' => 'Reporte de Evidencias',
+            'ruta' => route('inspecciones.reportes.semanal'),
+            'icono' => 'report-analytics',
+            'theme' => 'emerald',
+            'desc' => 'Casos confirmados por semana natural'
+        ],
+        [
             'titulo' => 'Compras',
             'ruta' => route('compras.index'),
             'icono' => 'shopping-cart',

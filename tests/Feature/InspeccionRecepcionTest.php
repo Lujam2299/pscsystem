@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Livewire\InspeccionRecepcionBandeja;
+use App\Livewire\InspeccionReporteSemanal;
 use App\Livewire\InspeccionRevisionDetalle;
 use App\Models\InspeccionMensaje;
 use App\Models\InspeccionRevisionCaso;
+use App\Models\InspeccionUnidad;
 use App\Models\Unidades;
 use App\Models\User;
 use App\Services\InspeccionMensajeAgrupador;
+use App\Services\InspeccionReporteSemanalService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
@@ -248,5 +251,79 @@ class InspeccionRecepcionTest extends TestCase
         $this->assertDatabaseCount('inspeccion_evidencias', 1);
         Storage::disk('local')->assertMissing('monitoreo/inspecciones-temporales/caso-1/test.jpg');
         Storage::disk('local')->assertExists($archivo->path);
+    }
+
+    public function test_weekly_report_only_includes_confirmed_cases_by_first_evidence_date(): void
+    {
+        $user = User::factory()->create(['rol' => 'Monitorista']);
+        $unidad = Unidades::create(['placas' => '28S555', 'marca' => 'Toyota', 'modelo' => '2023']);
+        $inspeccion = InspeccionUnidad::create([
+            'unidad_id' => $unidad->id,
+            'fecha_inspeccion' => '2026-08-30 23:59:00',
+            'tipo' => 'revision',
+            'resultado' => 'sin_novedad',
+            'origen' => 'bandeja_revision',
+            'estado' => 'confirmada',
+        ]);
+        $inspeccion->evidencias()->create([
+            'disk' => 'local',
+            'path' => 'monitoreo/inspecciones/1/evidencia.jpg',
+            'nombre_original' => 'evidencia.jpg',
+            'mime_type' => 'image/jpeg',
+            'size' => 100,
+            'sha256' => str_repeat('a', 64),
+            'orden' => 1,
+            'clasificacion' => 'general',
+        ]);
+
+        $confirmado = InspeccionRevisionCaso::create([
+            'estado' => 'confirmado',
+            'unidad_confirmada_id' => $unidad->id,
+            'inspeccion_id' => $inspeccion->id,
+            'reviewed_by' => $user->id,
+            'confirmed_at' => '2026-09-01 08:00:00',
+        ]);
+        InspeccionMensaje::create([
+            'caso_id' => $confirmado->id,
+            'fecha_mensaje' => '2026-08-30 23:59:00',
+            'tipo' => 'imagenes',
+            'incluido' => true,
+        ]);
+        InspeccionMensaje::create([
+            'caso_id' => $confirmado->id,
+            'fecha_mensaje' => '2026-09-01 08:00:00',
+            'tipo' => 'texto',
+            'texto' => 'Placa 28S555',
+            'incluido' => true,
+        ]);
+
+        $pendiente = InspeccionRevisionCaso::create(['estado' => 'pendiente']);
+        InspeccionMensaje::create([
+            'caso_id' => $pendiente->id,
+            'fecha_mensaje' => '2026-08-29 10:00:00',
+            'tipo' => 'imagenes',
+            'incluido' => true,
+        ]);
+
+        $reporte = app(InspeccionReporteSemanalService::class)->generar('2026-08-26');
+
+        $this->assertSame('2026-08-24', $reporte['inicio']->toDateString());
+        $this->assertSame('2026-08-30', $reporte['fin']->toDateString());
+        $this->assertSame(1, $reporte['total_casos']);
+        $this->assertSame(1, $reporte['total_evidencias']);
+        $this->assertSame(1, $reporte['total_unidades']);
+        $this->assertSame($confirmado->id, $reporte['casos']->sole()['caso_id']);
+        $this->assertSame('28S555', $reporte['casos']->sole()['placa']);
+
+        $this->actingAs($user);
+        Livewire::test(InspeccionReporteSemanal::class)
+            ->set('semana', '2026-08-24')
+            ->assertSee('28S555')
+            ->assertSee('1')
+            ->assertDontSee('Pendiente');
+
+        $this->get(route('inspecciones.reportes.semanal.xlsx', ['semana' => '2026-08-24']))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     }
 }
