@@ -50,7 +50,7 @@
                     <input type="hidden" id="tipo_actual" name="tipo_actual" value="{{ $tipoSeleccionado }}">
                 </div>
 
-                <form action="{{ route('sup.editarInformacionSolicitud', $solicitud->id) }}" method="POST" class="px-6 pb-8 sm:px-8">
+                <form action="{{ route('admin.actualizarUsuario', $solicitud->id) }}" method="POST" class="px-6 pb-8 sm:px-8">
                     @csrf
                     <input type="hidden" name="tipo" id="tipo_hidden" value="{{ old('tipo', $tipoSeleccionado) }}">
 

@@ -41,6 +41,17 @@ class RolePermissionMapTest extends TestCase
         $this->assertTrue(RolePermissionMap::allows($operations, Permission::OPERATIONS_ACCESS));
     }
 
+    public function test_human_resources_roles_can_view_and_update_users(): void
+    {
+        foreach (['AUXILIAR RH', 'AUXILIAR RECURSOS HUMANOS', 'JEFA RECURSOS HUMANOS'] as $role) {
+            $user = $this->userWithRole($role);
+
+            $this->assertSame(RoleNormalizer::HUMAN_RESOURCES, RoleNormalizer::for($user), $role);
+            $this->assertTrue(RolePermissionMap::allows($user, Permission::USERS_VIEW), $role);
+            $this->assertTrue(RolePermissionMap::allows($user, Permission::USERS_UPDATE), $role);
+        }
+    }
+
     public function test_regular_user_only_receives_common_self_service_permissions(): void
     {
         $user = $this->userWithRole('Guardia');

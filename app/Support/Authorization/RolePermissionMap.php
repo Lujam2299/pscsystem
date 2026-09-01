@@ -43,6 +43,7 @@ final class RolePermissionMap
                 Permission::VACATIONS_EXPORT,
                 Permission::ATTENDANCE_VIEW,
                 Permission::USERS_VIEW,
+                Permission::USERS_UPDATE,
                 Permission::COMPLAINTS_VIEW,
             ],
             RoleNormalizer::PAYROLL => [

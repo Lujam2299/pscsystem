@@ -8,6 +8,8 @@ return [
     'admin.audit.index' => Permission::AUDIT_VIEW,
     'registrarUsuario' => Permission::USERS_CREATE,
     'admin.editarUsuarioForm' => Permission::USERS_UPDATE,
+    'admin.actualizarUsuario' => Permission::USERS_UPDATE,
+    'admin.actualizarDocumentacionUsuario' => Permission::USERS_UPDATE,
     'admin.darDeBajaUsuario' => Permission::USERS_DISABLE,
     'admin.reingreso' => Permission::USERS_RESTORE,
     'admin.import.unify-duplicates' => Permission::USERS_MERGE_DUPLICATES,

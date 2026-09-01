@@ -75,7 +75,7 @@
 
                 <div class="p-6">
 
-                    <form action="{{ route('sup.guardarArchivosEditados', $id) }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ route(($flujoAdministrativo ?? false) ? 'admin.actualizarDocumentacionUsuario' : 'sup.guardarArchivosEditados', $id) }}" method="POST" enctype="multipart/form-data">
                         @csrf
 
                         <!-- Documentos Obligatorios -->

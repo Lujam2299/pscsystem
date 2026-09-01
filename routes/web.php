@@ -113,13 +113,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/users/registrarUsuario', [UserController::class, 'crearUsuario'])->name('admin.crearUsuarioForm');
     Route::post('/guardarUsuario', [UserController::class, 'registrarUsuario'])->name('registrarUsuario');
     Route::get('/editar_usuario/{id}', [AdminController::class, 'editarUsuario'])->name('admin.editarUsuarioForm');
+    Route::post('/actualizar_usuario/{id}', [SupervisorController::class, 'editarInformacionSolicitud'])->name('admin.actualizarUsuario');
+    Route::post('/actualizar_documentacion_usuario/{id}', [SupervisorController::class, 'subirArchivosEditados'])->name('admin.actualizarDocumentacionUsuario');
     Route::get('/ver_usuarios', [AdminController::class, 'verUsuarios'])->name('admin.verUsuarios');
     Route::get('/tablero_supervisores', [AdminController::class, 'tableroSupervisores'])
         ->middleware(['permission:supervisors.access', 'module.enabled:erp_supervisores'])
         ->name('admin.verTableroSupervisores');
     Route::get('/admin_solicitudes_altas', [AdminController::class, 'verSolicitudesAltas'])->name('admi.verSolicitudesAltas');
     Route::post('/admin/baja_usuario/{id}', [AdminController::class, 'bajaUsuario'])->name('admin.darDeBajaUsuario');
-    Route::get('/editar_usuario/{id}', [AdminController::class, 'editarUsuario'])->name('admin.editarUsuarioForm');
     Route::get('/ver_buzon', [AdminController::class, 'verBuzon'])->name('admin.verBuzon');
     Route::post('/importar-excel', [ImportController::class, 'updateDestajos'])->name('updateDestajos');
     Route::post('/importar-excel2', [ImportController::class, 'importarVacaciones'])->name('importar.excel');

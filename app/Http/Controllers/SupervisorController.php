@@ -348,22 +348,12 @@ class SupervisorController extends Controller
 
             $solicitud->ultima_edicion = Auth::user()->name.' '.Carbon::now('America/Mexico_City');
 
-            // Determinar si el usuario tiene permisos de RH/Admin para aceptar cambios directamente
-            $esRH_O_Admin = false;
-            if (Auth::user()->rol == 'admin' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS') {
-                $esRH_O_Admin = true;
-            }
-            // Verificación adicional basada en la solicitud anterior (si el editor es de RH)
-            // Nota: Asumimos que Auth::user() tiene acceso a su propia solicitud o rol directo.
-            // Si la lógica original dependía de $solicitud->departamento del USUARIO LOGUEADO,
-            // asegúrate de que Auth::user() tenga esa relación o atributo.
-            // Aquí mantengo tu lógica original adaptada:
-            elseif (isset(Auth::user()->solicitudAlta) && (
-                Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' ||
-                in_array(Auth::user()->solicitudAlta->rol, ['AUXILIAR RECURSOS HUMANOS', 'AUXILIAR RH', 'AUX RH', 'Auxiliar RH', 'Auxiliar Recursos Humanos', 'Aux RH'])
-            )) {
-                $esRH_O_Admin = true;
-            }
+            // Los nombres de rol y departamento se normalizan en un solo perfil de RH.
+            $rolEditor = RoleNormalizer::for(Auth::user());
+            $esRH_O_Admin = in_array($rolEditor, [
+                RoleNormalizer::ADMIN,
+                RoleNormalizer::HUMAN_RESOURCES,
+            ], true);
 
             if ($esRH_O_Admin) {
                 $solicitud->status = 'Aceptada';
@@ -395,7 +385,9 @@ class SupervisorController extends Controller
             $documentacion = DocumentacionAltas::where('solicitud_id', $id)->first();
             $tipo = $solicitud->tipo_empleado;
 
-            return view('supervisor.editarArchivosForm', compact('solicitud', 'id', 'documentacion', 'user', 'tipo'));
+            $flujoAdministrativo = $request->routeIs('admin.actualizarUsuario');
+
+            return view('supervisor.editarArchivosForm', compact('solicitud', 'id', 'documentacion', 'user', 'tipo', 'flujoAdministrativo'));
 
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error al actualizar la solicitud: '.$e->getMessage());
@@ -454,7 +446,13 @@ class SupervisorController extends Controller
 
         $documentacion->solicitud_id = $solicitudId;
         $documentacion->save();
-        if (Auth()->user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH' || Auth::user()->rol == 'AUXILIAR RECURSOS HUMANOS') {
+        $rolEditor = RoleNormalizer::for(Auth::user());
+        $esRH_O_Admin = in_array($rolEditor, [
+            RoleNormalizer::ADMIN,
+            RoleNormalizer::HUMAN_RESOURCES,
+        ], true);
+
+        if ($esRH_O_Admin) {
             $sol->observaciones = 'Solicitud Aceptada.';
         } else {
             $sol->observaciones = 'Documentación actualizada, en espera de revisión.';
@@ -469,11 +467,11 @@ class SupervisorController extends Controller
             'archivos_actualizados' => collect($camposArchivos)->filter(fn (string $campo): bool => $request->hasFile($campo))->values()->all(),
         ]);
 
-        if (Auth()->user()->rol == 'admin' || Auth::user()->solicitudAlta->departamento == 'Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RECURSOS HUMANOS' || Auth::user()->solicitudAlta->rol == 'AUXILIAR RH' || Auth::user()->solicitudAlta->rol == 'AUX RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar RH' || Auth::user()->solicitudAlta->rol == 'Auxiliar Recursos Humanos' || Auth::user()->solicitudAlta->rol == 'Aux RH') {
-            return redirect()->route('user.verFicha', $user->id)->with('success', 'Documentos actualizados correctamente.');
-        } else {
-            return redirect()->route('sup.solicitud.detalle', $solicitudId)->with('success', 'Documentos actualizados correctamente.');
+        if ($request->routeIs('admin.actualizarDocumentacionUsuario')) {
+            return redirect()->route('admin.verUsuarios')->with('success', 'La información y documentación del usuario se actualizaron correctamente.');
         }
+
+        return redirect()->route('sup.solicitud.detalle', $solicitudId)->with('success', 'Documentos actualizados correctamente.');
     }
 
     public function solicitarBajaForm()
