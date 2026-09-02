@@ -9,7 +9,6 @@ use App\Models\Punto;
 use App\Models\SolicitudAlta;
 use App\Models\SolicitudBajas;
 use App\Models\SolicitudVacaciones;
-use App\Models\Subpunto;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Carbon\Carbon;
@@ -68,8 +67,6 @@ class RhController extends Controller
             $user->estatus = 'Activo';
             $user->empresa = $solicitud->empresa;
             $user->save();
-
-            $this->syncSupervisorZone($user, $solicitud->rol, $solicitud->zona_supervisor);
 
             $audit->record('Altas', 'Solicitud de alta aceptada', $solicitud, $before, $solicitud->only(['status', 'observaciones']), ['usuario_creado_id' => $user->id]);
         });
@@ -211,18 +208,16 @@ class RhController extends Controller
     public function generarNuevaAltaForm()
     {
         $puntos = Punto::with('subpuntos')->get();
-        $zonasSupervisor = $this->zonasSupervisorDisponibles();
 
-        return view('rh.generarAlta', compact('puntos', 'zonasSupervisor'));
+        return view('rh.generarAlta', compact('puntos'));
     }
 
     public function formAlta(Request $request)
     {
         $puntos = Punto::with('subpuntos')->get();
-        $zonasSupervisor = $this->zonasSupervisorDisponibles();
         $tipo = $request->get('tipo', 'oficina');
 
-        return view('rh.generarAlta', compact('tipo', 'puntos', 'zonasSupervisor'));
+        return view('rh.generarAlta', compact('tipo', 'puntos'));
     }
 
     public function guardarAlta(Request $request, AuditLogger $audit)
@@ -253,7 +248,6 @@ class RhController extends Controller
                 'domicilio_comprobante' => 'nullable|string|max:255',
                 'departamento' => 'nullable|string|max:255',
                 'rol' => 'nullable|string|max:255',
-                'zona_supervisor' => 'nullable|string|max:255',
                 'reingreso' => 'nullable|string',
                 'punto' => 'nullable|string|max:255',
                 'empresa' => 'nullable|string',
@@ -268,8 +262,6 @@ class RhController extends Controller
             ]);
 
             $tipoSeleccionado = $request->get('tipo', 'oficina');
-            $rolNormalizado = $this->normalizarRolSolicitud($request->rol);
-            $zonaSupervisor = $rolNormalizado === 'SUPERVISOR' ? $request->zona_supervisor : null;
 
             $solicitud = new SolicitudAlta;
             $solicitud->solicitante = auth()->user()->name;
@@ -295,9 +287,8 @@ class RhController extends Controller
             $solicitud->infonavit = $request->infonavit;
             $solicitud->fonacot = $request->fonacot;
             $solicitud->domicilio_comprobante = $request->domicilio_comprobante;
-            $solicitud->rol = $rolNormalizado;
+            $solicitud->rol = $request->rol;
             $solicitud->punto = $request->punto;
-            $solicitud->zona_supervisor = $zonaSupervisor;
             $solicitud->reingreso = $request->reingreso;
             $solicitud->empresa = $request->empresa;
             $solicitud->fecha_ingreso = $request->fecha_ingreso;
@@ -318,7 +309,7 @@ class RhController extends Controller
 
             $audit->record('Altas', 'Solicitud de alta creada por RH', $solicitud, [], $solicitud->only([
                 'solicitante', 'nombre', 'apellido_paterno', 'apellido_materno', 'tipo_empleado',
-                'departamento', 'rol', 'punto', 'zona_supervisor', 'empresa', 'fecha_ingreso', 'email',
+                'departamento', 'rol', 'punto', 'empresa', 'fecha_ingreso', 'email',
                 'tipo_periodo', 'status', 'observaciones',
             ]));
 
@@ -454,7 +445,6 @@ class RhController extends Controller
                 $user->empresa = $solicitud->empresa;
 
                 $user->save();
-                $this->syncSupervisorZone($user, $solicitud->rol, $solicitud->zona_supervisor);
             }
 
             $audit->record('Altas', 'Documentación de alta cargada', $solicitud, [], $solicitud->only([
@@ -471,50 +461,6 @@ class RhController extends Controller
 
             return redirect()->back()->with('error', 'Ocurrió un error al guardar los archivos. Verifica el log para más detalles.');
         }
-    }
-
-    private function zonasSupervisorDisponibles()
-    {
-        return Subpunto::query()
-            ->whereNotNull('zona')
-            ->where('zona', '<>', '')
-            ->select('zona')
-            ->distinct()
-            ->orderBy('zona')
-            ->pluck('zona');
-    }
-
-    private function normalizarRolSolicitud(?string $rol): ?string
-    {
-        $rol = trim((string) $rol);
-
-        if ($rol === '') {
-            return null;
-        }
-
-        return strtoupper($rol) === 'SUPERVISOR' ? 'SUPERVISOR' : $rol;
-    }
-
-    private function syncSupervisorZone(User $user, ?string $rol, ?string $zona): void
-    {
-        if (strtoupper(trim((string) $rol)) !== 'SUPERVISOR') {
-            $user->subpuntosSupervisados()->detach();
-
-            return;
-        }
-
-        if (! $zona) {
-            $user->subpuntosSupervisados()->detach();
-
-            return;
-        }
-
-        $subpuntoIds = Subpunto::query()
-            ->where('zona', $zona)
-            ->pluck('id')
-            ->all();
-
-        $user->subpuntosSupervisados()->sync($subpuntoIds);
     }
 
     public function generarNuevaBajaForm(Request $request)

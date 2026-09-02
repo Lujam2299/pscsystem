@@ -199,17 +199,6 @@
                                 <label for="rol" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rol / Puesto</label>
                                 <input type="text" id="rol" name="rol" value="{{ old('rol', $solicitud->rol) }}" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
                             </div>
-                            <div id="zona_supervisor_group" class="hidden">
-                                <label for="zona_supervisor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Zona de Supervisor <span class="text-xs text-gray-500 font-normal">(Opcional)</span></label>
-                                <select id="zona_supervisor" name="zona_supervisor" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
-                                    <option value="">Sin zona asignada</option>
-                                    @foreach($zonasSupervisor as $zonaSupervisor)
-                                        <option value="{{ $zonaSupervisor }}" {{ old('zona_supervisor', $solicitud->zona_supervisor) === $zonaSupervisor ? 'selected' : '' }}>
-                                            Zona {{ $zonaSupervisor }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
                             <div class="lg:col-span-2">
                                 <label for="punto" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Punto / Subpunto</label>
                                 <select id="punto" name="punto" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
@@ -364,31 +353,6 @@
         if (tipoActual) {
             cambiarTipo(tipoActual.value);
         }
-
-        const rolInput = document.getElementById('rol');
-        const zonaGroup = document.getElementById('zona_supervisor_group');
-        const zonaSelect = document.getElementById('zona_supervisor');
-
-        if (!rolInput || !zonaGroup || !zonaSelect) {
-            return;
-        }
-
-        const toggleZonaSupervisor = () => {
-            const rolNormalizado = rolInput.value.trim().toUpperCase();
-
-            if (rolNormalizado === 'SUPERVISOR') {
-                rolInput.value = 'SUPERVISOR';
-                zonaGroup.classList.remove('hidden');
-                return;
-            }
-
-            zonaGroup.classList.add('hidden');
-            zonaSelect.value = '';
-        };
-
-        rolInput.addEventListener('input', toggleZonaSupervisor);
-        rolInput.addEventListener('blur', toggleZonaSupervisor);
-        toggleZonaSupervisor();
     });
     </script>
 </x-app-layout>

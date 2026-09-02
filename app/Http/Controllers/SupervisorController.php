@@ -290,7 +290,6 @@ class SupervisorController extends Controller
                 'domicilio_comprobante' => 'nullable|string|max:255',
                 'departamento' => 'nullable|string|max:255',
                 'rol' => 'nullable|string|max:255',
-                'zona_supervisor' => 'nullable|string|max:255',
                 'reingreso' => 'nullable|string',
                 'punto' => 'nullable|string|max:255',
                 'empresa' => 'nullable|string',
@@ -307,10 +306,8 @@ class SupervisorController extends Controller
             $solicitud = SolicitudAlta::findOrFail($id);
             $before = $solicitud->only([
                 'nombre', 'apellido_paterno', 'apellido_materno', 'tipo_empleado', 'departamento',
-                'rol', 'punto', 'zona_supervisor', 'empresa', 'fecha_ingreso', 'email', 'tipo_periodo', 'status', 'observaciones',
+                'rol', 'punto', 'empresa', 'fecha_ingreso', 'email', 'tipo_periodo', 'status', 'observaciones',
             ]);
-            $rolNormalizado = $this->normalizarRolSolicitud($request->rol);
-            $zonaSupervisor = $rolNormalizado === 'SUPERVISOR' ? $request->zona_supervisor : null;
 
             // Actualizar todos los campos de la solicitud
             $solicitud->solicitante = auth()->user()->name;
@@ -336,9 +333,8 @@ class SupervisorController extends Controller
             $solicitud->infonavit = $request->infonavit;
             $solicitud->fonacot = $request->fonacot;
             $solicitud->domicilio_comprobante = $request->domicilio_comprobante;
-            $solicitud->rol = $rolNormalizado;
+            $solicitud->rol = $request->rol;
             $solicitud->punto = $request->punto;
-            $solicitud->zona_supervisor = $zonaSupervisor;
             $solicitud->reingreso = $request->reingreso;
             $solicitud->empresa = $request->empresa;
             $solicitud->fecha_ingreso = $request->fecha_ingreso;
@@ -380,7 +376,6 @@ class SupervisorController extends Controller
                 $user->empresa = $solicitud->empresa;
 
                 $user->save();
-                $this->syncSupervisorZone($user, $solicitud->rol, $solicitud->zona_supervisor);
             }
 
             $audit->record('Altas', 'Solicitud de alta actualizada', $solicitud, $before, $solicitud->only(array_keys($before)), [
@@ -397,39 +392,6 @@ class SupervisorController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error al actualizar la solicitud: '.$e->getMessage());
         }
-    }
-
-    private function normalizarRolSolicitud(?string $rol): ?string
-    {
-        $rol = trim((string) $rol);
-
-        if ($rol === '') {
-            return null;
-        }
-
-        return strtoupper($rol) === 'SUPERVISOR' ? 'SUPERVISOR' : $rol;
-    }
-
-    private function syncSupervisorZone(User $user, ?string $rol, ?string $zona): void
-    {
-        if (strtoupper(trim((string) $rol)) !== 'SUPERVISOR') {
-            $user->subpuntosSupervisados()->detach();
-
-            return;
-        }
-
-        if (! $zona) {
-            $user->subpuntosSupervisados()->detach();
-
-            return;
-        }
-
-        $subpuntoIds = Subpunto::query()
-            ->where('zona', $zona)
-            ->pluck('id')
-            ->all();
-
-        $user->subpuntosSupervisados()->sync($subpuntoIds);
     }
 
     public function subirArchivosEditados(Request $request, $id, AuditLogger $audit)

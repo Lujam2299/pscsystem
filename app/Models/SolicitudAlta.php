@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\DocumentacionAltas;
+use App\Models\User;
 
 class SolicitudAlta extends Model
 {
     use HasFactory;
-
     protected $fillable = [
         'id',
         'solicitante',
@@ -60,7 +61,6 @@ class SolicitudAlta extends Model
         'empresa',
         'rol',
         'punto',
-        'zona_supervisor',
         'ultima_edicion',
         'created_at',
         'updated_at',
@@ -71,13 +71,10 @@ class SolicitudAlta extends Model
         return $this->hasOne(DocumentacionAltas::class, 'solicitud_id');
     }
 
-    public function user()
-    {
+    public function user() {
         return $this->belongsTo(User::class, 'sol_alta_id');
     }
-
-    public function usuario()
-    {
+    public function usuario() {
         return $this->hasOne(User::class, 'sol_alta_id');
     }
 
@@ -92,4 +89,5 @@ class SolicitudAlta extends Model
                 return 'No Disponible';
         }
     }
+
 }
