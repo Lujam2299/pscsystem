@@ -14,6 +14,7 @@ use App\Models\Reingreso;
 use App\Models\SolicitudAlta;
 use App\Models\SolicitudBajas;
 use App\Models\SolicitudVacaciones;
+use App\Models\Subpunto;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Carbon\Carbon;
@@ -82,10 +83,17 @@ class AdminController extends Controller
         $docsId = $solicitud->sol_docs_id;
         $documentacion = DocumentacionAltas::find($docsId);
         $puntos = Punto::with('subpuntos')->get(); // Agregamos los puntos
+        $zonasSupervisor = Subpunto::query()
+            ->whereNotNull('zona')
+            ->where('zona', '<>', '')
+            ->select('zona')
+            ->distinct()
+            ->orderBy('zona')
+            ->pluck('zona');
 
         $tipoSeleccionado = $solicitud->tipo_empleado ?? 'oficina';
 
-        return view('admi.admiEditarUsuarioForm', compact('user', 'solicitud', 'documentacion', 'puntos', 'tipoSeleccionado'));
+        return view('admi.admiEditarUsuarioForm', compact('user', 'solicitud', 'documentacion', 'puntos', 'tipoSeleccionado', 'zonasSupervisor'));
     }
 
     public function verBuzon()
