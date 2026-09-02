@@ -113,8 +113,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/users/registrarUsuario', [UserController::class, 'crearUsuario'])->name('admin.crearUsuarioForm');
     Route::post('/guardarUsuario', [UserController::class, 'registrarUsuario'])->name('registrarUsuario');
     Route::get('/editar_usuario/{id}', [AdminController::class, 'editarUsuario'])->name('admin.editarUsuarioForm');
-    Route::post('/actualizar_usuario/{id}', [SupervisorController::class, 'editarInformacionSolicitud'])->name('admin.actualizarUsuario');
-    Route::post('/actualizar_documentacion_usuario/{id}', [SupervisorController::class, 'subirArchivosEditados'])->name('admin.actualizarDocumentacionUsuario');
+    Route::post('/actualizar_usuario/{id}', [SupervisorController::class, 'editarInformacionSolicitud'])
+        ->middleware(['permission:supervisors.access', 'module.enabled:erp_supervisores'])
+        ->name('admin.actualizarUsuario');
+    Route::post('/actualizar_documentacion_usuario/{id}', [SupervisorController::class, 'subirArchivosEditados'])
+        ->middleware(['permission:supervisors.access', 'module.enabled:erp_supervisores'])
+        ->name('admin.actualizarDocumentacionUsuario');
     Route::get('/ver_usuarios', [AdminController::class, 'verUsuarios'])->name('admin.verUsuarios');
     Route::get('/tablero_supervisores', [AdminController::class, 'tableroSupervisores'])
         ->middleware(['permission:supervisors.access', 'module.enabled:erp_supervisores'])
@@ -481,9 +485,11 @@ Route::middleware('auth')->group(function () {
     })->name('exportar.altas.corte');
 
     Route::post('/notificaciones/leidas', function () {
-        \App\Models\Alerta::where('user_id', Auth::id())
-            ->where('leida', false)
-            ->update(['leida' => true]);
+        $user = Auth::user();
+
+        if ($user) {
+            \App\Models\ToastNotificationLog::markReadFor($user);
+        }
 
         return response()->json(['ok' => true]);
     })->name('notificaciones.leer');

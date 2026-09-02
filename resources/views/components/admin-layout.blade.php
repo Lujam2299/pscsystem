@@ -1,79 +1,14 @@
 @php
-    use App\Models\User;
-    use Carbon\Carbon;
+    use App\Models\ToastNotificationLog;
     use Illuminate\Support\Facades\Auth;
 
-    $usuarios = User::with('documentacionAltas')
-        ->where('estatus', 'Activo')
-        ->whereDate('fecha_ingreso', '<', Carbon::now()->subMonth())
-        ->where('empresa', '!=', 'Montana')
-        ->where('rol', '!=', 'admin')
-        ->get();
-
-    $notificacionesDocumentacion = collect();
-
-    foreach ($usuarios as $usuario) {
-        $solicitud = $usuario->solicitudAlta;
-        $documentacion = $usuario->documentacionAltas;
-
-        if (!$documentacion) {
-            continue;
-        }
-
-        $tipo = strtolower($solicitud->tipo_empleado ?? '');
-
-        if ($tipo === 'armado') {
-            $camposObligatorios = [
-                'arch_solicitud_empleo',
-                'arch_ine',
-                'arch_nss',
-                'arch_curp',
-                'arch_rfc',
-                'arch_acta_nacimiento',
-                'arch_comprobante_estudios',
-                'arch_comprobante_domicilio',
-                'arch_carta_rec_laboral',
-                'arch_carta_rec_personal',
-                'arch_cartilla_militar',
-                'arch_antidoping',
-                'arch_carta_no_penales',
-                'arch_contrato',
-                'arch_foto',
-            ];
-        } else {
-            $camposObligatorios = [
-                'arch_solicitud_empleo',
-                'arch_ine',
-                'arch_nss',
-                'arch_curp',
-                'arch_rfc',
-                'arch_acta_nacimiento',
-                'arch_comprobante_estudios',
-                'arch_comprobante_domicilio',
-                'arch_carta_rec_laboral',
-                'arch_carta_rec_personal',
-                'arch_contrato',
-                'arch_foto',
-            ];
-        }
-
-        $entregados = 0;
-        foreach ($camposObligatorios as $campo) {
-            if (!empty($documentacion->$campo)) {
-                $entregados++;
-            }
-        }
-
-        $porcentaje = ($entregados / count($camposObligatorios)) * 100;
-
-        if ($porcentaje < 50) {
-            $notificacionesDocumentacion->push([
-                'nombre' => $usuario->name,
-                'punto' => $usuario->punto,
-                'porcentaje' => round($porcentaje, 1),
-            ]);
-        }
-    }
+    $usuarioActual = Auth::user();
+    $notificacionesHistorial = $usuarioActual
+        ? ToastNotificationLog::recentFor($usuarioActual, 15)
+        : collect();
+    $notificacionesPendientes = $usuarioActual
+        ? ToastNotificationLog::unreadCountFor($usuarioActual)
+        : 0;
 @endphp
 
 
@@ -100,26 +35,37 @@
                                     d="M10 2a6 6 0 00-6 6v2c0 .768-.293 1.47-.769 2H3a1 1 0 000 2h14a1 1 0 000-2h-.231A3.001 3.001 0 0116 10V8a6 6 0 00-6-6zM7 18a3 3 0 006 0H7z" />
                             </svg>
                             Notificaciones
-                            @if ($notificacionesDocumentacion->count())
+                            @if ($notificacionesPendientes)
                                 <span
                                     class="absolute top-0 right-0 inline-flex items-center justify-center w-4 h-4 text-xs text-white bg-red-600 rounded-full">
-                                    {{ $notificacionesDocumentacion->count() > 99 ? '99+' : $notificacionesDocumentacion->count() }}
+                                    {{ $notificacionesPendientes > 99 ? '99+' : $notificacionesPendientes }}
                                 </span>
                             @endif
                         </button>
 
                         <div id="notificacionesDropdown"
                             class="absolute right-0 z-50 mt-2 hidden max-h-80 w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl scrollbar-thin scrollbar-thumb-gray-400 dark:border-gray-600 dark:bg-gray-700 dark:scrollbar-thumb-gray-600">
-                            @forelse($notificacionesDocumentacion as $alerta)
-                                <div
-                                    class="px-4 py-2 text-sm text-gray-800 dark:text-gray-100 border-b dark:border-gray-600">
-                                    <strong>{{ $alerta['nombre'] }}</strong> — <span
-                                        class="text-xs text-gray-500">{{ $alerta['punto'] }}</span><br>
-                                    <span>Documentación incompleta ({{ $alerta['porcentaje'] }}%)</span>
-                                </div>
+                            @forelse($notificacionesHistorial as $notificacion)
+                                <a href="{{ $notificacion->url ?: '#' }}"
+                                    class="block border-b px-4 py-3 text-sm text-gray-800 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-100 dark:hover:bg-gray-600">
+                                    <div class="flex items-start gap-3">
+                                        <span
+                                            class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
+                                            <i class="ti ti-bell"></i>
+                                        </span>
+                                        <span class="min-w-0">
+                                            <strong class="block truncate">{{ $notificacion->title }}</strong>
+                                            @if ($notificacion->text)
+                                                <span class="block text-xs text-gray-600 dark:text-gray-300">{{ $notificacion->text }}</span>
+                                            @endif
+                                            <span class="mt-1 block text-[11px] text-gray-400">
+                                                {{ optional($notificacion->created_at)->diffForHumans() }}
+                                            </span>
+                                        </span>
+                                    </div>
+                                </a>
                             @empty
-                                <div class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">No hay usuarios con
-                                    documentación incompleta.</div>
+                                <div class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">No hay notificaciones recientes.</div>
                             @endforelse
                         </div>
                     </div>
@@ -146,8 +92,7 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data.ok) {
-                            const contador = document.querySelector('[id^="notificacionesDropdown"]')
-                                .previousElementSibling.querySelector('span');
+                            const contador = dropdown.previousElementSibling.querySelector('span');
                             if (contador) contador.remove();
                         }
                     });

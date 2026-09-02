@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Events\ConversationUpdated;
 use App\Models\Message;
+use App\Models\ToastNotificationLog;
 use App\Services\RealtimeToast;
 use Illuminate\Support\Str;
 
@@ -22,6 +23,9 @@ class MessageObserver
                 'url' => route('mensajes.index'),
                 // 'url' => route('mensajes.show', $message->conversation_id),
                 'key' => 'message:'.$message->id,
+                'type' => ToastNotificationLog::TYPE_MESSAGE,
+                'audience' => 'private',
+                'actor_user_id' => $message->user_id,
             ],
             (int) $message->user_id,
         );
