@@ -102,9 +102,9 @@
     $cards = array_filter([
         \Illuminate\Support\Facades\Gate::allows(\App\Support\Authorization\Permission::HIRES_REVIEW)
             ? [
-                'titulo' => 'Nuevas Altas',
+                'titulo' => 'Últimas modificaciones',
                 'ruta' => route('admi.verSolicitudesAltas'),
-                'icono' => 'trending-up',
+                'icono' => 'edit',
                 'color' => 'bg-green-200 dark:bg-green-700',
                 'notificaciones' => $solicitudesAdmin,
             ]
@@ -241,7 +241,7 @@
                 $cardsAgrupadas = collect($cards)->groupBy(fn ($card) => match(true) {
                     in_array($card['titulo'], ['Mensajes', 'Buzón de Quejas y Sugerencias']) => 'Comunicación',
                     in_array($card['titulo'], ['Nóminas', 'IMSS', 'Contabilidad']) => 'Finanzas y cumplimiento',
-                    in_array($card['titulo'], ['RRHH', 'Vacaciones', 'Gestión de Usuarios', 'Nuevas Altas']) => 'Personas',
+                    in_array($card['titulo'], ['RRHH', 'Vacaciones', 'Gestión de Usuarios', 'Últimas modificaciones']) => 'Personas',
                     default => 'Operación',
                 });
             @endphp
