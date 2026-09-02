@@ -113,15 +113,8 @@ class RhController extends Controller
     public function solicitudesBajas()
     {
         $solicitudes = SolicitudBajas::with('user.solicitudAlta')
-            ->where(function ($query) {
-                $query->where(function ($q) {
-                    $q->where('estatus', 'En Proceso')
-                    /* ->where('por', 'Renuncia') */;
-                })->orWhere(function ($q) {
-                    $q->where('estatus', 'Aceptada')
-                        ->where('observaciones', 'Finiquito enviado a RH.');
-                });
-            })
+            ->whereDate('fecha_solicitud', '>=', Carbon::now()->subDays(7)->toDateString())
+            ->orderBy('fecha_solicitud', 'desc')
             ->get();
 
         return view('rh.solicitudesBajas', compact('solicitudes'));
