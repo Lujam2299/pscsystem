@@ -114,10 +114,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/guardarUsuario', [UserController::class, 'registrarUsuario'])->name('registrarUsuario');
     Route::get('/editar_usuario/{id}', [AdminController::class, 'editarUsuario'])->name('admin.editarUsuarioForm');
     Route::post('/actualizar_usuario/{id}', [SupervisorController::class, 'editarInformacionSolicitud'])
-        ->middleware(['permission:supervisors.access', 'module.enabled:erp_supervisores'])
         ->name('admin.actualizarUsuario');
     Route::post('/actualizar_documentacion_usuario/{id}', [SupervisorController::class, 'subirArchivosEditados'])
-        ->middleware(['permission:supervisors.access', 'module.enabled:erp_supervisores'])
         ->name('admin.actualizarDocumentacionUsuario');
     Route::get('/ver_usuarios', [AdminController::class, 'verUsuarios'])->name('admin.verUsuarios');
     Route::get('/tablero_supervisores', [AdminController::class, 'tableroSupervisores'])
