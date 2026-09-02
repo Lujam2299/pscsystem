@@ -88,7 +88,7 @@ class RealtimeToast
                     'read_at' => null,
                 ];
 
-                if (!empty($data['key'])) {
+                if (! empty($data['key'])) {
                     ToastNotificationLog::query()->updateOrCreate(
                         [
                             'recipient_user_id' => $recipientId,
