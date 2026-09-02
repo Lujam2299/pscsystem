@@ -2,8 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\SupervisorController;
+use App\Http\Middleware\EnsureRoutePermission;
 use App\Models\User;
+use App\Support\Authorization\Permission;
 use Illuminate\Support\Facades\Route;
+use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class OptionalModuleAuthorizationTest extends TestCase
@@ -56,7 +61,10 @@ class OptionalModuleAuthorizationTest extends TestCase
     {
         $this->assertControllerRoutesHaveMiddleware('SupervisorController', [
             'permission:supervisors.access', 'module.enabled:erp_supervisores',
-        ], ['admin.vacaciones.aceptar', 'admin.vacaciones.rechazar']);
+        ], [
+            'admin.vacaciones.aceptar', 'admin.vacaciones.rechazar',
+            'admin.actualizarUsuario', 'admin.actualizarDocumentacionUsuario',
+        ]);
         $this->assertControllerRoutesHaveMiddleware('CustodiosController', [
             'permission:custodians.access', 'custodios.role', 'module.enabled:erp_custodios',
         ]);
@@ -67,6 +75,66 @@ class OptionalModuleAuthorizationTest extends TestCase
         $this->assertRouteHasMiddleware('admin.custodiosDashboard', [
             'permission:custodians.access', 'custodios.role', 'module.enabled:erp_custodios',
         ]);
+    }
+
+    public function test_administrative_edit_routes_keep_user_permissions_without_supervisor_restrictions(): void
+    {
+        foreach (['admin.actualizarUsuario', 'admin.actualizarDocumentacionUsuario'] as $name) {
+            $route = Route::getRoutes()->getByName($name);
+            $this->assertNotNull($route);
+            $this->assertRouteHasMiddleware($name, ['web', 'auth']);
+            $this->assertContains(EnsureRoutePermission::class, app('router')->gatherRouteMiddleware($route));
+            $this->assertSame(Permission::USERS_UPDATE, config('route-permissions')[$name]);
+            $this->assertNotContains('permission:supervisors.access', $route->gatherMiddleware());
+            $this->assertNotContains('module.enabled:erp_supervisores', $route->gatherMiddleware());
+        }
+    }
+
+    #[DataProvider('administrativeEditors')]
+    public function test_real_edit_routes_authorize_expected_roles_with_supervisor_module_disabled(string $role, bool $allowed): void
+    {
+        config(['modules.disabled.erp_supervisores' => true]);
+        $user = (new User)->forceFill([
+            'id' => 123, 'name' => 'Editor de prueba', 'rol' => $role,
+        ])->setRelation('solicitudAlta', null);
+
+        // Keep real routing and middleware, but never execute persistence or file uploads.
+        $controller = Mockery::mock(SupervisorController::class)->makePartial();
+        foreach (['editarInformacionSolicitud', 'subirArchivosEditados'] as $method) {
+            if ($allowed) {
+                $controller->shouldReceive($method)->once()->andReturn(response('authorized'));
+            } else {
+                $controller->shouldNotReceive($method);
+            }
+        }
+        $this->app->instance(SupervisorController::class, $controller);
+
+        foreach (['admin.actualizarUsuario', 'admin.actualizarDocumentacionUsuario'] as $name) {
+            $response = $this->actingAs($user)->post(route($name, 999));
+            if ($allowed) {
+                $response->assertOk()->assertSeeText('authorized');
+            } else {
+                $response->assertForbidden();
+            }
+        }
+    }
+
+    public static function administrativeEditors(): array
+    {
+        return [
+            ['admin', true], ['Administrador', true],
+            ['AUXILIAR RH', true], ['AUXILIAR RECURSOS HUMANOS', true],
+            ['JEFA RECURSOS HUMANOS', true],
+            ['SUPERVISOR', false], ['APOYO SUPERVISOR', false],
+            ['GUARDIA', false], ['Operaciones', false], ['MONITORISTA', false],
+        ];
+    }
+
+    public function test_guests_cannot_submit_administrative_edits(): void
+    {
+        foreach (['admin.actualizarUsuario', 'admin.actualizarDocumentacionUsuario'] as $name) {
+            $this->postJson(route($name, 999))->assertUnauthorized();
+        }
     }
 
     private function assertRoleResponse(string $role, string $uri, int $status): void
