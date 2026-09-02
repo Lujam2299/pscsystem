@@ -10,15 +10,7 @@
                     ->where('observaciones', '!=', 'Solicitud enviada a Administrador.')
                     ->count();
     $bajasEnProceso = SolicitudBajas::with('user.solicitudAlta')
-            ->where(function ($query) {
-                $query->where(function ($q) {
-                    $q->where('estatus', 'En Proceso')
-                    ->where('por', 'Renuncia');
-                })->orWhere(function ($q) {
-                    $q->where('estatus', 'Aceptada')
-                    ->where('observaciones', 'Finiquito enviado a RH.');
-                });
-            })
+            ->whereDate('fecha_solicitud', '>=', now()->subDays(7)->toDateString())
             ->count();
     $vacacionesEnProceso = SolicitudVacaciones::where('estatus', 'En Proceso')
                             ->where('observaciones', 'Solicitud aceptada, falta subir archivo de solicitud.')
@@ -42,7 +34,7 @@
             'icono' => 'user-x',
             'theme' => 'red',
             'notificaciones' => $bajasEnProceso,
-            'desc' => 'Renuncias y finiquitos'
+            'desc' => 'Últimos 7 días'
         ],
         /*[
             'titulo' => 'Lista de Asistencia',

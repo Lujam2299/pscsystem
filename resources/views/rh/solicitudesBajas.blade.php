@@ -28,14 +28,14 @@
                                 Solicitudes de Baja
                             </h1>
                             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                                Gestione y revise las solicitudes de baja de los últimos 14 días
+                                Gestione y revise las solicitudes de baja de los últimos 7 días
                             </p>
                         </div>
 
                         <div class="flex items-center space-x-2">
                             <div class="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 px-3 py-1 rounded-full">
                                 <span class="text-sm font-medium">{{ $solicitudes->count() }}</span>
-                                <span class="text-xs">últimos 14 días</span>
+                                <span class="text-xs">últimos 7 días</span>
                             </div>
                         </div>
                     </div>
@@ -47,7 +47,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
                         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay solicitudes recientes</h3>
-                        <p class="text-gray-500 dark:text-gray-400 mb-6">No hay solicitudes de baja registradas en los últimos 14 días.</p>
+                        <p class="text-gray-500 dark:text-gray-400 mb-6">No hay solicitudes de baja registradas en los últimos 7 días.</p>
 
                         <a href="{{ route('dashboard') }}"
                            class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 shadow-sm">
