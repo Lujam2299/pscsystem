@@ -28,7 +28,7 @@
 
     // Definición de tarjetas con metadatos para estilos dinámicos
     $cards = [
-        /*[
+        [
             'titulo' => 'Solicitudes de Altas',
             'ruta' => route('rh.solicitudesAltas'),
             'icono' => 'user-plus',
@@ -44,7 +44,7 @@
             'notificaciones' => $bajasEnProceso,
             'desc' => 'Renuncias y finiquitos'
         ],
-        [
+        /*[
             'titulo' => 'Lista de Asistencia',
             'ruta' => route('rh.listaAsistencia'),
             'icono' => 'clipboard-check',
