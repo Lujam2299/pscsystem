@@ -83,8 +83,15 @@ class SupervisorZoneFlowTest extends TestCase
             }
             $table->timestamp('created_at')->nullable();
         });
-        foreach (['A', 'A', 'B', null, '', '   '] as $zone) {
-            DB::table('subpuntos')->insert(['zona' => $zone]);
+        foreach ([
+            ['zona' => 'A', 'nombre' => 'Norte'],
+            ['zona' => 'A', 'nombre' => 'Centro'],
+            ['zona' => 'B', 'nombre' => 'Sur'],
+            ['zona' => null, 'nombre' => 'Sin zona'],
+            ['zona' => '', 'nombre' => 'Vacío'],
+            ['zona' => '   ', 'nombre' => 'Espacios'],
+        ] as $subpoint) {
+            DB::table('subpuntos')->insert($subpoint);
         }
     }
 
@@ -125,7 +132,10 @@ class SupervisorZoneFlowTest extends TestCase
     public function test_creation_and_documentation_assign_selected_zone(string $role): void
     {
         $this->editor($role);
-        $this->get(route('rh.formAlta'))->assertOk()->assertViewHas('zonasSupervisor', fn ($zones) => $zones->all() === ['A', 'B'])->assertSee('name="zona_supervisor"', false);
+        $this->get(route('rh.formAlta'))->assertOk()
+            ->assertViewHas('zonasSupervisor', fn ($zones) => $zones->all() === ['A' => 'A — Centro, Norte', 'B' => 'B — Sur'])
+            ->assertSee('name="zona_supervisor"', false)
+            ->assertSeeText('A — Centro, Norte');
         $this->post(route('rh.guardarAlta'), $this->payload())->assertSessionHasNoErrors()->assertSessionMissing('error')->assertRedirect();
         $solicitud = SolicitudAlta::firstOrFail();
         $this->assertSame('SUPERVISOR', $solicitud->rol);

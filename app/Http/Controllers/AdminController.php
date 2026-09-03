@@ -87,7 +87,7 @@ class AdminController extends Controller
         $puntos = Punto::with('subpuntos')->get(); // Agregamos los puntos
 
         $tipoSeleccionado = $solicitud->tipo_empleado ?? 'oficina';
-        $zonasSupervisor = app(SupervisorZoneService::class)->available();
+        $zonasSupervisor = app(SupervisorZoneService::class)->availableOptions();
 
         return view('admi.admiEditarUsuarioForm', compact('user', 'solicitud', 'documentacion', 'puntos', 'tipoSeleccionado', 'zonasSupervisor'));
     }

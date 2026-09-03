@@ -203,8 +203,8 @@
                                 <label for="zona_supervisor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Zona del supervisor (opcional)</label>
                                 <select id="zona_supervisor" name="zona_supervisor" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                                     <option value="">Sin cambio de zona</option>
-                                    @foreach($zonasSupervisor as $zona)
-                                        <option value="{{ $zona }}" @selected((string) old('zona_supervisor', $solicitud->zona_supervisor) === (string) $zona)>{{ $zona }}</option>
+                                    @foreach($zonasSupervisor as $zona => $referencia)
+                                        <option value="{{ $zona }}" @selected((string) old('zona_supervisor', $solicitud->zona_supervisor) === (string) $zona)>{{ $referencia }}</option>
                                     @endforeach
                                 </select>
                                 <p class="mt-1 text-xs text-gray-500">Opcional; dejarlo vacío conserva las asignaciones actuales.</p>

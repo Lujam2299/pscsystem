@@ -17,6 +17,27 @@ class SupervisorZoneService
             ->unique()->sort()->values();
     }
 
+    public function availableOptions(): Collection
+    {
+        $subpoints = Subpunto::query()
+            ->whereNotNull('zona')
+            ->whereNotNull('nombre')
+            ->get(['zona', 'nombre'])
+            ->groupBy(fn (Subpunto $subpoint) => trim((string) $subpoint->zona));
+
+        return $this->available()->mapWithKeys(function (string $zone) use ($subpoints): array {
+            $names = $subpoints->get($zone, collect())
+                ->map(fn (Subpunto $subpoint) => trim((string) $subpoint->nombre))
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values()
+                ->implode(', ');
+
+            return [$zone => $names === '' ? $zone : "$zone — $names"];
+        });
+    }
+
     public function applySelection(SolicitudAlta $solicitud, ?string $role, ?string $zone): ?string
     {
         $solicitud->rol = strtoupper(trim((string) $role)) === 'SUPERVISOR' ? 'SUPERVISOR' : $role;

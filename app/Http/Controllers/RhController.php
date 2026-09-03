@@ -211,7 +211,7 @@ class RhController extends Controller
     {
         $puntos = Punto::with('subpuntos')->get();
 
-        $zonasSupervisor = app(SupervisorZoneService::class)->available();
+        $zonasSupervisor = app(SupervisorZoneService::class)->availableOptions();
 
         return view('rh.generarAlta', compact('puntos', 'zonasSupervisor'));
     }
@@ -221,7 +221,7 @@ class RhController extends Controller
         $puntos = Punto::with('subpuntos')->get();
         $tipo = $request->get('tipo', 'oficina');
 
-        $zonasSupervisor = app(SupervisorZoneService::class)->available();
+        $zonasSupervisor = app(SupervisorZoneService::class)->availableOptions();
 
         return view('rh.generarAlta', compact('tipo', 'puntos', 'zonasSupervisor'));
     }
