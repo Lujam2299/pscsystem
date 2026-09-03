@@ -125,6 +125,7 @@ jobs:
         run: >-
           php artisan test
           tests/Feature/OptionalModuleAuthorizationTest.php
+          tests/Feature/SupervisorZoneFlowTest.php
           tests/Feature/AsistenciaDiariaUnificadaTest.php
           tests/Feature/MessagingAuthorizationTest.php
           tests/Feature/TraccarMonitoringControllerTest.php

@@ -14,6 +14,7 @@ use App\Models\Subpunto;
 use App\Models\TiemposExtra;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\SupervisorZoneService;
 use App\Support\Authorization\RoleNormalizer;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -265,130 +266,135 @@ class SupervisorController extends Controller
     public function editarInformacionSolicitud(Request $request, $id, AuditLogger $audit)
     {
         try {
-            $validated = $request->validate([
-                'tipo' => 'required|in:oficina,armado,noarmado',
-                'name' => 'nullable|string|max:255',
-                'apellido_paterno' => 'nullable|string|max:255',
-                'apellido_materno' => 'nullable|string|max:255',
-                'fecha_nacimiento' => 'nullable|date',
-                'curp' => 'nullable|string|max:255',
-                'nss' => ['nullable', 'string', 'size:11'],
-                'edo_civil' => 'nullable|string',
-                'rfc' => 'nullable|string|max:255',
-                'telefono' => 'nullable|string|max:255',
-                'calle' => 'nullable|string|max:255',
-                'num_ext' => 'nullable|string|max:255',
-                'colonia' => 'nullable|string|max:255',
-                'ciudad' => 'nullable|string|max:255',
-                'peso' => 'nullable|string|max:255',
-                'estatura' => 'nullable|string|max:255',
-                'cp_fiscal' => 'nullable|string|max:255',
-                'estado' => 'nullable|string|max:255',
-                'liga_rfc' => 'nullable|string|max:255',
-                'infonavit' => 'nullable|string|max:255',
-                'fonacot' => 'nullable|string|max:255',
-                'domicilio_comprobante' => 'nullable|string|max:255',
-                'departamento' => 'nullable|string|max:255',
-                'rol' => 'nullable|string|max:255',
-                'reingreso' => 'nullable|string',
-                'punto' => 'nullable|string|max:255',
-                'empresa' => 'nullable|string',
-                'sueldo_mensual' => 'nullable|string',
-                'fecha_ingreso' => 'nullable|date',
-                'email' => 'nullable|email|unique:solicitud_altas,email,'.$id.',id',
+            return DB::transaction(function () use ($request, $id, $audit) {
+                $validated = $request->validate([
+                    'tipo' => 'required|in:oficina,armado,noarmado',
+                    'name' => 'nullable|string|max:255',
+                    'apellido_paterno' => 'nullable|string|max:255',
+                    'apellido_materno' => 'nullable|string|max:255',
+                    'fecha_nacimiento' => 'nullable|date',
+                    'curp' => 'nullable|string|max:255',
+                    'nss' => ['nullable', 'string', 'size:11'],
+                    'edo_civil' => 'nullable|string',
+                    'rfc' => 'nullable|string|max:255',
+                    'telefono' => 'nullable|string|max:255',
+                    'calle' => 'nullable|string|max:255',
+                    'num_ext' => 'nullable|string|max:255',
+                    'colonia' => 'nullable|string|max:255',
+                    'ciudad' => 'nullable|string|max:255',
+                    'peso' => 'nullable|string|max:255',
+                    'estatura' => 'nullable|string|max:255',
+                    'cp_fiscal' => 'nullable|string|max:255',
+                    'estado' => 'nullable|string|max:255',
+                    'liga_rfc' => 'nullable|string|max:255',
+                    'infonavit' => 'nullable|string|max:255',
+                    'fonacot' => 'nullable|string|max:255',
+                    'domicilio_comprobante' => 'nullable|string|max:255',
+                    'departamento' => 'nullable|string|max:255',
+                    'rol' => 'nullable|string|max:255',
+                    'reingreso' => 'nullable|string',
+                    'punto' => 'nullable|string|max:255',
+                    'empresa' => 'nullable|string',
+                    'sueldo_mensual' => 'nullable|string',
+                    'fecha_ingreso' => 'nullable|date',
+                    'email' => 'nullable|email|unique:solicitud_altas,email,'.$id.',id',
 
-                // --- NUEVAS VALIDACIONES ---
-                'tipo_periodo' => 'nullable|in:semanal,quincenal',
-                'banco' => 'nullable|string|max:255',
-                'cuenta_bancaria' => 'nullable|string|max:255',
-            ]);
+                    // --- NUEVAS VALIDACIONES ---
+                    'tipo_periodo' => 'nullable|in:semanal,quincenal',
+                    'banco' => 'nullable|string|max:255',
+                    'cuenta_bancaria' => 'nullable|string|max:255',
+                ]);
 
-            $solicitud = SolicitudAlta::findOrFail($id);
-            $before = $solicitud->only([
-                'nombre', 'apellido_paterno', 'apellido_materno', 'tipo_empleado', 'departamento',
-                'rol', 'punto', 'empresa', 'fecha_ingreso', 'email', 'tipo_periodo', 'status', 'observaciones',
-            ]);
+                $request->validate(['zona_supervisor' => 'nullable|string|max:255']);
+                $solicitud = SolicitudAlta::lockForUpdate()->findOrFail($id);
+                $before = $solicitud->only([
+                    'nombre', 'apellido_paterno', 'apellido_materno', 'tipo_empleado', 'departamento',
+                    'rol', 'punto', 'zona_supervisor', 'empresa', 'fecha_ingreso', 'email', 'tipo_periodo', 'status', 'observaciones',
+                ]);
 
-            // Actualizar todos los campos de la solicitud
-            $solicitud->solicitante = auth()->user()->name;
-            $solicitud->nombre = $request->name;
-            $solicitud->apellido_paterno = $request->apellido_paterno;
-            $solicitud->apellido_materno = $request->apellido_materno;
-            $solicitud->fecha_nacimiento = $request->fecha_nacimiento;
-            $solicitud->tipo_empleado = $request->tipo;
-            $solicitud->curp = $request->curp;
-            $solicitud->nss = $request->nss;
-            $solicitud->estado_civil = $request->edo_civil;
-            $solicitud->rfc = $request->rfc;
-            $solicitud->telefono = $request->telefono;
-            $solicitud->domicilio_calle = $request->calle;
-            $solicitud->domicilio_numero = $request->num_ext;
-            $solicitud->domicilio_colonia = $request->colonia;
-            $solicitud->cp_fiscal = $request->cp_fiscal;
-            $solicitud->domicilio_ciudad = $request->ciudad;
-            $solicitud->peso = $request->peso;
-            $solicitud->estatura = $request->estatura;
-            $solicitud->liga_rfc = $request->liga_rfc;
-            $solicitud->domicilio_estado = $request->estado;
-            $solicitud->infonavit = $request->infonavit;
-            $solicitud->fonacot = $request->fonacot;
-            $solicitud->domicilio_comprobante = $request->domicilio_comprobante;
-            $solicitud->rol = $request->rol;
-            $solicitud->punto = $request->punto;
-            $solicitud->reingreso = $request->reingreso;
-            $solicitud->empresa = $request->empresa;
-            $solicitud->fecha_ingreso = $request->fecha_ingreso;
-            $solicitud->sueldo_mensual = $request->sueldo_mensual;
-            $solicitud->email = $request->email;
+                // Actualizar todos los campos de la solicitud
+                $solicitud->solicitante = auth()->user()->name;
+                $solicitud->nombre = $request->name;
+                $solicitud->apellido_paterno = $request->apellido_paterno;
+                $solicitud->apellido_materno = $request->apellido_materno;
+                $solicitud->fecha_nacimiento = $request->fecha_nacimiento;
+                $solicitud->tipo_empleado = $request->tipo;
+                $solicitud->curp = $request->curp;
+                $solicitud->nss = $request->nss;
+                $solicitud->estado_civil = $request->edo_civil;
+                $solicitud->rfc = $request->rfc;
+                $solicitud->telefono = $request->telefono;
+                $solicitud->domicilio_calle = $request->calle;
+                $solicitud->domicilio_numero = $request->num_ext;
+                $solicitud->domicilio_colonia = $request->colonia;
+                $solicitud->cp_fiscal = $request->cp_fiscal;
+                $solicitud->domicilio_ciudad = $request->ciudad;
+                $solicitud->peso = $request->peso;
+                $solicitud->estatura = $request->estatura;
+                $solicitud->liga_rfc = $request->liga_rfc;
+                $solicitud->domicilio_estado = $request->estado;
+                $solicitud->infonavit = $request->infonavit;
+                $solicitud->fonacot = $request->fonacot;
+                $solicitud->domicilio_comprobante = $request->domicilio_comprobante;
+                $zonaSeleccionada = app(SupervisorZoneService::class)->applySelection($solicitud, $request->rol, $request->input('zona_supervisor'));
+                $solicitud->punto = $request->punto;
+                $solicitud->reingreso = $request->reingreso;
+                $solicitud->empresa = $request->empresa;
+                $solicitud->fecha_ingreso = $request->fecha_ingreso;
+                $solicitud->sueldo_mensual = $request->sueldo_mensual;
+                $solicitud->email = $request->email;
 
-            // --- ASIGNAR NUEVOS CAMPOS ---
-            $solicitud->tipo_periodo = $request->tipo_periodo;
-            $solicitud->banco = $request->banco;
-            $solicitud->cuenta_bancaria = $request->cuenta_bancaria;
+                // --- ASIGNAR NUEVOS CAMPOS ---
+                $solicitud->tipo_periodo = $request->tipo_periodo;
+                $solicitud->banco = $request->banco;
+                $solicitud->cuenta_bancaria = $request->cuenta_bancaria;
 
-            $solicitud->ultima_edicion = Auth::user()->name.' '.Carbon::now('America/Mexico_City');
+                $solicitud->ultima_edicion = Auth::user()->name.' '.Carbon::now('America/Mexico_City');
 
-            // Los nombres de rol y departamento se normalizan en un solo perfil de RH.
-            $rolEditor = RoleNormalizer::for(Auth::user());
-            $esRH_O_Admin = in_array($rolEditor, [
-                RoleNormalizer::ADMIN,
-                RoleNormalizer::HUMAN_RESOURCES,
-            ], true);
+                // Los nombres de rol y departamento se normalizan en un solo perfil de RH.
+                $rolEditor = RoleNormalizer::for(Auth::user());
+                $esRH_O_Admin = in_array($rolEditor, [
+                    RoleNormalizer::ADMIN,
+                    RoleNormalizer::HUMAN_RESOURCES,
+                ], true);
 
-            if ($esRH_O_Admin) {
-                $solicitud->status = 'Aceptada';
-                $solicitud->observaciones = 'Solicitud Aceptada.';
-            } else {
-                $solicitud->status = 'En Proceso';
-                $solicitud->observaciones = 'Cambios realizados, en espera de revisión.';
-            }
+                if ($esRH_O_Admin) {
+                    $solicitud->status = 'Aceptada';
+                    $solicitud->observaciones = 'Solicitud Aceptada.';
+                } else {
+                    $solicitud->status = 'En Proceso';
+                    $solicitud->observaciones = 'Cambios realizados, en espera de revisión.';
+                }
 
-            $solicitud->save();
+                $solicitud->save();
 
-            // Actualizar el usuario asociado si tiene permisos
-            $user = User::where('sol_alta_id', $id)->first();
+                // Actualizar el usuario asociado si tiene permisos
+                $user = User::where('sol_alta_id', $id)->first();
 
-            if ($user && $esRH_O_Admin) {
-                $user->name = trim($solicitud->nombre.' '.$solicitud->apellido_paterno.' '.$solicitud->apellido_materno);
-                $user->email = $solicitud->email;
-                $user->punto = $solicitud->punto;
-                $user->rol = $solicitud->rol;
-                $user->empresa = $solicitud->empresa;
+                if ($user && $esRH_O_Admin) {
+                    $user->name = trim($solicitud->nombre.' '.$solicitud->apellido_paterno.' '.$solicitud->apellido_materno);
+                    $user->email = $solicitud->email;
+                    $user->punto = $solicitud->punto;
+                    $user->rol = $solicitud->rol;
+                    $user->empresa = $solicitud->empresa;
 
-                $user->save();
-            }
+                    $user->save();
+                    app(SupervisorZoneService::class)->sync($user, $zonaSeleccionada);
+                }
 
-            $audit->record('Altas', 'Solicitud de alta actualizada', $solicitud, $before, $solicitud->only(array_keys($before)), [
-                'usuario_actualizado_id' => $user?->id,
-            ]);
+                $audit->record('Altas', 'Solicitud de alta actualizada', $solicitud, $before, $solicitud->only(array_keys($before)), [
+                    'usuario_actualizado_id' => $user?->id,
+                ]);
 
-            $documentacion = DocumentacionAltas::where('solicitud_id', $id)->first();
-            $tipo = $solicitud->tipo_empleado;
+                $documentacion = DocumentacionAltas::where('solicitud_id', $id)->first();
+                $tipo = $solicitud->tipo_empleado;
 
-            $flujoAdministrativo = $request->routeIs('admin.actualizarUsuario');
+                $flujoAdministrativo = $request->routeIs('admin.actualizarUsuario');
 
-            return view('supervisor.editarArchivosForm', compact('solicitud', 'id', 'documentacion', 'user', 'tipo', 'flujoAdministrativo'));
-
+                return view('supervisor.editarArchivosForm', compact('solicitud', 'id', 'documentacion', 'user', 'tipo', 'flujoAdministrativo'));
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error al actualizar la solicitud: '.$e->getMessage());
         }

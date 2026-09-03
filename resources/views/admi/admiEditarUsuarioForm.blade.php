@@ -199,6 +199,32 @@
                                 <label for="rol" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rol / Puesto</label>
                                 <input type="text" id="rol" name="rol" value="{{ old('rol', $solicitud->rol) }}" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
                             </div>
+                            <div id="zona_supervisor_group" @if(strtoupper(trim((string) old('rol', $solicitud->rol))) !== 'SUPERVISOR') hidden @endif>
+                                <label for="zona_supervisor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Zona del supervisor (opcional)</label>
+                                <select id="zona_supervisor" name="zona_supervisor" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                    <option value="">Sin cambio de zona</option>
+                                    @foreach($zonasSupervisor as $zona)
+                                        <option value="{{ $zona }}" @selected((string) old('zona_supervisor', $solicitud->zona_supervisor) === (string) $zona)>{{ $zona }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Opcional; dejarlo vacío conserva las asignaciones actuales.</p>
+                                @error('zona_supervisor') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                            </div>
+                            <script>
+                                (() => {
+                                    const role = document.getElementById('rol');
+                                    const group = document.getElementById('zona_supervisor_group');
+                                    const select = document.getElementById('zona_supervisor');
+                                    const update = () => {
+                                        const supervisor = role.value.trim().toUpperCase() === 'SUPERVISOR';
+                                        group.hidden = !supervisor;
+                                        select.disabled = !supervisor;
+                                        if (supervisor) role.value = 'SUPERVISOR';
+                                    };
+                                    role.addEventListener('input', update);
+                                    update();
+                                })();
+                            </script>
                             <div class="lg:col-span-2">
                                 <label for="punto" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Punto / Subpunto</label>
                                 <select id="punto" name="punto" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">

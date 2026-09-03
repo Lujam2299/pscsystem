@@ -16,6 +16,7 @@ use App\Models\SolicitudBajas;
 use App\Models\SolicitudVacaciones;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\SupervisorZoneService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -86,8 +87,9 @@ class AdminController extends Controller
         $puntos = Punto::with('subpuntos')->get(); // Agregamos los puntos
 
         $tipoSeleccionado = $solicitud->tipo_empleado ?? 'oficina';
+        $zonasSupervisor = app(SupervisorZoneService::class)->available();
 
-        return view('admi.admiEditarUsuarioForm', compact('user', 'solicitud', 'documentacion', 'puntos', 'tipoSeleccionado'));
+        return view('admi.admiEditarUsuarioForm', compact('user', 'solicitud', 'documentacion', 'puntos', 'tipoSeleccionado', 'zonasSupervisor'));
     }
 
     public function verBuzon()

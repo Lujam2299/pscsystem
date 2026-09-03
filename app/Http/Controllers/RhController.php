@@ -11,6 +11,7 @@ use App\Models\SolicitudBajas;
 use App\Models\SolicitudVacaciones;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\SupervisorZoneService;
 use Carbon\Carbon;
 use Hash;
 use Illuminate\Http\RedirectResponse;
@@ -68,6 +69,7 @@ class RhController extends Controller
             $user->empresa = $solicitud->empresa;
             $user->save();
 
+            app(SupervisorZoneService::class)->sync($user, $solicitud->zona_supervisor);
             $audit->record('Altas', 'Solicitud de alta aceptada', $solicitud, $before, $solicitud->only(['status', 'observaciones']), ['usuario_creado_id' => $user->id]);
         });
 
@@ -209,7 +211,9 @@ class RhController extends Controller
     {
         $puntos = Punto::with('subpuntos')->get();
 
-        return view('rh.generarAlta', compact('puntos'));
+        $zonasSupervisor = app(SupervisorZoneService::class)->available();
+
+        return view('rh.generarAlta', compact('puntos', 'zonasSupervisor'));
     }
 
     public function formAlta(Request $request)
@@ -217,104 +221,110 @@ class RhController extends Controller
         $puntos = Punto::with('subpuntos')->get();
         $tipo = $request->get('tipo', 'oficina');
 
-        return view('rh.generarAlta', compact('tipo', 'puntos'));
+        $zonasSupervisor = app(SupervisorZoneService::class)->available();
+
+        return view('rh.generarAlta', compact('tipo', 'puntos', 'zonasSupervisor'));
     }
 
     public function guardarAlta(Request $request, AuditLogger $audit)
     {
         try {
-            $validated = $request->validate([
-                'tipo' => 'required|in:oficina,armado,noarmado',
-                'name' => 'nullable|string|max:255',
-                'apellido_paterno' => 'nullable|string|max:255',
-                'apellido_materno' => 'nullable|string|max:255',
-                'fecha_nacimiento' => 'nullable|date',
-                'curp' => 'nullable|string|max:255',
-                'nss' => 'nullable|string|max:255',
-                'edo_civil' => 'nullable|string',
-                'rfc' => 'nullable|string|max:255',
-                'telefono' => 'nullable|string|max:255',
-                'calle' => 'nullable|string|max:255',
-                'num_ext' => 'nullable|string|max:255',
-                'colonia' => 'nullable|string|max:255',
-                'ciudad' => 'nullable|string|max:255',
-                'peso' => 'nullable|string|max:255',
-                'estatura' => 'nullable|string|max:255',
-                'cp_fiscal' => 'nullable|string|max:255',
-                'estado' => 'nullable|string|max:255',
-                'liga_rfc' => 'nullable|string|max:255',
-                'infonavit' => 'nullable|string|max:255',
-                'fonacot' => 'nullable|string|max:255',
-                'domicilio_comprobante' => 'nullable|string|max:255',
-                'departamento' => 'nullable|string|max:255',
-                'rol' => 'nullable|string|max:255',
-                'reingreso' => 'nullable|string',
-                'punto' => 'nullable|string|max:255',
-                'empresa' => 'nullable|string',
-                'sueldo_mensual' => 'nullable|string',
-                'fecha_ingreso' => 'nullable|date',
-                'email' => 'nullable|email|unique:solicitud_altas,email',
+            return DB::transaction(function () use ($request, $audit) {
+                $validated = $request->validate([
+                    'tipo' => 'required|in:oficina,armado,noarmado',
+                    'name' => 'nullable|string|max:255',
+                    'apellido_paterno' => 'nullable|string|max:255',
+                    'apellido_materno' => 'nullable|string|max:255',
+                    'fecha_nacimiento' => 'nullable|date',
+                    'curp' => 'nullable|string|max:255',
+                    'nss' => 'nullable|string|max:255',
+                    'edo_civil' => 'nullable|string',
+                    'rfc' => 'nullable|string|max:255',
+                    'telefono' => 'nullable|string|max:255',
+                    'calle' => 'nullable|string|max:255',
+                    'num_ext' => 'nullable|string|max:255',
+                    'colonia' => 'nullable|string|max:255',
+                    'ciudad' => 'nullable|string|max:255',
+                    'peso' => 'nullable|string|max:255',
+                    'estatura' => 'nullable|string|max:255',
+                    'cp_fiscal' => 'nullable|string|max:255',
+                    'estado' => 'nullable|string|max:255',
+                    'liga_rfc' => 'nullable|string|max:255',
+                    'infonavit' => 'nullable|string|max:255',
+                    'fonacot' => 'nullable|string|max:255',
+                    'domicilio_comprobante' => 'nullable|string|max:255',
+                    'departamento' => 'nullable|string|max:255',
+                    'rol' => 'nullable|string|max:255',
+                    'reingreso' => 'nullable|string',
+                    'punto' => 'nullable|string|max:255',
+                    'empresa' => 'nullable|string',
+                    'sueldo_mensual' => 'nullable|string',
+                    'fecha_ingreso' => 'nullable|date',
+                    'email' => 'nullable|email|unique:solicitud_altas,email',
 
-                // --- NUEVOS CAMPOS ---
-                'tipo_periodo' => 'nullable|in:semanal,quincenal',
-                'banco' => 'nullable|string|max:255',
-                'cuenta_bancaria' => 'nullable|string|max:255',
-            ]);
+                    // --- NUEVOS CAMPOS ---
+                    'tipo_periodo' => 'nullable|in:semanal,quincenal',
+                    'banco' => 'nullable|string|max:255',
+                    'cuenta_bancaria' => 'nullable|string|max:255',
+                ]);
 
-            $tipoSeleccionado = $request->get('tipo', 'oficina');
+                $request->validate(['zona_supervisor' => 'nullable|string|max:255']);
+                $tipoSeleccionado = $request->get('tipo', 'oficina');
 
-            $solicitud = new SolicitudAlta;
-            $solicitud->solicitante = auth()->user()->name;
-            $solicitud->nombre = $request->name;
-            $solicitud->apellido_paterno = $request->apellido_paterno;
-            $solicitud->apellido_materno = $request->apellido_materno;
-            $solicitud->fecha_nacimiento = $request->fecha_nacimiento;
-            $solicitud->tipo_empleado = $request->get('tipo', 'oficina');
-            $solicitud->curp = $request->curp;
-            $solicitud->nss = $request->nss;
-            $solicitud->estado_civil = $request->edo_civil;
-            $solicitud->rfc = $request->rfc;
-            $solicitud->telefono = $request->telefono;
-            $solicitud->domicilio_calle = $request->calle;
-            $solicitud->domicilio_numero = $request->num_ext;
-            $solicitud->domicilio_colonia = $request->colonia;
-            $solicitud->cp_fiscal = $request->cp_fiscal;
-            $solicitud->domicilio_ciudad = $request->ciudad;
-            $solicitud->peso = $request->peso;
-            $solicitud->estatura = $request->estatura;
-            $solicitud->liga_rfc = $request->liga_rfc;
-            $solicitud->domicilio_estado = $request->estado;
-            $solicitud->infonavit = $request->infonavit;
-            $solicitud->fonacot = $request->fonacot;
-            $solicitud->domicilio_comprobante = $request->domicilio_comprobante;
-            $solicitud->rol = $request->rol;
-            $solicitud->punto = $request->punto;
-            $solicitud->reingreso = $request->reingreso;
-            $solicitud->empresa = $request->empresa;
-            $solicitud->fecha_ingreso = $request->fecha_ingreso;
-            $solicitud->sueldo_mensual = $request->sueldo_mensual;
-            $solicitud->email = $request->email;
+                $solicitud = new SolicitudAlta;
+                $solicitud->solicitante = auth()->user()->name;
+                $solicitud->nombre = $request->name;
+                $solicitud->apellido_paterno = $request->apellido_paterno;
+                $solicitud->apellido_materno = $request->apellido_materno;
+                $solicitud->fecha_nacimiento = $request->fecha_nacimiento;
+                $solicitud->tipo_empleado = $request->get('tipo', 'oficina');
+                $solicitud->curp = $request->curp;
+                $solicitud->nss = $request->nss;
+                $solicitud->estado_civil = $request->edo_civil;
+                $solicitud->rfc = $request->rfc;
+                $solicitud->telefono = $request->telefono;
+                $solicitud->domicilio_calle = $request->calle;
+                $solicitud->domicilio_numero = $request->num_ext;
+                $solicitud->domicilio_colonia = $request->colonia;
+                $solicitud->cp_fiscal = $request->cp_fiscal;
+                $solicitud->domicilio_ciudad = $request->ciudad;
+                $solicitud->peso = $request->peso;
+                $solicitud->estatura = $request->estatura;
+                $solicitud->liga_rfc = $request->liga_rfc;
+                $solicitud->domicilio_estado = $request->estado;
+                $solicitud->infonavit = $request->infonavit;
+                $solicitud->fonacot = $request->fonacot;
+                $solicitud->domicilio_comprobante = $request->domicilio_comprobante;
+                app(SupervisorZoneService::class)->applySelection($solicitud, $request->rol, $request->input('zona_supervisor'));
+                $solicitud->punto = $request->punto;
+                $solicitud->reingreso = $request->reingreso;
+                $solicitud->empresa = $request->empresa;
+                $solicitud->fecha_ingreso = $request->fecha_ingreso;
+                $solicitud->sueldo_mensual = $request->sueldo_mensual;
+                $solicitud->email = $request->email;
 
-            // --- ASIGNACIÓN DE NUEVOS CAMPOS ---
-            $solicitud->tipo_periodo = $request->tipo_periodo;
-            $solicitud->banco = $request->banco;
-            $solicitud->cuenta_bancaria = $request->cuenta_bancaria;
+                // --- ASIGNACIÓN DE NUEVOS CAMPOS ---
+                $solicitud->tipo_periodo = $request->tipo_periodo;
+                $solicitud->banco = $request->banco;
+                $solicitud->cuenta_bancaria = $request->cuenta_bancaria;
 
-            $solicitud->status = 'Aceptada';
-            $solicitud->observaciones = 'Solicitud Aceptada.';
-            $solicitud->created_at = Carbon::now('America/Mexico_City');
-            $solicitud->updated_at = Carbon::now('America/Mexico_City');
+                $solicitud->status = 'Aceptada';
+                $solicitud->observaciones = 'Solicitud Aceptada.';
+                $solicitud->created_at = Carbon::now('America/Mexico_City');
+                $solicitud->updated_at = Carbon::now('America/Mexico_City');
 
-            $solicitud->save();
+                $solicitud->save();
 
-            $audit->record('Altas', 'Solicitud de alta creada por RH', $solicitud, [], $solicitud->only([
-                'solicitante', 'nombre', 'apellido_paterno', 'apellido_materno', 'tipo_empleado',
-                'departamento', 'rol', 'punto', 'empresa', 'fecha_ingreso', 'email',
-                'tipo_periodo', 'status', 'observaciones',
-            ]));
+                $audit->record('Altas', 'Solicitud de alta creada por RH', $solicitud, [], $solicitud->only([
+                    'solicitante', 'nombre', 'apellido_paterno', 'apellido_materno', 'tipo_empleado',
+                    'departamento', 'rol', 'punto', 'zona_supervisor', 'empresa', 'fecha_ingreso', 'email',
+                    'tipo_periodo', 'status', 'observaciones',
+                ]));
 
-            return redirect()->route('rh.subirArchivosAltaForm', ['id' => $solicitud->id, 'tipo' => $tipoSeleccionado]);
-
+                return redirect()->route('rh.subirArchivosAltaForm', ['id' => $solicitud->id, 'tipo' => $tipoSeleccionado]);
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error al guardar la solicitud, intente nuevamente.'.$e->getMessage());
         }
@@ -350,112 +360,117 @@ class RhController extends Controller
     public function guardarArchivosAlta(Request $request, $id, AuditLogger $audit)
     {
         try {
-            $request->validate([
-                'arch_acta_nacimiento' => 'nullable|file',
-                'arch_curp' => 'nullable|file',
-                'arch_ine' => 'nullable|file',
-                'arch_comprobante_domicilio' => 'nullable|file',
-                'arch_rfc' => 'nullable|file',
-                'arch_comprobante_estudios' => 'nullable|file',
-                'arch_carta_rec_laboral' => 'nullable|file',
-                'arch_carta_rec_personal' => 'nullable|file',
-                'arch_cartilla_militar' => 'nullable|file',
-                'arch_infonavit' => 'nullable|file',
-                'arch_fonacot' => 'nullable|file',
-                'arch_licencia_conducir' => 'nullable|file',
-                'arch_carta_no_penales' => 'nullable|file',
-                'arch_solicitud_empleo' => 'nullable|file',
-                'arch_antidoping' => 'nullable|file',
-                'arch_nss' => 'nullable|file',
-                'arch_contrato' => 'nullable|file',
-                'arch_foto' => 'nullable|file',
-                'visa' => 'nullable|file',
-                'pasaporte' => 'nullable|file',
-            ]);
+            return DB::transaction(function () use ($request, $id, $audit) {
+                $request->validate([
+                    'arch_acta_nacimiento' => 'nullable|file',
+                    'arch_curp' => 'nullable|file',
+                    'arch_ine' => 'nullable|file',
+                    'arch_comprobante_domicilio' => 'nullable|file',
+                    'arch_rfc' => 'nullable|file',
+                    'arch_comprobante_estudios' => 'nullable|file',
+                    'arch_carta_rec_laboral' => 'nullable|file',
+                    'arch_carta_rec_personal' => 'nullable|file',
+                    'arch_cartilla_militar' => 'nullable|file',
+                    'arch_infonavit' => 'nullable|file',
+                    'arch_fonacot' => 'nullable|file',
+                    'arch_licencia_conducir' => 'nullable|file',
+                    'arch_carta_no_penales' => 'nullable|file',
+                    'arch_solicitud_empleo' => 'nullable|file',
+                    'arch_antidoping' => 'nullable|file',
+                    'arch_nss' => 'nullable|file',
+                    'arch_contrato' => 'nullable|file',
+                    'arch_foto' => 'nullable|file',
+                    'visa' => 'nullable|file',
+                    'pasaporte' => 'nullable|file',
+                ]);
 
-            $solicitud = SolicitudAlta::findOrFail($id);
-            $solicitudId = $id;
-            $documentacion = DocumentacionAltas::firstOrNew(['solicitud_id' => $solicitudId]);
-            $carpeta = 'solicitudesAltas/'.$solicitudId;
+                $solicitudId = $id;
+                $solicitud = SolicitudAlta::lockForUpdate()->findOrFail($id);
+                // Validate the saved zone before accepting any new document files.
+                app(SupervisorZoneService::class)->applySelection($solicitud, $solicitud->rol, $solicitud->zona_supervisor);
+                $documentacion = DocumentacionAltas::firstOrNew(['solicitud_id' => $solicitudId]);
+                $carpeta = 'solicitudesAltas/'.$solicitudId;
 
-            $archivos = [
-                'arch_acta_nacimiento',
-                'arch_curp',
-                'arch_ine',
-                'arch_comprobante_domicilio',
-                'arch_rfc',
-                'arch_comprobante_estudios',
-                'arch_carta_rec_laboral',
-                'arch_carta_rec_personal',
-                'arch_cartilla_militar',
-                'arch_infonavit',
-                'arch_fonacot',
-                'arch_licencia_conducir',
-                'arch_carta_no_penales',
-                'arch_foto',
-                'arch_nss',
-                'arch_contrato',
-                'arch_antidoping',
-                'arch_solicitud_empleo',
-                'visa',
-                'pasaporte',
-            ];
+                $archivos = [
+                    'arch_acta_nacimiento',
+                    'arch_curp',
+                    'arch_ine',
+                    'arch_comprobante_domicilio',
+                    'arch_rfc',
+                    'arch_comprobante_estudios',
+                    'arch_carta_rec_laboral',
+                    'arch_carta_rec_personal',
+                    'arch_cartilla_militar',
+                    'arch_infonavit',
+                    'arch_fonacot',
+                    'arch_licencia_conducir',
+                    'arch_carta_no_penales',
+                    'arch_foto',
+                    'arch_nss',
+                    'arch_contrato',
+                    'arch_antidoping',
+                    'arch_solicitud_empleo',
+                    'visa',
+                    'pasaporte',
+                ];
 
-            foreach ($archivos as $campo) {
-                if ($request->hasFile($campo)) {
-                    try {
-                        $archivo = $request->file($campo);
-                        $nombreArchivo = $campo.'.'.$archivo->getClientOriginalExtension();
-                        $ruta = $archivo->storeAs($carpeta, $nombreArchivo, 'public');
-                        $documentacion->$campo = 'storage/'.$ruta;
-                    } catch (\Exception $e) {
-                        Log::error("Error al guardar el archivo {$campo}: ".$e->getMessage());
+                foreach ($archivos as $campo) {
+                    if ($request->hasFile($campo)) {
+                        try {
+                            $archivo = $request->file($campo);
+                            $nombreArchivo = $campo.'.'.$archivo->getClientOriginalExtension();
+                            $ruta = $archivo->storeAs($carpeta, $nombreArchivo, 'public');
+                            $documentacion->$campo = 'storage/'.$ruta;
+                        } catch (\Exception $e) {
+                            Log::error("Error al guardar el archivo {$campo}: ".$e->getMessage());
+                        }
                     }
                 }
-            }
 
-            $documentacion->solicitud_id = $solicitudId;
-            $documentacion->save();
+                $documentacion->solicitud_id = $solicitudId;
+                $documentacion->save();
 
-            $archivosCargados = collect($archivos)
-                ->filter(fn (string $campo): bool => $request->hasFile($campo))
-                ->values()
-                ->all();
+                $archivosCargados = collect($archivos)
+                    ->filter(fn (string $campo): bool => $request->hasFile($campo))
+                    ->values()
+                    ->all();
 
-            $solicitud->status = 'Aceptada';
-            $solicitud->observaciones = 'Solicitud Aceptada.';
-            $solicitud->save();
+                $solicitud->status = 'Aceptada';
+                $solicitud->observaciones = 'Solicitud Aceptada.';
+                $solicitud->save();
 
-            if (Auth::user()->rol != 'Supervisor' && Auth::user()->rol != 'SUPERVISOR') {
-                $user = new User;
-                $user->sol_alta_id = $solicitudId;
-                $user->sol_docs_id = $documentacion->id;
-                $user->name = $solicitud->nombre.' '.$solicitud->apellido_paterno.' '.$solicitud->apellido_materno;
-                $user->email = $solicitud->email;
-                if (! empty($solicitud->rfc)) {
-                    $user->password = Hash::make($solicitud->rfc);
-                } else {
-                    $user->password = Hash::make($solicitud->curp);
+                if (Auth::user()->rol != 'Supervisor' && Auth::user()->rol != 'SUPERVISOR') {
+                    $user = new User;
+                    $user->sol_alta_id = $solicitudId;
+                    $user->sol_docs_id = $documentacion->id;
+                    $user->name = $solicitud->nombre.' '.$solicitud->apellido_paterno.' '.$solicitud->apellido_materno;
+                    $user->email = $solicitud->email;
+                    if (! empty($solicitud->rfc)) {
+                        $user->password = Hash::make($solicitud->rfc);
+                    } else {
+                        $user->password = Hash::make($solicitud->curp);
+                    }
+
+                    $user->fecha_ingreso = $solicitud->fecha_ingreso;
+                    $user->punto = $solicitud->punto;
+                    $user->rol = $solicitud->rol;
+                    $user->estatus = 'Activo';
+                    $user->empresa = $solicitud->empresa;
+
+                    $user->save();
+                    app(SupervisorZoneService::class)->sync($user, $solicitud->zona_supervisor);
                 }
 
-                $user->fecha_ingreso = $solicitud->fecha_ingreso;
-                $user->punto = $solicitud->punto;
-                $user->rol = $solicitud->rol;
-                $user->estatus = 'Activo';
-                $user->empresa = $solicitud->empresa;
+                $audit->record('Altas', 'Documentación de alta cargada', $solicitud, [], $solicitud->only([
+                    'status', 'observaciones',
+                ]), [
+                    'documentacion_id' => $documentacion->id,
+                    'archivos_cargados' => $archivosCargados,
+                    'usuario_creado_id' => isset($user) ? $user->id : null,
+                ]);
 
-                $user->save();
-            }
-
-            $audit->record('Altas', 'Documentación de alta cargada', $solicitud, [], $solicitud->only([
-                'status', 'observaciones',
-            ]), [
-                'documentacion_id' => $documentacion->id,
-                'archivos_cargados' => $archivosCargados,
-                'usuario_creado_id' => isset($user) ? $user->id : null,
-            ]);
-
-            return redirect()->route('dashboard')->with('success', 'Documentación subida correctamente');
+                return redirect()->route('dashboard')->with('success', 'Documentación subida correctamente');
+            });
         } catch (\Throwable $e) {
             Log::error('Error general en guardarArchivosAlta: '.$e->getMessage());
 
